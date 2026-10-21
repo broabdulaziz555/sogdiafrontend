@@ -6,8 +6,17 @@ import { useApi } from './useApi';
 import type { Account, HistoryOrder, HistoryResponse } from '@/lib/types';
 
 export function useAccounts(status?: string) {
-  const r = useApi<{ accounts: Account[] }>('/accounts', status ? { status } : undefined, { refreshInterval: 30_000 });
-  return { ...r, accounts: r.data?.accounts };
+  // Always revalidate: never trust a previously cached (possibly empty) list.
+  const r = useApi<{ accounts: Account[] } | Account[]>('/accounts', status ? { status } : undefined, {
+    refreshInterval: 30_000,
+    revalidateOnMount: true,
+    revalidateIfStale: true,
+    revalidateOnFocus: true,
+    dedupingInterval: 0,
+  });
+  // Contract shape is { accounts: [...] } (the envelope's `data`); tolerate a bare array too.
+  const accounts: Account[] | undefined = Array.isArray(r.data) ? r.data : r.data?.accounts;
+  return { ...r, accounts };
 }
 
 const PAGE = 100;
