@@ -20,6 +20,8 @@ import { dateShort, dateTime, fmtNum, fmtUsd, shortAddr, shortId, titleCase } fr
 import { revalidatePath } from '@/lib/mutate';
 import { mutate as globalMutate } from 'swr';
 import type { Account, Eligibility, PayoutTx, User } from '@/lib/types';
+import { formatWallet, parseWallet, shortWallet, validateWallet, type UsdtNetwork } from '@/lib/wallet';
+import { WalletFields } from './WalletFields';
 
 const REASON_COPY: Record<string, string> = {
   KYC_REQUIRED: 'Identity verification is not complete.',
@@ -34,31 +36,34 @@ const REASON_COPY: Record<string, string> = {
 };
 const reasonText = (r: string) => REASON_COPY[r] ?? titleCase(r.toLowerCase().replace(/_/g, ' '));
 
-const TRC20 = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
-const EVM = /^0x[a-fA-F0-9]{40}$/;
-const validWallet = (v: string) => TRC20.test(v.trim()) || EVM.test(v.trim());
-
 /* ── Wallet card ─────────────────────────────────────────────────────────── */
 function WalletCard({ user }: { user: User }) {
   const toast = useToast();
+  const parsed = parseWallet(user.wallet_address);
   const [editing, setEditing] = useState(!user.wallet_address);
-  const [value, setValue] = useState(user.wallet_address ?? '');
+  const [network, setNetwork] = useState<UsdtNetwork | ''>(parsed.network ?? '');
+  const [address, setAddress] = useState(parsed.address);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [errs, setErrs] = useState<{ network?: string; address?: string }>({});
+  const [apiErr, setApiErr] = useState<string | null>(null);
 
-  useEffect(() => { setValue(user.wallet_address ?? ''); setEditing(!user.wallet_address); }, [user.wallet_address]);
+  useEffect(() => {
+    const w = parseWallet(user.wallet_address);
+    setNetwork(w.network ?? ''); setAddress(w.address); setEditing(!user.wallet_address);
+  }, [user.wallet_address]);
 
   const save = async () => {
-    const v = value.trim();
-    if (!validWallet(v)) { setErr('Enter a valid TRC20 (T…) or ERC20/BEP20 (0x…) address.'); return; }
-    setErr(null); setBusy(true);
+    const v = validateWallet(network, address);
+    setErrs(v);
+    if (v.network || v.address || !network) return;
+    setApiErr(null); setBusy(true);
     try {
-      await patch('/me', { wallet_address: v });
+      await patch('/me', { wallet_address: formatWallet(network, address) }); // "[TRC-20] TQn9…"
       await globalMutate('/me');
       toast.success('Wallet saved');
       setEditing(false);
     } catch (e) {
-      setErr(errMsg(e));
+      setApiErr(errMsg(e));
     } finally { setBusy(false); }
   };
 
@@ -69,7 +74,7 @@ function WalletCard({ user }: { user: User }) {
           <div className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel2 text-accent"><Wallet className="h-5 w-5" /></div>
           <div>
             <h2 id="wallet-h" className="text-md font-semibold">Payout wallet</h2>
-            <p className="text-xs text-muted">USDT is sent to this address.</p>
+            <p className="text-xs text-muted">USDT is sent to this address on the network you choose.</p>
           </div>
         </div>
         {!editing && <Button size="sm" variant="ghost" icon={<Pencil className="h-3.5 w-3.5" />} onClick={() => setEditing(true)}>Change</Button>}
@@ -77,18 +82,22 @@ function WalletCard({ user }: { user: User }) {
 
       {editing ? (
         <div className="mt-4 space-y-3">
-          <Field label="USDT wallet address" htmlFor="wallet" error={err} hint="Double-check the address and network. Transfers cannot be reversed.">
-            <Input id="wallet" value={value} onChange={(e) => setValue(e.target.value)} placeholder="T… or 0x…" spellCheck={false} autoComplete="off" invalid={!!err} className="font-mono" />
-          </Field>
+          <WalletFields idPrefix="w" network={network} address={address} onNetwork={(n) => { setNetwork(n); setErrs((e) => ({ ...e, network: undefined })); }} onAddress={(a) => { setAddress(a); setErrs((e) => ({ ...e, address: undefined })); }} errors={errs} />
+          {apiErr && <p role="alert" className="text-xs text-down">{apiErr}</p>}
+          <p className="text-xs text-subtle">Double-check the address and network. Transfers cannot be reversed.</p>
           <div className="flex justify-end gap-2">
-            {user.wallet_address && <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setErr(null); setValue(user.wallet_address ?? ''); }}>Cancel</Button>}
+            {user.wallet_address && <Button size="sm" variant="ghost" onClick={() => { const w = parseWallet(user.wallet_address); setEditing(false); setErrs({}); setApiErr(null); setNetwork(w.network ?? ''); setAddress(w.address); }}>Cancel</Button>}
             <Button size="sm" variant="primary" loading={busy} onClick={save}>Save wallet</Button>
           </div>
         </div>
       ) : (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-line bg-panel2 px-3 py-2.5">
-          <code className="num min-w-0 flex-1 truncate font-mono text-sm">{user.wallet_address}</code>
-          <CopyButton value={user.wallet_address ?? ''} />
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border border-line bg-panel2 px-3 py-2.5">
+            <span className={`shrink-0 rounded border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider ${parsed.tagged ? 'border-accent/30 bg-accent/10 text-accent' : 'border-warn/30 bg-warn/10 text-warn'}`}>{parsed.tagged ? parsed.network : 'No network'}</span>
+            <code className="num min-w-0 flex-1 break-all font-mono text-sm">{parsed.address}</code>
+            <CopyButton value={parsed.address} label="Copy address" />
+          </div>
+          {!parsed.tagged && <p role="status" className="text-xs text-warn">This wallet has no network tag. Press Change, pick the network and save before requesting a payout.</p>}
         </div>
       )}
     </section>
@@ -154,6 +163,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
   const [done, setDone] = useState<PayoutTx | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const walletTagged = parseWallet(wallet).tagged;
   const gross = Number(amount);
   const invalid = !Number.isFinite(gross) || gross <= 0 || gross > elig.profit + 1e-9;
   const net = invalid ? 0 : (gross * elig.split_pct) / 100;
@@ -182,7 +192,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
       footer={done ? <Button variant="primary" onClick={onClose}>Done</Button> : (
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={busy} disabled={invalid} onClick={submit}>Confirm request</Button>
+          <Button variant="primary" loading={busy} disabled={invalid || !walletTagged} onClick={submit}>Confirm request</Button>
         </>
       )}
     >
@@ -197,7 +207,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
               <Row k={`SOGDIA share (${100 - elig.split_pct}%)`} v={`−${fmtUsd(done.amount - done.net_amount)}`} mono />
               <div className="my-1 border-t border-line" />
               <Row k="You receive (USDT)" v={fmtUsd(done.net_amount)} mono strong />
-              <Row k="Destination" v={<span className="font-mono">{shortAddr(done.wallet_address)}</span>} />
+              <Row k="Destination" v={<span className="font-mono">{shortWallet(done.wallet_address)}</span>} />
               <Row k="Status" v={<StatusBadge status={done.status} />} />
             </dl>
           </div>
@@ -225,8 +235,9 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
 
             <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5 text-sm">
               <span className="text-muted">Sent to</span>
-              <span className="font-mono text-xs">{wallet ? shortAddr(wallet) : 'No wallet set'}</span>
+              <span className="font-mono text-xs">{wallet ? shortWallet(wallet) : 'No wallet set'}</span>
             </div>
+            {!walletTagged && <p role="alert" className="flex items-start gap-2 text-sm text-warn"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{wallet ? 'Your wallet has no USDT network. Choose TRC-20, ERC-20 or BEP-20 in the Payout wallet card, then try again.' : 'Add a payout wallet first.'}</p>}
             {err && <p role="alert" className="flex items-start gap-2 text-sm text-down"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{err}</p>}
           </>
         )}
