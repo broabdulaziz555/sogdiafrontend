@@ -175,7 +175,7 @@ export function SettingsEditor() {
               <div className="space-y-3 p-4">
                 <Editor value={text} onChange={edit} errors={errLines} warnings={warnLines} taRef={ta} />
                 <p id="settings-help" className="text-2xs leading-relaxed text-subtle">
-                  Line format <code className="font-mono">key = value</code> or raw JSON. Comments start with <code className="font-mono">#</code> or <code className="font-mono">//</code>. Promo: <code className="font-mono">promo = CODE | 10% | plans:all | expires:never | max_uses:0 | active</code>. Press <span className="kbd">Ctrl</span>+<span className="kbd">S</span> to save.
+                  Line format <code className="font-mono">key = value</code> or raw JSON. Comments start with <code className="font-mono">#</code> or <code className="font-mono">{'//'}</code>. Promo: <code className="font-mono">promo = CODE | 10% | plans:all | expires:never | max_uses:0 | active</code>. Press <span className="kbd">Ctrl</span>+<span className="kbd">S</span> to save.
                 </p>
 
                 {issues.length > 0 && (
