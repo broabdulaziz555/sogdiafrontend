@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080C12" />
+  <title>Offline · SOGDIA</title>
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100dvh; background: #080C12; color: #E6ECF4;
+      font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+      display: grid; place-items: center; padding: 24px;
+      background-image: radial-gradient(60% 50% at 50% 0%, rgba(183,243,107,.08), transparent 70%);
+    }
+    main { width: 100%; max-width: 460px; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .brand img { width: 28px; height: 28px; }
+    .brand b { letter-spacing: .18em; font-size: 15px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid rgba(246,70,93,.35); background: rgba(246,70,93,.1); color: #F6465D;
+      font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: p 1.6s ease-in-out infinite; }
+    @keyframes p { 50% { opacity: .3; } }
+    h1 { font-size: 26px; letter-spacing: -.02em; margin: 16px 0 6px; }
+    p.lead { color: #8292A6; margin-bottom: 22px; }
+    .card { background: #111A25; border: 1px solid #1D2938; border-radius: 14px; overflow: hidden; }
+    .card h2 { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #58677B; padding: 12px 16px; border-bottom: 1px solid #1D2938; display: flex; justify-content: space-between; }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(29,41,56,.6); }
+    .row:last-child { border-bottom: 0; }
+    .row small { display: block; color: #58677B; font-size: 11px; }
+    .num { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+    .empty { padding: 28px 16px; text-align: center; color: #8292A6; }
+    .actions { display: flex; gap: 10px; margin-top: 18px; }
+    button {
+      flex: 1; height: 38px; border-radius: 8px; border: 1px solid #1D2938; background: #0D141D; color: #E6ECF4;
+      font: inherit; font-weight: 600; cursor: pointer; transition: border-color .15s;
+    }
+    button:hover { border-color: #58677B; }
+    button.primary { background: #B7F36B; color: #080C12; border-color: #B7F36B; }
+    .foot { margin-top: 14px; font-size: 11px; color: #58677B; text-align: center; }
+    :focus-visible { outline: 2px solid #B7F36B; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand"><img src="/icons/icon.svg" alt="" /><b>SOGDIA</b></div>
+    <span class="badge" role="status"><span class="dot"></span>Offline</span>
+    <h1>You're offline</h1>
+    <p class="lead">Live trading is paused until your connection returns. This page reloads automatically.</p>
+
+    <section class="card" aria-label="Last known balances">
+      <h2><span>Last known balances</span><span id="stamp"></span></h2>
+      <div id="accounts"><div class="empty">Checking cached data…</div></div>
+    </section>
+
+    <div class="actions">
+      <button class="primary" id="retry">Retry now</button>
+      <button id="home">Go to home</button>
+    </div>
+    <p class="foot">Cached figures may be out of date. Open positions are still managed by the risk engine while you are away.</p>
+  </main>
+
+  <script>
+    (function () {
+      var accountsEl = document.getElementById('accounts');
+      var stampEl = document.getElementById('stamp');
+      var usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+      var TYPE = { one_step: 'One-Step', instant: 'Instant' };
+
+      function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+
+      function render(accounts, when) {
+        if (!accounts || !accounts.length) {
+          accountsEl.innerHTML = '<div class="empty">No cached account data on this device yet.</div>';
+          return;
+        }
+        accountsEl.innerHTML = accounts.map(function (a) {
+          return '<div class="row"><div><b>' + esc(TYPE[a.type] || a.type) + ' $' + (a.size / 1000) + 'K</b>' +
+            '<small>' + esc(a.status) + ' · ' + esc(String(a.id).slice(0, 8)) + '</small></div>' +
+            '<div class="num">' + usd.format(a.balance) + '<small>Equity ' + usd.format(a.equity) + '</small></div></div>';
+        }).join('');
+        if (when) stampEl.textContent = 'Updated ' + new Date(when).toLocaleString();
+      }
+
+      if ('caches' in window) {
+        caches.match('/__offline/accounts').then(function (res) {
+          if (!res) return render([]);
+          var when = res.headers.get('date');
+          return res.json().then(function (j) { render(j && j.ok ? j.data.accounts : [], when); });
+        }).catch(function () { render([]); });
+      } else render([]);
+
+      function check() {
+        return fetch('/api/health', { cache: 'no-store' })
+          .then(function (r) { if (r.ok) location.href = document.referrer && new URL(document.referrer).origin === location.origin ? document.referrer : '/'; })
+          .catch(function () {});
+      }
+      window.addEventListener('online', function () { location.reload(); });
+      setInterval(check, 5000);
+      document.getElementById('retry').addEventListener('click', function () { this.textContent = 'Checking…'; var b = this; check().then(function () { b.textContent = 'Retry now'; }); });
+      document.getElementById('home').addEventListener('click', function () { location.href = '/'; });
+    })();
+  </script>
+</body>
+</html>
