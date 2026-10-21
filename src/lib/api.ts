@@ -1,7 +1,19 @@
 import { clearSession, getAccessToken, getRefreshToken, isExpiringSoon, setSession } from './auth';
 import type { Session } from './types';
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/$/, '');
+/**
+ * Resolves the API root. Accepts NEXT_PUBLIC_API_URL with or without the `/api` suffix
+ * (`https://host`, `https://host/`, `https://host/api`, or the same-origin default `/api`)
+ * and always returns a base that ends in `/api`.
+ */
+function resolveApiBase(raw: string | undefined): string {
+  let base = (raw ?? '').trim().replace(/\/+$/, '');
+  if (!base) base = '/api';
+  if (!/\/api$/i.test(base)) base += '/api';
+  return base;
+}
+
+export const API_BASE = resolveApiBase(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiError extends Error {
   constructor(
