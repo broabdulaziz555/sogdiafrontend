@@ -1,10 +1,10 @@
 /* SOGDIA service worker
  *  - App shell & static assets: stale-while-revalidate
- *  - API GET requests:          stale-while-revalidate (per-user keyed), with a push to open tabs when fresher data arrives
+ *  - API GET requests:          network-first (always fresh online); per-user cached copy only as an offline fallback
  *  - Navigations:               network-first → cached page → /offline.html
  *  - Volatile / privileged endpoints (prices, positions, admin, auth) are never cached.
  */
-const VERSION = 'v1';
+const VERSION = 'v2'; // bump = old caches are purged on activate
 const STATIC_CACHE = `sg-static-${VERSION}`;
 const API_CACHE = `sg-api-${VERSION}`;
 const PAGE_CACHE = `sg-pages-${VERSION}`;
@@ -108,6 +108,30 @@ async function staleWhileRevalidate(event, cacheName, cacheKey, { api = false } 
   });
 }
 
+/** API GETs: always ask the network first so balances / roles / account lists are never stale; fall back to cache offline. */
+async function networkFirstApi(event, cacheKey) {
+  const cache = await caches.open(API_CACHE);
+  try {
+    const res = await fetch(event.request);
+    if (res && res.ok) {
+      const url = new URL(event.request.url);
+      const copy = res.clone();
+      event.waitUntil((async () => {
+        await cache.put(cacheKey, copy);
+        if (url.pathname === '/api/accounts') await cache.put(SNAPSHOT_KEY, res.clone()).catch(() => {});
+      })().catch(() => {}));
+    }
+    return res;
+  } catch (_) {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+    return new Response(JSON.stringify({ ok: false, error: { code: 'NETWORK_ERROR', message: 'You are offline and this data has not been cached yet.', details: null } }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -117,7 +141,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) {
     if (API_DENY.some((re) => re.test(url.pathname))) return;
     const key = new Request(`${url.origin}${url.pathname}${url.search}#u=${userKey(req)}`);
-    event.respondWith(staleWhileRevalidate(event, API_CACHE, key, { api: true }));
+    event.respondWith(networkFirstApi(event, key));
     return;
   }
 
