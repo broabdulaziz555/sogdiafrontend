@@ -45,7 +45,8 @@ function AdjustModal({ account, onClose, onDone }: { account: Account | null; on
     return b;
   }, [f, flags, status]);
 
-  const invalid = Object.entries(body).some(([, v]) => typeof v === 'number' && !Number.isFinite(v)) || (body.rules && Object.values(body.rules as object).some((v) => typeof v === 'number' && !Number.isFinite(v)));
+  const rulesObj = (body.rules ?? {}) as Record<string, number | null>;
+  const invalid = Object.entries(body).some(([k, v]) => k !== 'rules' && typeof v === 'number' && !Number.isFinite(v)) || Object.values(rulesObj).some((v) => typeof v === 'number' && !Number.isFinite(v));
   const empty = Object.keys(body).length === 0;
   const ok = !empty && !invalid && reason.trim().length >= 3;
 

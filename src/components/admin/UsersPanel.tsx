@@ -84,7 +84,7 @@ function UserDrawer({ user, onClose, onChanged }: { user: Row | null; onClose: (
                 <Button size="sm" variant="secondary" icon={<Gift className="h-3.5 w-3.5" />} onClick={() => setDlg('gift')}>Gift accounts <XTag /></Button>
                 <Button size="sm" variant="secondary" icon={<UserCog className="h-3.5 w-3.5" />} onClick={() => { setRole(user.role); setDlg('role'); }}>Change role <XTag /></Button>
                 <Button size="sm" variant="secondary" icon={<ShieldCheck className="h-3.5 w-3.5" />} onClick={() => setDlg('kyc')}>Force KYC <XTag /></Button>
-                <Button size="sm" variant="secondary" icon={<KeyRound className="h-3.5 w-3.5" />} loading={busy === 'imp'} onClick={() => run('imp', async () => { setImp(await post(`/xdepartment/impersonate/${user.id}`)); })}>Impersonate <XTag /></Button>
+                <Button size="sm" variant="secondary" icon={<KeyRound className="h-3.5 w-3.5" />} loading={busy === 'imp'} onClick={() => run('imp', async () => { setImp(await post<{ user: { email: string }; action_link: string; expires_in: number }>(`/xdepartment/impersonate/${user.id}`)); })}>Impersonate <XTag /></Button>
               </>) : <p className="w-full text-xs text-subtle">Role changes, gifts, forced KYC and impersonation are limited to the X-Department tier.</p>}
             </div>
           </Section>
