@@ -98,18 +98,35 @@ async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promi
   if (token) h.Authorization = `Bearer ${token}`;
   if (body !== undefined && !form) h['Content-Type'] = 'application/json';
 
-  let res: Response;
-  try {
-    res = await fetch(buildUrl(path, query), {
+  const doFetch = (hdrs: Record<string, string>) =>
+    fetch(buildUrl(path, query), {
       method,
-      headers: h,
+      headers: hdrs,
       body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
       signal,
       cache: 'no-store',
     });
+
+  let res: Response;
+  try {
+    res = await doFetch(h);
   } catch (e) {
     if ((e as Error)?.name === 'AbortError') throw e;
-    throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
+    // A browser reports a CORS-blocked preflight as a plain network failure. If the backend's CORS allow-list lacks
+    // the optional `Idempotency-Key` header, the request never leaves the browser — so retry once without it.
+    if (h['Idempotency-Key']) {
+      const { ['Idempotency-Key']: _dropped, ...rest } = h;
+      void _dropped;
+      console.warn('[api] request failed with Idempotency-Key; retrying without it. Add "Idempotency-Key" to the backend CORS allowed headers.');
+      try {
+        res = await doFetch(rest);
+      } catch (e2) {
+        if ((e2 as Error)?.name === 'AbortError') throw e2;
+        throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
+      }
+    } else {
+      throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
+    }
   }
 
   let json: any = null;
@@ -183,4 +200,5 @@ const ERROR_COPY: Record<string, string> = {
   RATE_LIMITED: 'Too many requests — slow down and retry in a moment.',
   UPSTREAM_ERROR: 'Market data provider is unreachable. Retry shortly.',
   UNAUTHORIZED: 'Your session has expired. Please sign in again.',
+  FORBIDDEN: 'Your account is not allowed to do this. If your role was just changed, sign out and sign back in to refresh your session.',
 };
