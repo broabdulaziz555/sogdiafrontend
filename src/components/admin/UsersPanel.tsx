@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { Gift, KeyRound, ShieldCheck, UserCog } from 'lucide-react';
 import { errMsg, post } from '@/lib/api';
-import { dateTime, fmtUsd, shortAddr } from '@/lib/format';
+import { dateTime, fmtUsd } from '@/lib/format';
+import { parseWallet } from '@/lib/wallet';
 import { revalidatePath } from '@/lib/mutate';
 import type { Account, Role, User } from '@/lib/types';
 import { useApi } from '@/hooks/useApi';
@@ -59,7 +60,7 @@ function UserDrawer({ user, onClose, onChanged }: { user: Row | null; onClose: (
             <KV k="KYC" v={<StatusBadge status={user.kyc_status} />} />
             {user.kyc_note && <KV k="KYC note" v={user.kyc_note} />}
             <KV k="Country" v={user.country || '—'} />
-            <KV k="Wallet" v={user.wallet_address ? <span className="inline-flex items-center gap-1.5" title={user.wallet_address}>{shortAddr(user.wallet_address)}<CopyButton value={user.wallet_address} /></span> : '—'} mono />
+            <KV k="Wallet" v={user.wallet_address ? <span className="inline-flex items-center gap-1.5 break-all text-left">{user.wallet_address}<CopyButton value={parseWallet(user.wallet_address).address} label="Copy address" /></span> : '—'} mono />
             <KV k="Joined" v={dateTime(user.created_at)} />
           </dl>
 

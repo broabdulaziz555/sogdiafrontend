@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { post } from '@/lib/api';
 import { dateTime, fmtUsd, shortAddr } from '@/lib/format';
+import { parseWallet } from '@/lib/wallet';
 import { revalidatePath } from '@/lib/mutate';
 import type { PayoutTx } from '@/lib/types';
 import { useApi } from '@/hooks/useApi';
@@ -15,8 +16,24 @@ import { Badge, CopyButton, Field, Input, Segmented, Select, StatusBadge, Textar
 import { useToast } from '@/components/ui/Toast';
 import { KV, ReasonDialog, XTag, useIsX } from './AdminKit';
 
+const NET_TONE = { 'TRC-20': 'info', 'ERC-20': 'accent', 'BEP-20': 'warn' } as const;
+
+/** Prominent chain badge + the full stored string, so the admin never has to guess the network. */
+function WalletCell({ value, compact }: { value: string | null; compact?: boolean }) {
+  if (!value) return <span className="text-subtle">—</span>;
+  const w = parseWallet(value);
+  return (
+    <div className="min-w-0 max-w-[420px]">
+      <div className="flex items-center gap-1.5">
+        {w.tagged && w.network ? <Badge tone={NET_TONE[w.network]}>{w.network}</Badge> : <Badge tone="down">No network</Badge>}
+        <CopyButton value={w.address} label="Copy address" />
+      </div>
+      <code className={`mt-1 block break-all font-mono ${compact ? 'text-xs' : 'text-[13px]'} leading-snug`} title={value}>{value}</code>
+    </div>
+  );
+}
+
 const FILTERS = ['pending', 'approved', 'paid', 'rejected', ''].map((v) => ({ value: v, label: v ? v[0].toUpperCase() + v.slice(1) : 'All' }));
-const network = (a: string | null) => (!a ? null : /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(a) ? 'TRC20' : /^0x[a-fA-F0-9]{40}$/.test(a) ? 'EVM' : 'Unknown');
 
 function MarkPaid({ tx, onClose, onDone }: { tx: PayoutTx | null; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
@@ -25,6 +42,7 @@ function MarkPaid({ tx, onClose, onDone }: { tx: PayoutTx | null; onClose: () =>
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const ok = hash.trim().length >= 8;
+  const wp = parseWallet(tx?.wallet_address);
   const submit = async () => {
     if (!tx) return;
     setBusy(true); setErr(null);
@@ -42,9 +60,10 @@ function MarkPaid({ tx, onClose, onDone }: { tx: PayoutTx | null; onClose: () =>
           <dl className="divide-y divide-line rounded-lg border border-line px-3">
             <KV k="Send (net, USDT)" v={<b className="num font-mono text-up">{fmtUsd(tx.net_amount)}</b>} />
             <KV k="Gross debited from balance" v={fmtUsd(tx.amount)} mono />
-            <KV k="Network" v={network(tx.wallet_address) ?? '—'} />
-            <KV k="Wallet" v={tx.wallet_address ? <span className="inline-flex items-center gap-1.5 break-all text-left">{tx.wallet_address}<CopyButton value={tx.wallet_address} /></span> : '—'} mono />
+            <KV k="Network" v={wp.tagged && wp.network ? <Badge tone={NET_TONE[wp.network]}>{wp.network}</Badge> : <Badge tone="down">Not specified</Badge>} />
+            <KV k="Wallet" v={tx.wallet_address ? <span className="inline-flex items-center gap-1.5 break-all text-left">{tx.wallet_address}<CopyButton value={wp.address} label="Copy address" /></span> : '—'} mono />
           </dl>
+          {!wp.tagged && <p role="alert" className="rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-sm text-warn">This wallet has no network tag. Confirm the chain with the trader before sending.</p>}
           <Field label="Transaction hash" htmlFor="p-hash"><Input id="p-hash" value={hash} onChange={(e) => setHash(e.target.value)} placeholder="0x… or TRON txid" autoComplete="off" spellCheck={false} className="font-mono" /></Field>
           <Field label="Note (optional)" htmlFor="p-note"><Textarea id="p-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. TRC20 sent" maxLength={200} /></Field>
           <p className="text-2xs text-subtle">This debits the gross amount, stamps the next payout date and auto-issues a payout certificate. Double-check the hash — it is shown to the trader.</p>
@@ -106,7 +125,7 @@ export function PayoutQueue() {
       cell: (t) => <span className="block min-w-0"><span className="block truncate font-medium">{t.user_email ?? `Account ${t.account_id.slice(0, 8)}`}</span><span className="block font-mono text-2xs text-subtle">{t.id.slice(0, 8)} · acct {t.account_id.slice(0, 8)}</span></span> },
     { key: 'amount', header: 'Gross', align: 'right', hideBelow: 'sm', sortValue: (t) => t.amount, cell: (t) => <span className="num font-mono text-muted">{fmtUsd(t.amount)}</span> },
     { key: 'net', header: 'Send (net)', align: 'right', sortValue: (t) => t.net_amount, cell: (t) => <span className="num font-mono font-semibold">{fmtUsd(t.net_amount)}</span> },
-    { key: 'wallet', header: 'Wallet', hideBelow: 'md', cell: (t) => t.wallet_address ? <span className="inline-flex items-center gap-1.5"><Badge>{network(t.wallet_address)}</Badge><span className="font-mono text-xs" title={t.wallet_address}>{shortAddr(t.wallet_address)}</span><CopyButton value={t.wallet_address} /></span> : <span className="text-subtle">—</span> },
+    { key: 'wallet', header: 'Wallet (network + address)', searchText: (t) => t.wallet_address ?? '', cell: (t) => <WalletCell value={t.wallet_address} compact /> },
     { key: 'status', header: 'Status', sortValue: (t) => t.status, cell: (t) => <StatusBadge status={t.status} /> },
     { key: 'tx', header: 'Tx hash', hideBelow: 'lg', cell: (t) => t.tx_hash ? <span className="inline-flex items-center gap-1 font-mono text-xs" title={t.tx_hash}>{shortAddr(t.tx_hash)}<CopyButton value={t.tx_hash} /></span> : <span className="text-subtle">—</span> },
     { key: 'created', header: 'Requested', align: 'right', hideBelow: 'md', sortValue: (t) => Date.parse(t.created_at), cell: (t) => <span className="num text-xs text-muted">{dateTime(t.created_at)}</span> },
