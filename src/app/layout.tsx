@@ -51,8 +51,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning className={sans.variable}>
+    <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning className={sans.variable} translate={site === 'trade' ? 'no' : undefined}>
       <head>
+        {/* The terminal uses industry terms (Long, Short, Margin, Leverage…) that must stay as written; stop browser auto-translation there */}
+        {site === 'trade' && <meta name="google" content="notranslate" />}
         {/* Chrome fires beforeinstallprompt once, often before React has hydrated — catch it immediately so the Install button can use it */}
         <script dangerouslySetInnerHTML={{ __html: "window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__sgBip=e;window.dispatchEvent(new Event('sg:bip'))});window.addEventListener('appinstalled',function(){window.__sgBip=null});" }} />
       </head>

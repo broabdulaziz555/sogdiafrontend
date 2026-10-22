@@ -40,7 +40,7 @@ export function TradesLookup() {
   const submit = (e: React.FormEvent) => { e.preventDefault(); const v = input.trim(); if (UUID.test(v)) { setId(v); setPage(0); } };
 
   const histCols: Column<HistoryOrder>[] = useMemo(() => [
-    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold ', o.side === 'long' ? 'text-up' : 'text-down')}>{o.side}</span> <span className="num text-2xs text-subtle">{o.leverage}×</span></span> },
+    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '/USDT')} <span translate="no" className={cn('ml-1 text-2xs font-semibold ', o.side === 'long' ? 'text-up' : 'text-down')}>{o.side}</span> <span className="num text-2xs text-subtle">{o.leverage}×</span></span> },
     { key: 'size', header: 'Size', align: 'right', hideBelow: 'md', sortValue: (o) => o.position_size, cell: (o) => <span className="num font-mono">{fmtNum(o.position_size)}</span> },
     { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', sortValue: (o) => o.entry_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span> },
     { key: 'exit', header: 'Exit', align: 'right', hideBelow: 'sm', sortValue: (o) => o.close_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span> },
@@ -89,7 +89,7 @@ export function TradesLookup() {
 
 type PositionRow = PositionsResponse['positions'][number];
 const openCols: Column<PositionRow>[] = [
-  { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => p.symbol, cell: (p) => <span className="font-medium">{p.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold ', p.side === 'long' ? 'text-up' : 'text-down')}>{p.side}</span> <span className="num text-2xs text-subtle">{p.leverage}×</span></span> },
+  { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => p.symbol, cell: (p) => <span className="font-medium">{p.symbol.replace('USDT', '/USDT')} <span translate="no" className={cn('ml-1 text-2xs font-semibold ', p.side === 'long' ? 'text-up' : 'text-down')}>{p.side}</span> <span className="num text-2xs text-subtle">{p.leverage}×</span></span> },
   { key: 'size', header: 'Size', align: 'right', sortValue: (p) => p.position_size, cell: (p) => <span className="num font-mono">{fmtNum(p.position_size)}</span> },
   { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
   { key: 'mark', header: 'Mark', align: 'right', hideBelow: 'sm', cell: (p) => <span className="num font-mono">{fmtPrice(p.mark_price)}</span> },

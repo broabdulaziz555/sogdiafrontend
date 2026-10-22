@@ -65,7 +65,7 @@ export function AccountDetail({ id }: { id: string }) {
   const cols: Column<HistoryOrder>[] = [
     { key: 'time', header: 'Closed', cell: (o) => <span className="num text-muted">{dateTime(o.closed_at)}</span>, sortValue: (o) => o.closed_at ? new Date(o.closed_at).getTime() : 0, searchText: (o) => o.closed_at ?? '' },
     { key: 'symbol', header: 'Symbol', cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '')}<span className="text-subtle">/USDT</span></span>, sortValue: (o) => o.symbol, searchText: (o) => o.symbol },
-    { key: 'side', header: 'Side', cell: (o) => <Badge tone={o.side === 'long' ? 'up' : 'down'}>{o.side} {o.leverage}×</Badge>, sortValue: (o) => o.side, searchText: (o) => o.side },
+    { key: 'side', header: 'Side', cell: (o) => <Badge tone={o.side === 'long' ? 'up' : 'down'}><span translate="no">{o.side} {o.leverage}×</span></Badge>, sortValue: (o) => o.side, searchText: (o) => o.side },
     { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span>, sortValue: (o) => o.entry_price },
     { key: 'exit', header: 'Exit', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span>, sortValue: (o) => o.close_price },
     { key: 'size', header: 'Size', align: 'right', hideBelow: 'lg', cell: (o) => <span className="num font-mono">{fmtUsd(o.position_size)}</span>, sortValue: (o) => o.position_size },
@@ -78,7 +78,7 @@ export function AccountDetail({ id }: { id: string }) {
   const openPnl = openRows.reduce((t, x) => t + x.unrealized_pnl, 0);
   const openCols: Column<Position>[] = [
     { key: 'symbol', header: 'Symbol', cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '')}<span className="text-subtle">/USDT</span></span>, sortValue: (o) => o.symbol },
-    { key: 'side', header: 'Side', cell: (o) => <Badge tone={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'long' : 'short'} {o.leverage}×</Badge>, sortValue: (o) => o.side },
+    { key: 'side', header: 'Side', cell: (o) => <Badge tone={o.side === 'long' ? 'up' : 'down'}><span translate="no">{o.side === 'long' ? 'long' : 'short'} {o.leverage}×</span></Badge>, sortValue: (o) => o.side },
     { key: 'size', header: 'Size', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtUsd(o.position_size)}</span>, sortValue: (o) => o.position_size },
     { key: 'entry', header: 'Entry', align: 'right', cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span>, sortValue: (o) => o.entry_price },
     { key: 'mark', header: 'Current', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtPrice(o.mark_price)}</span>, sortValue: (o) => o.mark_price },
