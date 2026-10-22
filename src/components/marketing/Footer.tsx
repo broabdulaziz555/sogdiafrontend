@@ -32,7 +32,7 @@ export function Footer() {
           <nav aria-label={t('legalCol')}>
             <h3 className="label mb-4">{t('legalCol')}</h3>
             <ul className="space-y-2.5 text-sm text-muted">
-              <li><Link className="hover:text-fg" href="/legal#terms">{t('terms')}</Link></li>
+              <li><Link className="hover:text-fg" href="/legal/terms">{t('terms')}</Link></li>
               <li><Link className="hover:text-fg" href="/legal#privacy">{t('privacy')}</Link></li>
               <li><Link className="hover:text-fg" href="/legal#risk">{t('risk')}</Link></li>
               <li><Link className="hover:text-fg" href="/legal/execution">Execution &amp; Spread</Link></li>
