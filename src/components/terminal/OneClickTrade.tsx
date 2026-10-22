@@ -1,10 +1,10 @@
 'use client';
 
 import { memo, useCallback, useState } from 'react';
-import { errMsg, post } from '@/lib/api';
+import { ApiError, errMsg, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { fmtPrice, fmtUsd } from '@/lib/format';
-import type { Position, Side } from '@/lib/types';
+import type { Account, AccountMetrics, Position, Side } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
@@ -21,7 +21,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
  */
 function OneClickTradeInner({ className }: { className?: string }) {
   const toast = useToast();
-  const { accountId, account, metrics, refresh } = useTerminalData();
+  const { accountId, account, metrics, refresh, applyOpened } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -46,14 +46,15 @@ function OneClickTradeInner({ className }: { className?: string }) {
   const submit = useCallback(async (side: Side) => {
     setBusy(side);
     try {
-      const res = await post<{ order: Position }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin: floorCents(m) });
+      const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin: floorCents(m) }, { timeoutMs: 25_000 });
+      applyOpened(res);
       toast.success(`${side === 'long' ? 'Buy' : 'Sell'} ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
       if (soundOn) beep(side === 'long' ? 'up' : 'down');
-      await refresh();
     } catch (e) {
-      toast.error('Order rejected', errMsg(e));
+      toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
+      if (e instanceof ApiError && e.code === 'TIMEOUT') void refresh();
     } finally { setBusy(null); setConfirm(null); }
-  }, [accountId, symbol, leverage, m, toast, base, soundOn, refresh]);
+  }, [accountId, symbol, leverage, m, toast, base, soundOn, refresh, applyOpened]);
 
   const request = (side: Side) => {
     if (problem) { toast.warn('Check the order', problem); return; }

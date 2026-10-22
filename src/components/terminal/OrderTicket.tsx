@@ -2,10 +2,10 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronDown, Info, Keyboard, ShieldCheck } from 'lucide-react';
-import { post, errMsg } from '@/lib/api';
+import { post, errMsg, ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { fmtNum, fmtPrice, fmtSigned, fmtUsd, priceDecimals, qtyDecimals } from '@/lib/format';
-import type { Position, Side } from '@/lib/types';
+import type { Account, AccountMetrics, Position, Side } from '@/lib/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Primitives';
@@ -56,7 +56,7 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
 
 function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -155,11 +155,11 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
         if (Number.isFinite(tpN)) body.take_profit = tpN;
         if (Number.isFinite(slN)) body.stop_loss = slN;
-        const res = await post<{ order: Position }>('/trade/open', body);
+        const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 25_000 });
+        applyOpened(res); // the position appears immediately; the next poll only confirms it
         toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
         if (soundOn) beep(s === 'long' ? 'up' : 'down');
         setMargin(''); setTp(''); setSl(''); setTouched(false);
-        await refresh();
         onPlaced?.();
       } else {
         addPending({
@@ -171,12 +171,13 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         onPlaced?.();
       }
     } catch (e) {
-      toast.error('Order rejected', errMsg(e));
+      toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
+      if (e instanceof ApiError && e.code === 'TIMEOUT') void refresh(); // it may have gone through
     } finally {
       setBusy(false);
       setConfirm(null);
     }
-  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, addPending, onPlaced]);
+  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addPending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);

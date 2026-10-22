@@ -19,6 +19,8 @@ interface Ctx {
   error: unknown;
   stale: boolean;
   refresh: () => Promise<unknown>;
+  /** Show a just-opened position at once (no waiting for the next poll); the poll then confirms it. */
+  applyOpened: (r: { order: Position; account?: Account; metrics?: AccountMetrics }) => void;
 }
 
 const DataCtx = createContext<Ctx | null>(null);
@@ -64,6 +66,15 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   }, [data, toast, accountId, soundOn]);
 
   const refresh = useCallback(() => swr.mutate(), [swr]);
+  const applyOpened = useCallback((r: { order: Position; account?: Account; metrics?: AccountMetrics }) => {
+    void swr.mutate((cur) => {
+      if (!cur) return cur;
+      const rest = cur.positions.filter((p) => p.id !== r.order.id);
+      return { ...cur, positions: [r.order, ...rest], account: r.account ?? cur.account, metrics: r.metrics ?? cur.metrics };
+    }, { revalidate: false });
+    // confirm with the server a moment later, off the critical path
+    setTimeout(() => { void swr.mutate(); }, 800);
+  }, [swr]);
   const value = useMemo<Ctx>(
     () => ({
       accountId,
@@ -75,8 +86,9 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       error: swr.error,
       stale: !!swr.error && !!data,
       refresh,
+      applyOpened,
     }),
-    [accountId, data, swr.isLoading, swr.error, refresh],
+    [accountId, data, swr.isLoading, swr.error, refresh, applyOpened],
   );
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

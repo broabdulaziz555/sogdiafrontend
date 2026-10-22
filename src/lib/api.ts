@@ -38,6 +38,8 @@ export interface RequestOpts {
   auth?: boolean;
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  /** Abort and fail with code TIMEOUT after this many ms (no timeout by default). */
+  timeoutMs?: number;
 }
 
 export function buildUrl(path: string, query?: Query): string {
@@ -89,68 +91,78 @@ function refreshOnce(): Promise<boolean> {
 }
 
 async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promise<T> {
-  const { method = 'GET', query, body, form, auth = true, signal, headers = {} } = opts;
-
-  if (auth && !retried && isExpiringSoon() && getRefreshToken()) await refreshOnce();
-
-  const h: Record<string, string> = { Accept: 'application/json', ...headers };
-  const token = auth ? getAccessToken() : null;
-  if (token) h.Authorization = `Bearer ${token}`;
-  if (body !== undefined && !form) h['Content-Type'] = 'application/json';
-
-  const doFetch = (hdrs: Record<string, string>) =>
-    fetch(buildUrl(path, query), {
-      method,
-      headers: hdrs,
-      body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
-      signal,
-      cache: 'no-store',
-    });
-
-  let res: Response;
+  const { method = 'GET', query, body, form, auth = true, signal: outerSignal, headers = {}, timeoutMs } = opts;
+  const ctl = timeoutMs ? new AbortController() : null;
+  let timedOut = false;
+  const timer = ctl ? setTimeout(() => { timedOut = true; ctl.abort(); }, timeoutMs) : undefined;
+  if (ctl && outerSignal) outerSignal.addEventListener('abort', () => ctl.abort(), { once: true });
+  const signal = ctl?.signal ?? outerSignal;
+  const timeoutErr = () => new ApiError('TIMEOUT', 'The server took too long to answer. The order may still have gone through — check Positions before trying again.', 0);
   try {
-    res = await doFetch(h);
-  } catch (e) {
-    if ((e as Error)?.name === 'AbortError') throw e;
-    // A browser reports a CORS-blocked preflight as a plain network failure. If the backend's CORS allow-list lacks
-    // the optional `Idempotency-Key` header, the request never leaves the browser — so retry once without it.
-    if (h['Idempotency-Key']) {
-      const { ['Idempotency-Key']: _dropped, ...rest } = h;
-      void _dropped;
-      console.warn('[api] request failed with Idempotency-Key; retrying without it. Add "Idempotency-Key" to the backend CORS allowed headers.');
-      try {
-        res = await doFetch(rest);
-      } catch (e2) {
-        if ((e2 as Error)?.name === 'AbortError') throw e2;
+
+    if (auth && !retried && isExpiringSoon() && getRefreshToken()) await refreshOnce();
+
+    const h: Record<string, string> = { Accept: 'application/json', ...headers };
+    const token = auth ? getAccessToken() : null;
+    if (token) h.Authorization = `Bearer ${token}`;
+    if (body !== undefined && !form) h['Content-Type'] = 'application/json';
+
+    const doFetch = (hdrs: Record<string, string>) =>
+      fetch(buildUrl(path, query), {
+        method,
+        headers: hdrs,
+        body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
+        signal,
+        cache: 'no-store',
+      });
+
+    let res: Response;
+    try {
+      res = await doFetch(h);
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') throw timedOut ? timeoutErr() : e;
+      // A browser reports a CORS-blocked preflight as a plain network failure. If the backend's CORS allow-list lacks
+      // the optional `Idempotency-Key` header, the request never leaves the browser — so retry once without it.
+      if (h['Idempotency-Key']) {
+        const { ['Idempotency-Key']: _dropped, ...rest } = h;
+        void _dropped;
+        console.warn('[api] request failed with Idempotency-Key; retrying without it. Add "Idempotency-Key" to the backend CORS allowed headers.');
+        try {
+          res = await doFetch(rest);
+        } catch (e2) {
+          if ((e2 as Error)?.name === 'AbortError') throw timedOut ? timeoutErr() : e2;
+          throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
+        }
+      } else {
         throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
       }
-    } else {
-      throw new ApiError('NETWORK_ERROR', 'Network unreachable. Check your connection.', 0);
     }
+
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      /* non-JSON */
+    }
+
+    if (res.status === 401 && auth && !retried && getRefreshToken()) {
+      if (await refreshOnce()) return send<T>(path, opts, true);
+      clearSession();
+    }
+
+    if (json && json.ok === true) return json.data as T;
+
+    const err = json?.error;
+    if (res.status === 401 && auth) clearSession();
+    throw new ApiError(
+      err?.code || (res.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'),
+      err?.message || `Request failed (${res.status})`,
+      res.status,
+      err?.details ?? null,
+    );
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-
-  let json: any = null;
-  try {
-    json = await res.json();
-  } catch {
-    /* non-JSON */
-  }
-
-  if (res.status === 401 && auth && !retried && getRefreshToken()) {
-    if (await refreshOnce()) return send<T>(path, opts, true);
-    clearSession();
-  }
-
-  if (json && json.ok === true) return json.data as T;
-
-  const err = json?.error;
-  if (res.status === 401 && auth) clearSession();
-  throw new ApiError(
-    err?.code || (res.status === 401 ? 'UNAUTHORIZED' : 'INTERNAL_ERROR'),
-    err?.message || `Request failed (${res.status})`,
-    res.status,
-    err?.details ?? null,
-  );
 }
 
 export function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
@@ -197,6 +209,10 @@ export function errMsg(e: unknown): string {
 
 const ERROR_COPY: Record<string, string> = {
   NETWORK_ERROR: 'Network unreachable. Check your connection and retry.',
+  TIMEOUT: 'The server took too long to answer. The order may still have gone through — check Positions before trying again.',
+  SYMBOL_NOT_ALLOWED: 'This pair is not available for trading.',
+  INSUFFICIENT_MARGIN: 'Not enough free margin for this order. Lower the margin or the leverage.',
+  ACCOUNT_NOT_TRADABLE: 'This account cannot open new positions right now.',
   RATE_LIMITED: 'Too many requests — slow down and retry in a moment.',
   UPSTREAM_ERROR: 'Market data provider is unreachable. Retry shortly.',
   UNAUTHORIZED: 'Your session has expired. Please sign in again.',
