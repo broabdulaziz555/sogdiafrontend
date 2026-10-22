@@ -99,19 +99,28 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     setTimeout(() => { void mutate(); }, 1500);
   }, [mutate]);
 
+  const pinnedRef = useRef(pinned);
+  pinnedRef.current = pinned;
+
   // housekeeping: forget pins the server now lists (or that outlived the grace period), and closes it has caught up with
   useEffect(() => {
     if (!data) return;
     const ids = new Set(data.positions.map((p) => p.id));
     const gone = new Set((data.liquidated ?? []).map((l) => l.id));
     const now = Date.now();
+    // Diagnostic: the server confirmed this order, yet its own list never showed it. Say so, with the id, instead of vanishing silently.
+    for (const x of pinnedRef.current) {
+      if (x.pos.id.startsWith('tmp-') || ids.has(x.pos.id) || gone.has(x.pos.id) || now - x.at < PIN_MS) continue;
+      console.warn('[terminal] confirmed order missing from server list', x.pos.id, x.pos.symbol);
+      toast.warn('Position not found on server', `Order ${x.pos.id.slice(0, 8)} (${x.pos.symbol}) was confirmed but is not in the open list.`);
+    }
     setPinned((l) => { const n = l.filter((x) => !ids.has(x.pos.id) && !gone.has(x.pos.id) && (x.pos.id.startsWith('tmp-') || now - x.at < PIN_MS)); return n.length === l.length ? l : n; });
     setClosedIds((c) => {
       const keys = Object.keys(c);
       const n = keys.filter((k) => ids.has(k) && now - c[k] < PIN_MS);
       return n.length === keys.length ? c : Object.fromEntries(n.map((k) => [k, c[k]]));
     });
-  }, [data]);
+  }, [data, toast]);
 
   const positions = useMemo(() => {
     const server = (data?.positions ?? []).filter((p) => !closedIds[p.id]);
