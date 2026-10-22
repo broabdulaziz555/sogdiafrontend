@@ -54,7 +54,7 @@ function OneClickTradeInner({ className }: { className?: string }) {
     post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin }, { timeoutMs: 30_000 })
       .then((res) => {
         applyOpened(res, tmp?.id);
-        toast.success(`${side === 'long' ? 'Buy' : 'Sell'} ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+        toast.success(`${side === 'long' ? 'Long' : 'Short'} ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
         if (soundOn) beep(side === 'long' ? 'up' : 'down');
       }, (e) => {
         if (tmp) dropOptimistic(tmp.id);
@@ -83,8 +83,8 @@ function OneClickTradeInner({ className }: { className?: string }) {
   return (
     <>
       <div className={cn('inline-flex items-stretch overflow-hidden rounded-2xl border border-line2/70 bg-panel/90 shadow-pop backdrop-blur-md', className)} role="group" aria-label="One-click trading">
-        <button onClick={() => request('short')} disabled={!px} className="flex min-w-[92px] flex-col items-start justify-center bg-down px-3 py-1 text-white transition-[filter] hover:brightness-110 disabled:opacity-50" title="Sell at bid (market)">
-          <span className="flex items-center gap-1 text-2xs font-semibold opacity-90">Sell</span>
+        <button onClick={() => request('short')} disabled={!px} className="flex min-w-[92px] flex-col items-start justify-center bg-down px-3 py-1 text-white transition-[filter] hover:brightness-110 disabled:opacity-50" title="Short at bid (market)">
+          <span className="flex items-center gap-1 text-2xs font-semibold opacity-90">Short</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.bid) : '—'}</span>
         </button>
         <label className="flex w-[104px] flex-col justify-center border-x border-line px-2 py-0.5">
@@ -95,8 +95,8 @@ function OneClickTradeInner({ className }: { className?: string }) {
             className="num w-full bg-transparent font-mono text-sm outline-none"
           />
         </label>
-        <button onClick={() => request('long')} disabled={!px} className="flex min-w-[92px] flex-col items-end justify-center bg-up px-3 py-1 text-black transition-[filter] hover:brightness-110 disabled:opacity-50" title="Buy at ask (market)">
-          <span className="flex items-center gap-1 text-2xs font-semibold opacity-80">Buy</span>
+        <button onClick={() => request('long')} disabled={!px} className="flex min-w-[92px] flex-col items-end justify-center bg-up px-3 py-1 text-black transition-[filter] hover:brightness-110 disabled:opacity-50" title="Long at ask (market)">
+          <span className="flex items-center gap-1 text-2xs font-semibold opacity-80">Long</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.ask) : '—'}</span>
         </button>
         {mine.length > 0 && (
@@ -109,7 +109,7 @@ function OneClickTradeInner({ className }: { className?: string }) {
 
       <Modal
         open={confirm !== null} onClose={() => setConfirm(null)} size="sm"
-        title={`Confirm ${confirm === 'long' ? 'buy' : 'sell'} · ${base}/USDT`}
+        title={`Confirm ${confirm === 'long' ? 'long' : 'short'} · ${base}/USDT`}
         footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} onClick={() => confirm && submit(confirm)} data-autofocus>Confirm</Button></>}
       >
         <div className="space-y-2 p-5 text-sm">

@@ -37,7 +37,7 @@ export interface OptimisticInput {
 }
 
 /**
- * The position the trader should see the instant they press Buy / Sell, built from the live price in the browser.
+ * The position the trader should see the instant they press Long / Short, built from the live price in the browser.
  * The server's confirmed row (authoritative fill price) replaces it when the reply arrives.
  */
 export function buildOptimistic(i: OptimisticInput): Position | null {

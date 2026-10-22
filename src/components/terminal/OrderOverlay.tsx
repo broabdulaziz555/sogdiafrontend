@@ -16,7 +16,7 @@ interface Chip {
   key: string;
   price: number;
   tone: Tone;
-  /** solid pill in front of the chip (Buy / Sell) */
+  /** solid pill in front of the chip (Long / Short) */
   pill?: { label: string; side: 'long' | 'short' };
   size: string;
   value: { text: string; tone?: 'up' | 'down' };
@@ -78,7 +78,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
         const opening = p.id.startsWith('tmp-');
         const pnlAt = (px: number) => p.quantity * (long ? px - p.entry_price : p.entry_price - px);
         out.push({
-          key: `p:${p.id}`, price: p.entry_price, tone: 'info', pill: { label: long ? 'Buy' : 'Sell', side: p.side }, size: qty,
+          key: `p:${p.id}`, price: p.entry_price, tone: 'info', pill: { label: long ? 'Long' : 'Short', side: p.side }, size: qty,
           value: { text: opening ? 'Opening…' : `${fmtSigned(p.unrealized_pnl)} USD`, tone: opening ? undefined : p.unrealized_pnl >= 0 ? 'up' : 'down' },
           closeLabel: 'Close position', busy: busy === p.id || opening, onClose: () => void closePosition(p),
         });
@@ -92,7 +92,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
         const qty = fmtNum((o.margin * o.leverage) / o.trigger, qtyDecimals(o.trigger) + 1);
         const long = o.side === 'long';
         out.push({
-          key: `o:${o.id}`, price: o.trigger, tone: 'info', pill: { label: long ? 'Buy' : 'Sell', side: o.side }, size: qty,
+          key: `o:${o.id}`, price: o.trigger, tone: 'info', pill: { label: long ? 'Long' : 'Short', side: o.side }, size: qty,
           value: { text: o.status === 'failed' ? 'Failed' : o.status === 'filling' ? 'Filling…' : o.kind === 'limit' ? 'Limit' : 'Stop', tone: o.status === 'failed' ? 'down' : undefined },
           closeLabel: 'Cancel order', onClose: () => removePending(o.id),
         });

@@ -79,7 +79,7 @@ function MobilePositionsInner() {
     setBusy(null);
   }, [positions, toast, refresh, closePositions]);
 
-  const share = (p: Position) => set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
+  const share = (p: Position) => set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Long' : 'Short'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
 
   const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
   const goTrade = () => set({ mobileTab: 'chart' });
@@ -94,7 +94,7 @@ function MobilePositionsInner() {
           {error && positions.length === 0 ? <ErrorState compact error={error} onRetry={() => void refresh()} title="Could not load positions" />
             : loading && positions.length === 0 ? Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)
             : positions.length === 0 ? (
-              <EmptyState compact icon={<Plus className="h-5 w-5" />} title="No open positions" description="Open a Buy or Sell from the chart. Positions update every two seconds."
+              <EmptyState compact icon={<Plus className="h-5 w-5" />} title="No open positions" description="Open a Long or Short from the chart. Positions update every two seconds."
                 action={<Button variant="primary" onClick={goTrade}>Open a trade</Button>} />
             ) : (
               <>

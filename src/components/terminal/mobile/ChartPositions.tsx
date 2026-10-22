@@ -61,7 +61,7 @@ function ChartPositionsInner() {
       {open && (
         <ul className="max-h-[34dvh] divide-y divide-line overflow-y-auto overscroll-contain border-t border-line">
           {positions.length === 0 ? (
-            <li className="px-3 py-3 text-xs text-muted">No open positions. Tap Buy or Sell below to open one.</li>
+            <li className="px-3 py-3 text-xs text-muted">No open positions. Tap Long or Short below to open one.</li>
           ) : positions.map((p) => (
             <li key={p.id} className="flex items-center gap-2 px-3 py-2">
               <button onClick={() => setSymbol(p.symbol)} className="min-w-0 flex-1 text-left" aria-label={`Show ${sym(p.symbol)} on the chart`}>

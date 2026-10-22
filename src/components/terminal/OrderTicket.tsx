@@ -121,10 +121,10 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
     if (type !== 'market') {
       if (!Number.isFinite(triggerPx) || triggerPx <= 0) e.price = 'Enter a trigger price.';
       else if (ask != null && bid != null) {
-        if (type === 'limit' && side === 'long' && triggerPx >= ask) e.price = `Buy limit must be below ask (${fmtPrice(ask)}).`;
-        if (type === 'limit' && side === 'short' && triggerPx <= bid) e.price = `Sell limit must be above bid (${fmtPrice(bid)}).`;
-        if (type === 'stop' && side === 'long' && triggerPx <= ask) e.price = `Buy stop must be above ask (${fmtPrice(ask)}).`;
-        if (type === 'stop' && side === 'short' && triggerPx >= bid) e.price = `Sell stop must be below bid (${fmtPrice(bid)}).`;
+        if (type === 'limit' && side === 'long' && triggerPx >= ask) e.price = `Long limit must be below ask (${fmtPrice(ask)}).`;
+        if (type === 'limit' && side === 'short' && triggerPx <= bid) e.price = `Short limit must be above bid (${fmtPrice(bid)}).`;
+        if (type === 'stop' && side === 'long' && triggerPx <= ask) e.price = `Long stop must be above ask (${fmtPrice(ask)}).`;
+        if (type === 'stop' && side === 'short' && triggerPx >= bid) e.price = `Short stop must be below bid (${fmtPrice(bid)}).`;
       }
     }
     if (entry && liq) {
@@ -209,7 +209,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         {(['long', 'short'] as Side[]).map((s) => (
           <button key={s} role="tab" aria-selected={side === s} onClick={() => setSide(s)}
             className={cn('h-10 rounded-lg text-sm font-semibold transition-all max-lg:h-11', side === s ? (s === 'long' ? 'bg-up text-[#04140D] shadow-[0_6px_18px_-8px_rgb(var(--up)/0.8)]' : 'bg-down text-white shadow-[0_6px_18px_-8px_rgb(var(--down)/0.8)]') : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
-            {s === 'long' ? 'Buy / Long' : 'Sell / Short'}
+            {s === 'long' ? 'Long' : 'Short'}
           </button>
         ))}
       </div>
@@ -333,7 +333,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           onClick={() => request(side)}
           className="h-12"
         >
-          {side === 'long' ? 'Buy' : 'Sell'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
+          {side === 'long' ? 'Long' : 'Short'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
         </Button>
       </div>
 

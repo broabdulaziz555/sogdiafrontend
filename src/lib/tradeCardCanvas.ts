@@ -77,7 +77,7 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
   g.fillStyle = '#e6ecf4'; g.font = `700 64px ${SANS}`;
   g.fillText(`${base}/USDT`, 64, 230);
   const tw = g.measureText(`${base}/USDT`).width;
-  const tag = o.leverage ? `${d.side === 'long' ? 'BUY' : 'SELL'} ${d.leverage}×` : (d.side === 'long' ? 'BUY' : 'SELL');
+  const tag = o.leverage ? `${d.side === 'long' ? 'LONG' : 'SHORT'} ${d.leverage}×` : (d.side === 'long' ? 'LONG' : 'SHORT');
   g.font = `700 26px ${SANS}`;
   const tagW = g.measureText(tag).width + 36;
   const tagC = d.side === 'long' ? '#22c55e' : '#ef4444';

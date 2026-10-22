@@ -25,7 +25,7 @@ export const SideTag = ({ side }: { side: Side }) => (
 );
 /** MetaTrader wording: long = buy, short = sell. */
 export const TypeTag = ({ side }: { side: Side }) => (
-  <span className={cn('text-xs font-semibold uppercase', side === 'long' ? 'text-up' : 'text-down')}>{side === 'long' ? 'buy' : 'sell'}</span>
+  <span className={cn('text-xs font-semibold uppercase', side === 'long' ? 'text-up' : 'text-down')}>{side === 'long' ? 'long' : 'short'}</span>
 );
 
 /* ── TP / SL editor ─────────────────────────────────────────────────────── */
@@ -117,7 +117,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     setCloseAll(false);
   }, [toast, refresh, closePositions]);
 
-  const share = (p: Position) => useTerminal.getState().set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
+  const share = (p: Position) => useTerminal.getState().set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Long' : 'Short'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
 
   const cols: Column<Position>[] = useMemo(() => [
     { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => `${p.symbol} ${p.side} ${p.id}`,
@@ -223,7 +223,7 @@ function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | n
     { key: 'closed', header: 'Close time', align: 'right', sortValue: (o) => (o.closed_at ? Date.parse(o.closed_at) : 0), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.closed_at)}</span> },
     { key: 'reason', header: 'Reason', hideBelow: 'lg', sortValue: (o) => o.close_reason, cell: (o) => <span className="text-xs text-muted">{o.close_reason ? REASON[o.close_reason] ?? o.close_reason : '—'}</span> },
     { key: 'pnl', header: 'Profit', align: 'right', sortValue: (o) => o.pnl, cell: (o) => <span className={cn('num inline-block min-w-[72px] px-1.5 py-px text-right font-mono font-semibold', pnlClass(o.pnl), o.pnl > 0 ? 'bg-up/10' : o.pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(o.pnl)}</span> },
-    { key: 'share', header: <span className="sr-only">Share</span>, align: 'right', cell: (o) => <button onClick={() => useTerminal.getState().set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Buy' : 'Sell'}`, live: false, data: { symbol: o.symbol, side: o.side, leverage: o.leverage, entry: o.entry_price, exit: o.close_price, pnl: o.pnl, margin: o.margin, size: o.position_size, opened: o.created_at, closed: o.closed_at, reason: o.close_reason } } })} className="inline-grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label={`Trade card for ${sym(o.symbol)}`} title="Trade card"><Share2 className="h-3.5 w-3.5" /></button> },
+    { key: 'share', header: <span className="sr-only">Share</span>, align: 'right', cell: (o) => <button onClick={() => useTerminal.getState().set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Long' : 'Short'}`, live: false, data: { symbol: o.symbol, side: o.side, leverage: o.leverage, entry: o.entry_price, exit: o.close_price, pnl: o.pnl, margin: o.margin, size: o.position_size, opened: o.created_at, closed: o.closed_at, reason: o.close_reason } } })} className="inline-grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label={`Trade card for ${sym(o.symbol)}`} title="Trade card"><Share2 className="h-3.5 w-3.5" /></button> },
   ];
 
   return (

@@ -94,11 +94,11 @@ function MobileTerminalInner() {
       {tab === 'chart' && (
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-line bg-panel p-2">
           <button onClick={() => setSheet('short')} className="flex h-12 flex-col items-center justify-center rounded-lg bg-down text-white active:brightness-90">
-            <span className="text-sm font-bold leading-none">Sell</span>
+            <span className="text-sm font-bold leading-none">Short</span>
             <span className="num mt-0.5 font-mono text-2xs opacity-90">{px ? fmtPrice(px.bid) : '—'}</span>
           </button>
           <button onClick={() => setSheet('long')} className="flex h-12 flex-col items-center justify-center rounded-lg bg-up text-black active:brightness-90">
-            <span className="text-sm font-bold leading-none">Buy</span>
+            <span className="text-sm font-bold leading-none">Long</span>
             <span className="num mt-0.5 font-mono text-2xs opacity-80">{px ? fmtPrice(px.ask) : '—'}</span>
           </button>
         </div>
@@ -114,7 +114,7 @@ function MobileTerminalInner() {
         ))}
       </nav>
 
-      <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={sheet ? `${sheet === 'long' ? 'Buy' : 'Sell'} ${base}/USDT` : ''}>
+      <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={sheet ? `${sheet === 'long' ? 'Long' : 'Short'} ${base}/USDT` : ''}>
         {sheet && <OrderTicket key={sheet} initialSide={sheet} onPlaced={() => setSheet(null)} />}
       </BottomSheet>
     </>

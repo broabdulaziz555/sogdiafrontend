@@ -105,7 +105,7 @@ function MobileHistoryInner() {
                   </dl>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-2xs text-subtle">Opened {dateTime(o.created_at)}</p>
-                    <Button size="sm" variant="secondary" icon={<Share2 className="h-3.5 w-3.5" />} onClick={() => set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Buy' : 'Sell'}`, live: false, data: { symbol: o.symbol, side: o.side, leverage: o.leverage, entry: o.entry_price, exit: o.close_price, pnl: o.pnl, margin: o.margin, size: o.position_size, opened: o.created_at, closed: o.closed_at, reason: o.close_reason } } })}>Trade card</Button>
+                    <Button size="sm" variant="secondary" icon={<Share2 className="h-3.5 w-3.5" />} onClick={() => set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Long' : 'Short'}`, live: false, data: { symbol: o.symbol, side: o.side, leverage: o.leverage, entry: o.entry_price, exit: o.close_price, pnl: o.pnl, margin: o.margin, size: o.position_size, opened: o.created_at, closed: o.closed_at, reason: o.close_reason } } })}>Trade card</Button>
                   </div>
                 </li>
               ))}
