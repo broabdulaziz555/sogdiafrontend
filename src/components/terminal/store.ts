@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AggTrade, Level, SocketStatus, Ticker24, TimeframeKey } from '@/lib/binance';
 import type { MarketPrice, MarketSymbol, Side } from '@/lib/types';
+import type { CardData } from '@/lib/tradeCardCanvas';
 
 export interface PendingOrder {
   id: string;
@@ -60,7 +61,7 @@ interface State {
   mobileTab: MobileTab;
   hotkeysOpen: boolean;
   pickedPrice: { price: number; n: number } | null;
-  tradeCard: { id: string; label: string; live: boolean } | null;
+  tradeCard: { id: string; label: string; live: boolean; data?: CardData } | null;
 
   set: (p: Partial<State>) => void;
   setSymbol: (s: string) => void;

@@ -487,7 +487,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     const series = candleRef.current;
     if (!series) return;
     const specs: LineSpec[] = [];
-    const up = cssRgb('up'), down = cssRgb('down'), warn = cssRgb('warn'), info = cssRgb('info');
+    const up = cssRgb('up'), down = cssRgb('down'), warn = cssRgb('warn'), info = cssRgb('info'), muted = cssRgb('muted', 0.8);
 
     if (showLevels) {
       for (const p of positions) {
@@ -497,20 +497,20 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         const add = (suffix: string, price: number | null | undefined, color: string, style: LineStyle, title: string, width: 1 | 2 = 1) => {
           if (price != null && Number.isFinite(price) && price > 0) specs.push({ key: `p:${p.id}:${suffix}`, price, color, style, title, width });
         };
-        add('entry', p.entry_price, long ? up : down, LineStyle.Solid, `${long ? 'BUY' : 'SELL'} ${qty} · ${fmtSigned(p.unrealized_pnl)}`, 2);
-        add('liq', p.liquidation_price, down, LineStyle.Dotted, 'LIQUIDATION');
+        add('entry', p.entry_price, info, LineStyle.LargeDashed, `${long ? 'BUY' : 'SELL'} ${qty} · ${fmtSigned(p.unrealized_pnl)}`);
+        add('liq', p.liquidation_price, warn, LineStyle.Dotted, 'LIQUIDATION');
         add('tp', p.take_profit, up, LineStyle.Dashed, 'TAKE PROFIT');
-        add('sl', p.stop_loss, warn, LineStyle.Dashed, 'STOP LOSS');
+        add('sl', p.stop_loss, down, LineStyle.Dashed, 'STOP LOSS');
       }
     }
     if (showOrders) {
       for (const o of pending) {
-        specs.push({ key: `o:${o.id}`, price: o.trigger, color: o.status === 'failed' ? warn : info, style: LineStyle.Dashed, title: `${o.side === 'long' ? 'BUY' : 'SELL'} ${o.kind.toUpperCase()}${o.status === 'failed' ? ' · FAILED' : ''}` });
+        specs.push({ key: `o:${o.id}`, price: o.trigger, color: o.status === 'failed' ? down : muted, style: LineStyle.Dashed, title: `${o.side === 'long' ? 'BUY' : 'SELL'} ${o.kind.toUpperCase()}${o.status === 'failed' ? ' · FAILED' : ''}` });
       }
     }
     if (showQuotes && quote) {
-      specs.push({ key: 'q:bid', price: quote.bid, color: up, style: LineStyle.Dotted, title: 'BID' });
-      specs.push({ key: 'q:ask', price: quote.ask, color: down, style: LineStyle.Dotted, title: 'ASK' });
+      specs.push({ key: 'q:bid', price: quote.bid, color: muted, style: LineStyle.Dotted, title: 'BID' });
+      specs.push({ key: 'q:ask', price: quote.ask, color: muted, style: LineStyle.Dotted, title: 'ASK' });
     }
 
     const keep = new Set(specs.map((s) => s.key));

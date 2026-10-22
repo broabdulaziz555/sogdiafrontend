@@ -94,7 +94,7 @@ function MobilePositionsInner() {
     setBusy(null);
   }, [positions, toast, refresh]);
 
-  const share = (p: Position) => set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true } });
+  const share = (p: Position) => set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
 
   const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
   const goTrade = () => set({ mobileTab: 'chart' });
