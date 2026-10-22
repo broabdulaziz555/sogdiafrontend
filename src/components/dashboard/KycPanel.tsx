@@ -74,6 +74,7 @@ export function KycPanel() {
   const { data, error, isLoading, mutate } = useApi<KycStatusResponse>('/kyc/status', undefined, { refreshInterval: (d) => (d?.kyc_status === 'pending' ? 30_000 : 0), revalidateOnFocus: true });
   const [sent, setSent] = useState<Sent | null>(null);
   const [sentNow, setSentNow] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   useEffect(() => { setSent(readSent()); }, []);
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState('passport');
@@ -106,6 +107,7 @@ export function KycPanel() {
     fd.append('file', file);
     fd.append('doc_type', docType);
     setProgress(0);
+    setUploadError(null);
     try {
       const res = await upload<UploadResponse>('/kyc/upload', fd, setProgress);
       toast.success('Document uploaded', 'Your verification is now pending review.');
@@ -116,8 +118,11 @@ export function KycPanel() {
       await mutate({ kyc_status: res.kyc_status ?? 'pending', document_url: res.path ?? null, note: null }, { revalidate: false });
       globalMutate('/me');
       clear();
+      setTimeout(() => { void mutate(); }, 2500);
     } catch (e) {
-      toast.error('Upload failed', errMsg(e));
+      const msg = errMsg(e);
+      setUploadError(msg); // stays on screen next to the button, not just a toast that disappears
+      toast.error('Upload failed', msg);
     } finally {
       setProgress(null);
     }
@@ -206,6 +211,8 @@ export function KycPanel() {
                     {!uploading && <button onClick={clear} aria-label="Remove file" className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/10 hover:text-fg"><X className="h-4 w-4" /></button>}
                   </div>
                 )}
+
+                {uploadError && <p role="alert" className="mt-4 rounded-lg border border-down/30 bg-down/10 px-3 py-2 text-sm text-down"><span className="font-medium">Upload failed: </span>{uploadError}</p>}
 
                 <div className="mt-5 flex justify-end">
                   <Button variant="primary" size="md" disabled={!file} loading={uploading} onClick={submit} icon={<UploadCloud className="h-4 w-4" />}>Submit for review</Button>
