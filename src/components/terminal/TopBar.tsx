@@ -27,7 +27,7 @@ function Metric({ k, v, tone }: { k: string; v: React.ReactNode; tone?: 'up' | '
   );
 }
 
-function FeedStatus() {
+function FeedStatus({ mob }: { mob?: boolean }) {
   const sock = useTerminal((s) => s.socket);
   const tick = useTerminal((s) => s.tickerSocket);
   const priceOk = useTerminal((s) => s.pricesOk);
@@ -35,8 +35,8 @@ function FeedStatus() {
   const label = { live: 'Live', degraded: 'Partial', down: 'Offline' }[state];
   const tip = `Engine prices: ${priceOk ? 'ok' : 'unreachable'} · Market data: ${sock} · 24h stats: ${tick}`;
   return (
-    <span title={tip} role="status" aria-label={`Data feed ${label}`} className="inline-flex items-center gap-1.5 rounded border border-line px-1.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted max-sm:border-0 max-sm:px-1">
-      <span className={cn('h-2 w-2 rounded-full sm:h-1.5 sm:w-1.5', state === 'live' ? 'bg-up animate-pulse' : state === 'degraded' ? 'bg-warn' : 'bg-down')} /><span className="max-sm:sr-only">{label}</span>
+    <span title={tip} role="status" aria-label={`Data feed ${label}`} className={cn('inline-flex items-center gap-1.5 rounded border border-line px-1.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted max-sm:border-0 max-sm:px-1', mob && 'border-0 px-1')}>
+      <span className={cn('h-2 w-2 rounded-full sm:h-1.5 sm:w-1.5', state === 'live' ? 'bg-up animate-pulse' : state === 'degraded' ? 'bg-warn' : 'bg-down')} /><span className={cn('max-sm:sr-only', mob && 'sr-only')}>{label}</span>
     </span>
   );
 }
@@ -89,11 +89,11 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
 
   return (
     <header className="flex h-12 w-full min-w-0 shrink-0 items-center gap-2 overflow-hidden border-b border-line bg-panel px-2 sm:gap-4 sm:px-3">
-      <SiteLink site="app" path="/" aria-label="SOGDIA dashboard" className="shrink-0"><Logo suffix="Terminal" className="[&>span:nth-child(2)]:max-sm:hidden [&>span:nth-child(3)]:max-lg:hidden" /></SiteLink>
+      <SiteLink site="app" path="/" aria-label="SOGDIA dashboard" className="shrink-0"><Logo suffix="Terminal" className={cn('[&>span:nth-child(2)]:max-sm:hidden [&>span:nth-child(3)]:max-lg:hidden', mob && '[&>span:nth-child(n+2)]:hidden')} /></SiteLink>
 
       <label className="sr-only" htmlFor="tb-account">Trading account</label>
       <select id="tb-account" value={accountId} onChange={(e) => onAccountChange(e.target.value)}
-        className="h-9 min-w-0 flex-1 truncate rounded-md border border-line bg-panel2 px-2 text-xs font-medium outline-none focus:border-accent sm:h-8 sm:max-w-[210px] sm:flex-none md:flex-none">
+        className={cn('h-9 min-w-0 flex-1 truncate rounded-md border border-line bg-panel2 px-2 text-xs font-medium outline-none focus:border-accent', !mob && 'sm:h-8 sm:max-w-[210px] sm:flex-none md:flex-none')}>
         {accounts.map((a) => <option key={a.id} value={a.id}>{a.type === 'instant' ? 'Instant' : 'One-Step'} · {fmtUsd(a.size).replace(/\.00$/, '')} · {a.id.slice(0, 6)}</option>)}
       </select>
 
@@ -107,7 +107,7 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
       <div className={cn('hidden flex-1', !mob && 'sm:block md:hidden')} />
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <FeedStatus />
+        <FeedStatus mob={mob} />
         {!mob && <Clock />}
         <button onClick={() => set({ soundOn: !soundOn })} aria-pressed={soundOn} aria-label={soundOn ? 'Mute fill sounds' : 'Enable fill sounds'} className={cn('hidden h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/[0.06] hover:text-fg', !mob && 'sm:grid')}>{soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
         <button onClick={() => set({ hotkeysOpen: true })} aria-label="Keyboard shortcuts" className={cn('hidden h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/[0.06] hover:text-fg', !mob && 'sm:grid')}><Keyboard className="h-4 w-4" /></button>

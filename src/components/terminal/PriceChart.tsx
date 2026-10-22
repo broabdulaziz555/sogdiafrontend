@@ -23,6 +23,7 @@ import type { Position } from '@/lib/types';
 import { Spinner } from '@/components/ui/States';
 import { OneClickTrade } from './OneClickTrade';
 import { cssRgb } from './theme';
+import { useTerminalLayout } from './useLayout';
 import { useTerminal } from './store';
 
 const MA_DEFS = [
@@ -176,6 +177,7 @@ function IndicatorsMenu() {
 }
 
 function PriceChartInner({ positions }: { positions: Position[] }) {
+  const mob = useTerminalLayout() === 'mobile';
   const symbol = useTerminal((s) => s.symbol);
   const timeframe = useTerminal((s) => s.timeframe);
   const magnet = useTerminal((s) => s.magnet);
@@ -497,10 +499,10 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         const add = (suffix: string, price: number | null | undefined, color: string, style: LineStyle, title: string, width: 1 | 2 = 1) => {
           if (price != null && Number.isFinite(price) && price > 0) specs.push({ key: `p:${p.id}:${suffix}`, price, color, style, title, width });
         };
-        add('entry', p.entry_price, info, LineStyle.LargeDashed, `${long ? 'BUY' : 'SELL'} ${qty} · ${fmtSigned(p.unrealized_pnl)}`);
-        add('liq', p.liquidation_price, warn, LineStyle.Dotted, 'LIQUIDATION');
-        add('tp', p.take_profit, up, LineStyle.Dashed, 'TAKE PROFIT');
-        add('sl', p.stop_loss, down, LineStyle.Dashed, 'STOP LOSS');
+        add('entry', p.entry_price, info, LineStyle.LargeDashed, mob ? (long ? 'BUY' : 'SELL') : `${long ? 'BUY' : 'SELL'} ${qty} · ${fmtSigned(p.unrealized_pnl)}`);
+        add('liq', p.liquidation_price, warn, LineStyle.Dotted, mob ? 'LIQ' : 'LIQUIDATION');
+        add('tp', p.take_profit, up, LineStyle.Dashed, mob ? 'TP' : 'TAKE PROFIT');
+        add('sl', p.stop_loss, down, LineStyle.Dashed, mob ? 'SL' : 'STOP LOSS');
       }
     }
     if (showOrders) {
@@ -508,7 +510,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         specs.push({ key: `o:${o.id}`, price: o.trigger, color: o.status === 'failed' ? down : muted, style: LineStyle.Dashed, title: `${o.side === 'long' ? 'BUY' : 'SELL'} ${o.kind.toUpperCase()}${o.status === 'failed' ? ' · FAILED' : ''}` });
       }
     }
-    if (showQuotes && quote) {
+    if (showQuotes && quote && !mob) {
       specs.push({ key: 'q:bid', price: quote.bid, color: muted, style: LineStyle.Dotted, title: 'BID' });
       specs.push({ key: 'q:ask', price: quote.ask, color: muted, style: LineStyle.Dotted, title: 'ASK' });
     }
@@ -522,7 +524,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       const ex = lineMap.current.get(sp.key);
       if (ex) ex.applyOptions(opts); else lineMap.current.set(sp.key, series.createPriceLine(opts));
     }
-  }, [positions, pending, quote, symbol, showLevels, showOrders, showQuotes, status]);
+  }, [positions, pending, quote, symbol, showLevels, showOrders, showQuotes, status, mob]);
 
   // BUY / SELL arrows on the candle each open position was entered on
   useEffect(() => {
@@ -583,7 +585,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0" role="img" aria-label={`${symbol} ${tf.label} candlestick chart`} />
 
-        {shown && status === 'ready' && (
+        {shown && status === 'ready' && !mob && (
           <div className="pointer-events-none absolute left-2 top-1.5 z-[1] max-w-[calc(100%-72px)] space-y-0.5 text-2xs">
             <div className="num flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono">
               <span className="font-sans text-xs font-semibold text-fg">{symbol.replace('USDT', '/USDT')} · {tf.label}</span>

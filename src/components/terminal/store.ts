@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AggTrade, Level, SocketStatus, Ticker24, TimeframeKey } from '@/lib/binance';
 import type { MarketPrice, MarketSymbol, Side } from '@/lib/types';
-import type { CardData } from '@/lib/tradeCardCanvas';
+import { DEFAULT_CARD_OPTS, type CardData, type CardOpts } from '@/lib/tradeCardCanvas';
 
 export interface PendingOrder {
   id: string;
@@ -43,6 +43,7 @@ interface State {
   showOrders: boolean;
   showQuotes: boolean;
   quickMargin: string;
+  cardOpts: CardOpts;
   leverage: number;
   pending: PendingOrder[];
 
@@ -95,6 +96,7 @@ export const useTerminal = create<State>()(
       showOrders: true,
       showQuotes: true,
       quickMargin: '100',
+      cardOpts: DEFAULT_CARD_OPTS,
       leverage: 20,
       pending: [],
 
@@ -163,6 +165,7 @@ export const useTerminal = create<State>()(
         showOrders: s.showOrders,
         showQuotes: s.showQuotes,
         quickMargin: s.quickMargin,
+        cardOpts: s.cardOpts,
         leverage: s.leverage,
         // 'filling' is never persisted: other tabs must not see an in-flight order as fillable, and a crash mid-fill must not replay it.
         pending: s.pending.filter((o) => o.status !== 'filling'),

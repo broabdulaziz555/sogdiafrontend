@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Copy, Download, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import { assetUrl } from '@/lib/api';
-import { renderTradeCard } from '@/lib/tradeCardCanvas';
+import { renderTradeCard, DEFAULT_CARD_OPTS, type CardOpts } from '@/lib/tradeCardCanvas';
+import { useUser } from '@/components/ui/AuthGate';
+import { useApi } from '@/hooks/useApi';
+import type { Referrals } from '@/lib/types';
 import { canNativeShare, saveOrOpen, shareImage } from '@/lib/shareImage';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -21,6 +24,11 @@ export function TradeCardModal() {
   const [busy, setBusy] = useState<'dl' | 'share' | null>(null);
 
   const [local, setLocal] = useState<string | null>(null);
+  const user = useUser();
+  const opts = useTerminal((s) => s.cardOpts) ?? DEFAULT_CARD_OPTS;
+  const refQ = useApi<Referrals>(card?.data && opts.referral ? '/referrals' : null);
+  const ref = refQ.data ? { code: refQ.data.referral_code, discount: refQ.data.friend_discount_pct } : null;
+  const username = (user.full_name || user.email?.split('@')[0] || '').trim();
   useEffect(() => { setState('loading'); setAttempt(0); }, [card?.id]);
 
   // Draw the card here in the browser (always works, no network). The API image is only a fallback when we have no trade data.
@@ -29,12 +37,12 @@ export function TradeCardModal() {
     if (!data || !card) { setLocal(null); return; }
     let url: string | null = null;
     let dead = false;
-    renderTradeCard(data, card.live).then((b) => {
+    renderTradeCard(data, card.live, opts, username, ref).then((b) => {
       if (dead) return;
       url = URL.createObjectURL(b); setLocal(url); setState('ok');
     }).catch(() => { if (!dead) setState('error'); });
     return () => { dead = true; if (url) URL.revokeObjectURL(url); };
-  }, [data, card, attempt]);
+  }, [data, card, attempt, opts, username, ref?.code, ref?.discount]);
 
   if (!card) return null;
   const url = assetUrl(`/api/og/trade/${card.id}`);
@@ -68,6 +76,19 @@ export function TradeCardModal() {
         </div>
       }>
       <div className="p-4">
+        {data && (
+          <fieldset className="mb-3">
+            <legend className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-subtle">Show on the card</legend>
+            <div className="flex flex-wrap gap-1.5">
+              {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['username', 'Username'], ['site', 'sogdia.site'], ['referral', 'Referral code']] as [keyof CardOpts, string][]).map(([k, label]) => (
+                <label key={k} className={`inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium ${opts[k] ? 'border-accent/50 bg-accent/10 text-fg' : 'border-line text-muted'}`}>
+                  <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={opts[k]} onChange={(e) => set({ cardOpts: { ...opts, [k]: e.target.checked } })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
         <div className="relative aspect-[1200/630] w-full overflow-hidden rounded-lg border border-line bg-panel2">
           {state === 'loading' && <Skeleton className="absolute inset-0 rounded-none" />}
           {state === 'error' ? (
