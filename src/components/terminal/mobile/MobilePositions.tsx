@@ -68,9 +68,10 @@ function MobilePositionsInner() {
 
   const closeAll = useCallback(async () => {
     setBusy('all');
-    const res = await Promise.allSettled(positions.map((p) => post('/trade/close', { order_id: p.id })));
+    const real = positions.filter((p) => !p.id.startsWith('tmp-'));
+    const res = await Promise.allSettled(real.map((p) => post('/trade/close', { order_id: p.id })));
     const failed = res.filter((r) => r.status === 'rejected').length;
-    if (failed) toast.warn('Some positions did not close', `${failed} of ${positions.length} failed — try again.`);
+    if (failed) toast.warn('Some positions did not close', `${failed} of ${real.length} failed — try again.`);
     else toast.success('All positions closed');
     await refresh();
     setBusy(null);

@@ -85,14 +85,14 @@ export function Hotkeys() {
         if (e.code === 'KeyX') {
           e.preventDefault();
           if (!positions.length) { toast.info('Nothing to close', 'You have no open positions.'); return; }
-          setFlat({ label: `all ${positions.length} open position${positions.length > 1 ? 's' : ''}`, ids: positions.map((p) => p.id) });
+          setFlat({ label: `all ${positions.length} open position${positions.length > 1 ? 's' : ''}`, ids: positions.filter((p) => !p.id.startsWith('tmp-')).map((p) => p.id) });
           return;
         }
         if (e.code === 'KeyF') {
           e.preventDefault();
           const mine = positions.filter((p) => p.symbol === st.symbol);
           if (!mine.length) { toast.info('Nothing to flatten', `No open ${st.symbol.replace('USDT', '/USDT')} positions.`); return; }
-          setFlat({ label: `${mine.length} ${st.symbol.replace('USDT', '/USDT')} position${mine.length > 1 ? 's' : ''}`, ids: mine.map((p) => p.id) });
+          setFlat({ label: `${mine.length} ${st.symbol.replace('USDT', '/USDT')} position${mine.length > 1 ? 's' : ''}`, ids: mine.filter((p) => !p.id.startsWith('tmp-')).map((p) => p.id) });
           return;
         }
         if (e.key === '?' || e.code === 'Slash') { e.preventDefault(); st.set({ hotkeysOpen: !st.hotkeysOpen }); }

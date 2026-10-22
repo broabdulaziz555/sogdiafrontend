@@ -157,7 +157,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
       initialSort={{ key: 'pnl', dir: 'asc' }}
-      toolbar={positions.length > 1 ? <Button size="xs" variant="danger" loading={closeAll} onClick={() => flatten(positions)}>Close all ({positions.length})</Button> : undefined}
+      toolbar={positions.length > 1 ? <Button size="xs" variant="danger" loading={closeAll} onClick={() => flatten(positions.filter((p) => !p.id.startsWith('tmp-')))}>Close all ({positions.length})</Button> : undefined}
       empty={{ title: 'No open positions', description: 'Orders you open appear here and update every two seconds.' }}
     />
   );
