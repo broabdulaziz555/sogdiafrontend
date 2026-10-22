@@ -56,7 +56,7 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
 
 function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened, addOptimistic, dropOptimistic } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -155,32 +155,13 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
         if (Number.isFinite(tpN)) body.take_profit = tpN;
         if (Number.isFinite(slN)) body.stop_loss = slN;
-        // Optimistic: show the position and free the ticket at once; the server's reply swaps in the real row.
-        const px0 = s === 'long' ? ask : bid;
-        const tmpId = `tmp-${Date.now()}`;
-        const saved = { margin, tp, sl };
-        if (px0) {
-          const sz = marginRounded * leverage;
-          addOptimistic({
-            id: tmpId, account_id: accountId, symbol, side: s, leverage, margin: marginRounded, position_size: sz, quantity: sz / px0,
-            entry_price: px0, mark_price: px0, unrealized_pnl: 0, unrealized_pnl_pct: 0, status: 'open', created_at: new Date().toISOString(),
-            liquidation_price: s === 'long' ? px0 * (1 - 1 / leverage) : px0 * (1 + 1 / leverage),
-            take_profit: Number.isFinite(tpN) ? tpN : null, stop_loss: Number.isFinite(slN) ? slN : null,
-          });
-        }
-        setMargin(''); setTp(''); setSl(''); setTouched(false);
-        setBusy(false); setConfirm(null);
-        onPlaced?.();
+        // The form and the confirm dialog stay as they are (with a spinner) until the server answers; the engine can be slow.
+        const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 30_000 });
+        applyOpened(res); // insert the confirmed row into the table now; the poll only re-confirms it
+        toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
         if (soundOn) beep(s === 'long' ? 'up' : 'down');
-        try {
-          const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 25_000 });
-          applyOpened(res, tmpId);
-          toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
-        } catch (e) {
-          dropOptimistic(tmpId);
-          setMargin(saved.margin); setTp(saved.tp); setSl(saved.sl);
-          throw e;
-        }
+        setMargin(''); setTp(''); setSl(''); setTouched(false);
+        onPlaced?.();
       } else {
         addPending({
           id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
@@ -197,7 +178,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
       setBusy(false);
       setConfirm(null);
     }
-  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic, ask, bid, margin, tp, sl, addPending, onPlaced]);
+  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addPending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);

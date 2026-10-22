@@ -13,7 +13,7 @@ interface Def { name: string; short: string; description: string; shortcuts?: { 
 const DEFS: Record<string, Def> = {
   www: { name: 'SOGDIA — Institutional Crypto Prop Firm', short: 'SOGDIA', description: 'Trade crypto 24/7. Keep more of what you earn.' },
   app: {
-    name: 'SOGDIA — Trader Dashboard', short: 'SOGDIA', description: 'Accounts, payouts, KYC, certificates and your PnL calendar.',
+    name: 'SOGDIA — Trader Dashboard', short: 'Dashboard', description: 'Accounts, payouts, KYC, certificates and your PnL calendar.',
     shortcuts: [{ name: 'Accounts', url: '/' }, { name: 'PnL calendar', url: '/calendar' }, { name: 'Payouts', url: '/payouts' }, { name: 'Verification', url: '/kyc' }],
   },
   trade: { name: 'SOGDIA Terminal', short: 'Terminal', description: 'Professional crypto trading terminal for SOGDIA funded accounts.' },

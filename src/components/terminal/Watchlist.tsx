@@ -10,9 +10,12 @@ import { useTerminal } from './store';
 
 type SortKey = 'pair' | 'bid' | 'chg';
 
-/** Symbol · Bid · Ask · Daily change. The change column drops out only on the narrow desktop sidebar. */
-const GRID = 'grid grid-cols-[16px_minmax(0,1fr)_76px_76px_56px] lg:max-2xl:grid-cols-[16px_minmax(0,1fr)_76px_76px]';
-const CHG = 'lg:max-2xl:hidden';
+/**
+ * Symbol · Bid · Ask (+ daily change). The symbol column is the only flexible one and has a hard floor, so names can never
+ * be squeezed out. On the narrow desktop sidebar the daily change sits under the symbol; on phones it is its own column.
+ */
+const GRID = 'grid grid-cols-[16px_minmax(56px,1fr)_minmax(58px,max-content)_minmax(58px,max-content)] max-lg:grid-cols-[18px_minmax(64px,1fr)_88px_88px_62px]';
+const CHG = 'hidden max-lg:block';
 
 const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; base: string; active: boolean; fav: boolean }) {
   const p = useTerminal((s) => s.prices[symbol]);
@@ -28,12 +31,15 @@ const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; b
         aria-current={active}
         onClick={() => setSymbol(symbol)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSymbol(symbol); } }}
-        className={cn(GRID, 'mx-1.5 h-[28px] cursor-pointer items-center gap-1 rounded-lg px-1.5 text-[12px] transition-colors hover:bg-fg/[0.05] max-lg:mx-0 max-lg:h-11 max-lg:text-sm', active && 'bg-accent/[0.1] ring-1 ring-accent/25')}
+        className={cn(GRID, 'mx-1.5 h-[38px] cursor-pointer items-center gap-1.5 rounded-lg px-1.5 text-[12px] transition-colors hover:bg-fg/[0.05] max-lg:mx-0 max-lg:h-11 max-lg:text-sm', active && 'bg-accent/[0.1] ring-1 ring-accent/25')}
       >
         <button onClick={(e) => { e.stopPropagation(); toggle(symbol); }} aria-label={fav ? `Remove ${base} from favorites` : `Add ${base} to favorites`} aria-pressed={fav} className="grid h-4 w-4 place-items-center text-subtle hover:text-warn">
           <Star className={cn('h-3 w-3', fav && 'fill-warn text-warn')} />
         </button>
-        <span className="truncate font-sans font-medium text-fg">{base}<span className="text-subtle lg:max-2xl:hidden">/USDT</span></span>
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate font-sans text-[13px] font-semibold text-fg max-lg:text-sm">{base}<span className="font-normal text-subtle max-lg:hidden">/USDT</span></span>
+          <span className={cn('num block text-[10.5px] max-lg:hidden', chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down')}>{chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`}</span>
+        </span>
         <Flash value={p?.bid} className="num text-right text-up">{p ? fmtPrice(p.bid) : '—'}</Flash>
         <Flash value={p?.ask} className="num text-right text-down">{p ? fmtPrice(p.ask) : '—'}</Flash>
         <span className={cn('num text-right', CHG, chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down')}>{chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`}</span>
@@ -94,7 +100,7 @@ function WatchlistInner() {
         </div>
       </div>
       <div className={cn(GRID, 'gap-1 border-b border-line/60 bg-panel2/40 px-3 py-1.5 text-3xs font-medium text-subtle')}>
-        <span /><Head k="pair">Symbol</Head><Head k="bid" right>Bid</Head><span className="text-right ">Ask</span><span className={cn('flex justify-end', CHG)}><Head k="chg" right>Daily</Head></span>
+        <span /><span className="flex items-center gap-2"><Head k="pair">Symbol</Head><Head k="chg">Daily</Head></span><Head k="bid" right>Bid</Head><span className="text-right">Ask</span><span className={cn('text-right', CHG)} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {symbols.length === 0 ? (

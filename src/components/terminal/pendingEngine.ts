@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { errMsg, post } from '@/lib/api';
 import { fmtPrice } from '@/lib/format';
-import type { Position } from '@/lib/types';
+import type { Account, AccountMetrics, Position } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
 import { useTerminal, type PendingOrder } from './store';
@@ -29,7 +29,7 @@ const crossed = (o: PendingOrder, bid: number, ask: number) => {
  * engine bid/ask and sends a market order when the trigger is crossed. A Web Lock plus a re-read of the
  * persisted list stops two open tabs from filling the same order.
  */
-export function usePendingEngine(accountId: string | null, refresh: () => Promise<unknown>) {
+export function usePendingEngine(accountId: string | null, refresh: () => Promise<unknown>, applyOpened?: (r: { order: Position; account?: Account; metrics?: AccountMetrics }) => void) {
   const toast = useToast();
 
   // Orders left mid-fill by a closed/crashed tab are not retried — we can't know if the server accepted them.
@@ -56,11 +56,11 @@ export function usePendingEngine(accountId: string | null, refresh: () => Promis
         const body: Record<string, unknown> = { account_id: o.accountId, symbol: o.symbol, side: o.side, leverage: o.leverage, margin: o.margin };
         if (o.tp != null) body.take_profit = o.tp;
         if (o.sl != null) body.stop_loss = o.sl;
-        const r = await post<{ order: Position }>('/trade/open', body);
+        const r = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 30_000 });
         useTerminal.getState().removePending(o.id);
         toast.success(`${o.kind === 'limit' ? 'Limit' : 'Stop'} filled · ${o.symbol.replace('USDT', '/USDT')}`, `${o.side} ${o.leverage}× at ${fmtPrice(r.order.entry_price)}`);
         if (useTerminal.getState().soundOn) beep(o.side === 'long' ? 'up' : 'down');
-        void refresh();
+        if (applyOpened) applyOpened(r); else void refresh(); // show the filled position at once; the poll re-confirms
       } catch (e) {
         useTerminal.getState().updatePending(o.id, { status: 'failed', error: errMsg(e) });
         toast.error(`Conditional order failed · ${o.symbol.replace('USDT', '/USDT')}`, errMsg(e));
@@ -84,5 +84,5 @@ export function usePendingEngine(accountId: string | null, refresh: () => Promis
 
     scan();
     return useTerminal.subscribe((s, prev) => { if (s.prices !== prev.prices || s.pending !== prev.pending) scan(); });
-  }, [accountId, refresh, toast]);
+  }, [accountId, refresh, applyOpened, toast]);
 }

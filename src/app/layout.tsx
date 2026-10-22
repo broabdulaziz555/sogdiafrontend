@@ -5,11 +5,21 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { localeDir } from '@/i18n/config';
 import { Providers } from '@/components/Providers';
 import { RegisterSW } from '@/components/pwa/RegisterSW';
+import { InstallBanner } from '@/components/pwa/InstallBanner';
+import { headers } from 'next/headers';
 import './globals.css';
 
 const sans = Inter({ subsets: ['latin', 'cyrillic', 'latin-ext'], variable: '--font-sans', display: 'swap' });
 
-export const metadata: Metadata = {
+const SITE_LABEL: Record<string, string> = { www: 'SOGDIA', app: 'SOGDIA Dashboard', trade: 'SOGDIA Terminal', xdepartment: 'SOGDIA Admin' };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const site = headers().get('x-sg-site') || 'www';
+  const label = SITE_LABEL[site] ?? 'SOGDIA';
+  return { ...baseMetadata, applicationName: label, appleWebApp: { capable: true, title: label.replace('SOGDIA ', ''), statusBarStyle: 'black-translucent' } };
+}
+
+const baseMetadata: Metadata = {
   metadataBase: new URL(`https://www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'sogdia.site'}`),
   title: { default: 'SOGDIA — Institutional Crypto Prop Firm', template: '%s · SOGDIA' },
   description: 'Trade crypto 24/7. Keep more of what you earn. SOGDIA is built for traders who refuse to wait.',
@@ -37,6 +47,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
+  const site = headers().get('x-sg-site') || 'www';
   const messages = await getMessages();
 
   return (
@@ -50,6 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
         <RegisterSW />
+        <InstallBanner name={SITE_LABEL[site] ?? 'SOGDIA'} />
       </body>
     </html>
   );

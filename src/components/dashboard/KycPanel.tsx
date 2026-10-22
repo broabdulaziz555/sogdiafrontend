@@ -156,7 +156,7 @@ export function KycPanel() {
       ) : isLoading && !data ? (
         <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-80" /></div>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-5">
             <StatusPanel status={status} note={data?.note ?? null} />
             {status === 'pending' && (sent || data?.document_url) && (

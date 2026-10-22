@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { ApiError, errMsg, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { fmtPrice, fmtSigned, fmtUsd } from '@/lib/format';
@@ -22,8 +22,9 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
  */
 function OneClickTradeInner({ className }: { className?: string }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened, applyClosed } = useTerminalData();
   const [closing, setClosing] = useState(false);
+  const [busy, setBusy] = useState<Side | null>(null);
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -45,27 +46,17 @@ function OneClickTradeInner({ className }: { className?: string }) {
     : null;
 
   const submit = useCallback(async (side: Side) => {
-    const px0 = side === 'long' ? px?.ask : px?.bid;
-    const tmpId = `tmp-${Date.now()}`;
-    const mr = floorCents(m);
-    // optimistic: the position is on screen at once; the server's reply swaps in the real row
-    if (px0) addOptimistic({
-      id: tmpId, account_id: accountId, symbol, side, leverage, margin: mr, position_size: mr * leverage, quantity: (mr * leverage) / px0,
-      entry_price: px0, mark_price: px0, unrealized_pnl: 0, unrealized_pnl_pct: 0, status: 'open', created_at: new Date().toISOString(),
-      liquidation_price: side === 'long' ? px0 * (1 - 1 / leverage) : px0 * (1 + 1 / leverage),
-    });
-    setConfirm(null);
-    if (soundOn) beep(side === 'long' ? 'up' : 'down');
+    setBusy(side);
     try {
-      const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin: mr }, { timeoutMs: 25_000 });
-      applyOpened(res, tmpId);
+      const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin: floorCents(m) }, { timeoutMs: 30_000 });
+      applyOpened(res); // straight into the table; the poll only re-confirms it
       toast.success(`${side === 'long' ? 'Buy' : 'Sell'} ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+      if (soundOn) beep(side === 'long' ? 'up' : 'down');
     } catch (e) {
-      dropOptimistic(tmpId);
       toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
-      if (e instanceof ApiError && e.code === 'TIMEOUT') void refresh();
-    }
-  }, [accountId, symbol, leverage, m, px, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic]);
+      if (e instanceof ApiError && e.code === 'TIMEOUT') void refresh(); // it may have gone through
+    } finally { setBusy(null); setConfirm(null); }
+  }, [accountId, symbol, leverage, m, toast, base, soundOn, refresh, applyOpened]);
 
   const mine = useMemo(() => positions.filter((p) => p.symbol === symbol && !p.id.startsWith('tmp-')), [positions, symbol]);
   const minePnl = mine.reduce((a, p) => a + p.unrealized_pnl, 0);
@@ -87,8 +78,8 @@ function OneClickTradeInner({ className }: { className?: string }) {
   return (
     <>
       <div className={cn('inline-flex items-stretch overflow-hidden rounded-2xl border border-line2/70 bg-panel/90 shadow-pop backdrop-blur-md', className)} role="group" aria-label="One-click trading">
-        <button onClick={() => request('short')} disabled={!px} className="flex min-w-[92px] flex-col items-start justify-center bg-down px-3 py-1 text-white transition-[filter] hover:brightness-110 disabled:opacity-50" title="Sell at bid (market)">
-          <span className="text-2xs font-semibold opacity-90">Sell</span>
+        <button onClick={() => request('short')} disabled={busy !== null || !px} className="flex min-w-[92px] flex-col items-start justify-center bg-down px-3 py-1 text-white transition-[filter] hover:brightness-110 disabled:opacity-50" title="Sell at bid (market)">
+          <span className="flex items-center gap-1 text-2xs font-semibold opacity-90">{busy === 'short' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}Sell</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.bid) : '—'}</span>
         </button>
         <label className="flex w-[104px] flex-col justify-center border-x border-line px-2 py-0.5">
@@ -99,8 +90,8 @@ function OneClickTradeInner({ className }: { className?: string }) {
             className="num w-full bg-transparent font-mono text-sm outline-none"
           />
         </label>
-        <button onClick={() => request('long')} disabled={!px} className="flex min-w-[92px] flex-col items-end justify-center bg-up px-3 py-1 text-black transition-[filter] hover:brightness-110 disabled:opacity-50" title="Buy at ask (market)">
-          <span className="text-2xs font-semibold opacity-80">Buy</span>
+        <button onClick={() => request('long')} disabled={busy !== null || !px} className="flex min-w-[92px] flex-col items-end justify-center bg-up px-3 py-1 text-black transition-[filter] hover:brightness-110 disabled:opacity-50" title="Buy at ask (market)">
+          <span className="flex items-center gap-1 text-2xs font-semibold opacity-80">{busy === 'long' && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}Buy</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.ask) : '—'}</span>
         </button>
         {mine.length > 0 && (
@@ -114,7 +105,7 @@ function OneClickTradeInner({ className }: { className?: string }) {
       <Modal
         open={confirm !== null} onClose={() => setConfirm(null)} size="sm"
         title={`Confirm ${confirm === 'long' ? 'buy' : 'sell'} · ${base}/USDT`}
-        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} onClick={() => confirm && submit(confirm)} data-autofocus>Confirm</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} loading={busy !== null} onClick={() => confirm && submit(confirm)} data-autofocus>Confirm</Button></>}
       >
         <div className="space-y-2 p-5 text-sm">
           <div className="flex justify-between"><span className="text-muted">Margin</span><span className="num font-mono">{fmtUsd(floorCents(m))}</span></div>
