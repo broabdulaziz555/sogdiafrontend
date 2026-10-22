@@ -2,11 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import { get } from '@/lib/api';
+import { ApiError, get, post } from '@/lib/api';
 import { fmtSigned, fmtPrice } from '@/lib/format';
 import type { Account, AccountMetrics, Position, PositionsResponse, RiskState } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
+import { SPREAD, liveMid } from './optimistic';
 import { useTerminal } from './store';
 
 interface Ctx {
@@ -26,7 +27,12 @@ interface Ctx {
   dropOptimistic: (id: string) => void;
   /** Remove a closed position at once and apply the account/metrics the close endpoint returned. */
   applyClosed: (id: string, r?: { account?: Account; metrics?: AccountMetrics }) => void;
+  /** Close positions instantly on screen; the requests run behind it and a row comes back only if its close is refused. */
+  closePositions: (ids: string[]) => Promise<CloseOutcome[]>;
 }
+
+export interface CloseResult { order: { pnl: number; close_price: number }; account?: Account; metrics?: AccountMetrics }
+export interface CloseOutcome { id: string; ok: boolean; res?: CloseResult; error?: unknown }
 
 const DataCtx = createContext<Ctx | null>(null);
 export const useTerminalData = () => {
@@ -100,6 +106,26 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const pinnedRef = useRef(pinned);
   pinnedRef.current = pinned;
 
+  const closePositions = useCallback(async (ids: string[]): Promise<CloseOutcome[]> => {
+    const real = ids.filter((id) => !id.startsWith('tmp-'));
+    const now = Date.now();
+    setClosedIds((c) => { const n = { ...c }; for (const id of real) n[id] = now; return n; });
+    setPinned((l) => l.filter((x) => !real.includes(x.pos.id)));
+    return Promise.all(real.map(async (id): Promise<CloseOutcome> => {
+      try {
+        const res = await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: 30_000 });
+        applyClosed(id, res);
+        return { id, ok: true, res };
+      } catch (error) {
+        // "already closed" means it is gone on the server too, so it stays hidden; anything else brings the row back.
+        if (!(error instanceof ApiError && error.code === 'ORDER_NOT_OPEN')) {
+          setClosedIds((c) => { const n = { ...c }; delete n[id]; return n; });
+        } else void mutate();
+        return { id, ok: false, error };
+      }
+    }));
+  }, [applyClosed, mutate]);
+
   // housekeeping: forget pins the server now lists (or that outlived the grace period), and closes it has caught up with
   useEffect(() => {
     if (!data) return;
@@ -127,13 +153,43 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     return [...pinned.map((x) => x.pos).filter((p) => !ids.has(p.id) && !closedIds[p.id]), ...server];
   }, [data, pinned, closedIds]);
 
+  // Live profit: between server polls the numbers follow the browser's live price (same spread/maths as the server),
+  // so profit, equity and the chart lines move with the market instead of every 2.5 s.
+  const [tick, setTick] = useState(0);
+  const hasOpen = positions.length > 0;
+  useEffect(() => {
+    if (!hasOpen) return;
+    const t = setInterval(() => setTick((n) => n + 1), 500);
+    return () => clearInterval(t);
+  }, [hasOpen]);
+
+  const live = useMemo(() => {
+    let delta = 0;
+    const list = positions.map((p) => {
+      const mid = liveMid(p.symbol);
+      if (mid == null) return p;
+      const exit = p.side === 'long' ? mid * (1 - SPREAD) : mid * (1 + SPREAD);
+      const pnl = Math.round(((p.side === 'long' ? exit - p.entry_price : p.entry_price - exit) * p.quantity) * 100) / 100;
+      delta += pnl - p.unrealized_pnl;
+      return { ...p, mark_price: mid, unrealized_pnl: pnl, unrealized_pnl_pct: p.margin > 0 ? Math.round((pnl / p.margin) * 10000) / 100 : 0 };
+    });
+    return { list, delta };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, tick]);
+
+  const liveMetrics = useMemo(() => {
+    const m = data?.metrics ?? null;
+    if (!m || !live.delta) return m;
+    return { ...m, equity: Math.round((m.equity + live.delta) * 100) / 100, unrealized_pnl: Math.round((m.unrealized_pnl + live.delta) * 100) / 100 };
+  }, [data, live.delta]);
+
   const value = useMemo<Ctx>(
     () => ({
       accountId,
       account: data?.account ?? null,
-      metrics: data?.metrics ?? null,
+      metrics: liveMetrics,
       risk: data?.risk ?? null,
-      positions,
+      positions: live.list,
       loading: swr.isLoading && !data,
       error: swr.error,
       stale: !!swr.error && !!data,
@@ -142,8 +198,9 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       addOptimistic,
       dropOptimistic,
       applyClosed,
+      closePositions,
     }),
-    [accountId, data, positions, swr.isLoading, swr.error, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed],
+    [accountId, data, live.list, liveMetrics, swr.isLoading, swr.error, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed, closePositions],
   );
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

@@ -81,7 +81,7 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
 /* ── Open positions ─────────────────────────────────────────────────────── */
 function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
   const toast = useToast();
-  const { positions, loading, error, refresh, applyClosed } = useTerminalData();
+  const { positions, loading, error, refresh, applyClosed, closePositions } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const soundOn = useTerminal((s) => s.soundOn);
   const current = useTerminal((s) => s.symbol);
@@ -93,7 +93,9 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     setBusy(p.id); setMenu(null);
     try {
       if (percent >= 100) {
-        const r = await post<{ order: { pnl: number; close_price: number }; account?: Account; metrics?: AccountMetrics }>('/trade/close', { order_id: p.id });
+        const [o] = await closePositions([p.id]);
+        if (!o?.ok || !o.res) throw o?.error ?? new Error('Close failed');
+        const r = o.res;
         toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
         if (soundOn) beep(r.order.pnl >= 0 ? 'up' : 'down');
         applyClosed(p.id, r);
@@ -103,17 +105,17 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         void refresh();
       }
     } catch (e) { toast.error('Close failed', errMsg(e)); void refresh(); } finally { setBusy(null); }
-  }, [toast, refresh, soundOn, applyClosed]);
+  }, [toast, refresh, soundOn, applyClosed, closePositions]);
 
   const flatten = useCallback(async (list: Position[]) => {
     setCloseAll(true);
-    const res = await Promise.allSettled(list.map((p) => post('/trade/close', { order_id: p.id })));
-    const failed = res.filter((r) => r.status === 'rejected').length;
+    const res = await closePositions(list.map((p) => p.id));
+    const failed = res.filter((r) => !r.ok).length;
     if (failed) toast.warn('Some positions did not close', `${failed} of ${list.length} failed — try again.`);
     else toast.success('All positions closed');
     await refresh();
     setCloseAll(false);
-  }, [toast, refresh]);
+  }, [toast, refresh, closePositions]);
 
   const share = (p: Position) => useTerminal.getState().set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
 

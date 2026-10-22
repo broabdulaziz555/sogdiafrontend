@@ -39,7 +39,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
   showLevels: boolean; showOrders: boolean; compact: boolean;
 }) {
   const toast = useToast();
-  const { accountId, refresh, applyClosed } = useTerminalData();
+  const { accountId, refresh, closePositions } = useTerminalData();
   const pendingAll = useTerminal((s) => s.pending);
   const removePending = useTerminal((s) => s.removePending);
   const [busy, setBusy] = useState<string | null>(null);
@@ -48,11 +48,12 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
   const closePosition = useCallback(async (p: Position) => {
     setBusy(p.id);
     try {
-      const r = await post<{ order: { pnl: number; close_price: number }; account?: Account; metrics?: AccountMetrics }>('/trade/close', { order_id: p.id });
+      const [o] = await closePositions([p.id]);
+      if (!o?.ok || !o.res) throw o?.error ?? new Error('Close failed');
+      const r = o.res;
       toast.success(`${symbol.replace('USDT', '/USDT')} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
-      applyClosed(p.id, r);
     } catch (e) { toast.error('Close failed', errMsg(e)); void refresh(); } finally { setBusy(null); }
-  }, [toast, symbol, refresh, applyClosed]);
+  }, [toast, symbol, refresh, closePositions]);
 
   const clearLevel = useCallback(async (p: Position, which: 'tp' | 'sl') => {
     setBusy(`${p.id}:${which}`);

@@ -18,7 +18,7 @@ import { useTerminal } from '../store';
  */
 function ChartPositionsInner() {
   const toast = useToast();
-  const { positions, refresh } = useTerminalData();
+  const { positions, refresh, closePositions } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const current = useTerminal((s) => s.symbol);
   const soundOn = useTerminal((s) => s.soundOn);
@@ -34,7 +34,9 @@ function ChartPositionsInner() {
   const close = async (p: Position) => {
     setBusy(p.id);
     try {
-      const r = await post<{ order: { pnl: number; close_price: number } }>('/trade/close', { order_id: p.id });
+      const [o] = await closePositions([p.id]);
+      if (!o?.ok || !o.res) throw o?.error ?? new Error('Close failed');
+      const r = o.res;
       toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
       if (soundOn) beep(r.order.pnl >= 0 ? 'up' : 'down');
       await refresh();

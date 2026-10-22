@@ -36,7 +36,7 @@ const typing = (t: EventTarget | null) => {
 /** Registers global shortcuts and renders the cheat-sheet and close-all confirmation. */
 export function Hotkeys() {
   const toast = useToast();
-  const { positions, refresh } = useTerminalData();
+  const { positions, refresh, closePositions } = useTerminalData();
   const open = useTerminal((s) => s.hotkeysOpen);
   const set = useTerminal((s) => s.set);
   const [flat, setFlat] = useState<null | { label: string; ids: string[] }>(null);
@@ -45,14 +45,14 @@ export function Hotkeys() {
   const closeMany = useCallback(async () => {
     if (!flat) return;
     setBusy(true);
-    const res = await Promise.allSettled(flat.ids.map((id) => post('/trade/close', { order_id: id })));
-    const bad = res.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-    if (bad.length) toast.warn('Some positions did not close', `${bad.length} of ${flat.ids.length} failed: ${errMsg(bad[0].reason)}`);
+    const res = await closePositions(flat.ids);
+    const bad = res.filter((r) => !r.ok);
+    if (bad.length) toast.warn('Some positions did not close', `${bad.length} of ${flat.ids.length} failed: ${errMsg(bad[0].error)}`);
     else toast.success(`Closed ${flat.ids.length} position${flat.ids.length > 1 ? 's' : ''}`);
     await refresh();
     setBusy(false);
     setFlat(null);
-  }, [flat, toast, refresh]);
+  }, [flat, toast, refresh, closePositions]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -26,7 +26,7 @@ function Cell({ k, children, className }: { k: string; children: React.ReactNode
 
 function MobilePositionsInner() {
   const toast = useToast();
-  const { positions, loading, error, refresh, accountId } = useTerminalData();
+  const { positions, loading, error, refresh, accountId, closePositions } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const set = useTerminal((s) => s.set);
   const soundOn = useTerminal((s) => s.soundOn);
@@ -55,7 +55,9 @@ function MobilePositionsInner() {
     setBusy(p.id); setPartialFor(null);
     try {
       if (percent >= 100) {
-        const r = await post<{ order: { pnl: number; close_price: number } }>('/trade/close', { order_id: p.id });
+        const [o] = await closePositions([p.id]);
+        if (!o?.ok || !o.res) throw o?.error ?? new Error('Close failed');
+        const r = o.res;
         toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
         if (soundOn) beep(r.order.pnl >= 0 ? 'up' : 'down');
       } else {
@@ -64,18 +66,18 @@ function MobilePositionsInner() {
       }
       await refresh();
     } catch (e) { toast.error('Close failed', errMsg(e)); } finally { setBusy(null); }
-  }, [toast, refresh, soundOn]);
+  }, [toast, refresh, soundOn, closePositions]);
 
   const closeAll = useCallback(async () => {
     setBusy('all');
     const real = positions.filter((p) => !p.id.startsWith('tmp-'));
-    const res = await Promise.allSettled(real.map((p) => post('/trade/close', { order_id: p.id })));
-    const failed = res.filter((r) => r.status === 'rejected').length;
+    const res = await closePositions(real.map((p) => p.id));
+    const failed = res.filter((r) => !r.ok).length;
     if (failed) toast.warn('Some positions did not close', `${failed} of ${real.length} failed — try again.`);
     else toast.success('All positions closed');
     await refresh();
     setBusy(null);
-  }, [positions, toast, refresh]);
+  }, [positions, toast, refresh, closePositions]);
 
   const share = (p: Position) => set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true, data: { symbol: p.symbol, side: p.side, leverage: p.leverage, entry: p.entry_price, exit: p.mark_price, pnl: p.unrealized_pnl, margin: p.margin, size: p.position_size, opened: p.created_at, closed: null } } });
 

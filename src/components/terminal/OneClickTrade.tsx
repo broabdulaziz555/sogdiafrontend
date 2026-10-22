@@ -23,7 +23,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
  */
 function OneClickTradeInner({ className }: { className?: string }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened, applyClosed, addOptimistic, dropOptimistic } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened, closePositions, addOptimistic, dropOptimistic } = useTerminalData();
   const [closing, setClosing] = useState(false);
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
@@ -68,8 +68,8 @@ function OneClickTradeInner({ className }: { className?: string }) {
   const closeAll = async () => {
     if (!mine.length || closing) return;
     setClosing(true);
-    const res = await Promise.allSettled(mine.map((p) => post<{ account?: Account; metrics?: AccountMetrics }>('/trade/close', { order_id: p.id }).then((r) => { applyClosed(p.id, r); return r; })));
-    const failed = res.filter((r) => r.status === 'rejected').length;
+    const res = await closePositions(mine.map((p) => p.id));
+    const failed = res.filter((r) => !r.ok).length;
     if (failed) { toast.warn('Some positions did not close', `${failed} of ${mine.length} failed — try again.`); void refresh(); }
     else toast.success(`${base}/USDT closed`, `${mine.length} position${mine.length > 1 ? 's' : ''} closed`);
     setClosing(false);
