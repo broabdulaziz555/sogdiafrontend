@@ -331,7 +331,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         crosshair: { vertLine: { color: p.cross, labelBackgroundColor: p.border }, horzLine: { color: p.cross, labelBackgroundColor: p.border } },
       });
       candleRef.current?.applyOptions({ upColor: p.up, downColor: p.down, borderUpColor: p.up, borderDownColor: p.down, wickUpColor: p.up, wickDownColor: p.down });
-      if (dataRef.current.length) paintVolume(dataRef.current);
+      if (flags.current.vol && dataRef.current.length) paintVolume(dataRef.current);
     });
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
