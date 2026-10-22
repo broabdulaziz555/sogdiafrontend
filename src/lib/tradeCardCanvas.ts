@@ -16,7 +16,7 @@ export interface CardData {
 export interface CardOpts {
   roi: boolean; pnl: boolean; leverage: boolean; entry: boolean; exit: boolean; size: boolean; margin: boolean; date: boolean; fullName: boolean; referral: boolean;
 }
-export const DEFAULT_CARD_OPTS: CardOpts = { roi: true, pnl: false, leverage: true, entry: true, exit: true, size: true, margin: true, date: true, fullName: true, referral: true };
+export const DEFAULT_CARD_OPTS: CardOpts = { roi: true, pnl: false, leverage: true, entry: true, exit: true, size: false, margin: false, date: true, fullName: true, referral: true };
 
 const W = 1200, H = 630;
 const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';

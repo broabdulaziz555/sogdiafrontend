@@ -28,8 +28,8 @@ export function TradeCardModal() {
   const user = useUser();
   const stored = useTerminal((s) => s.cardOpts);
   // must be memoised: a fresh object every render would restart the drawing effect forever (and the image would flicker / fail)
-  const opts: CardOpts = useMemo(() => ({ ...DEFAULT_CARD_OPTS, ...(stored ?? {}) }), [stored]);
-  const refQ = useApi<Referrals>(card?.data && opts.referral ? '/referrals' : null);
+  const opts: CardOpts = useMemo(() => ({ ...DEFAULT_CARD_OPTS, ...(stored ?? {}), referral: true }), [stored]); // the referral code is always on the card
+  const refQ = useApi<Referrals>(card?.data ? '/referrals' : null);
   const refCode = refQ.data?.referral_code;
   const refDiscount = refQ.data?.friend_discount_pct;
   const ref = useMemo(() => (refCode ? { code: refCode, discount: refDiscount ?? 0 } : null), [refCode, refDiscount]);
@@ -89,7 +89,7 @@ export function TradeCardModal() {
           <fieldset className="mb-3">
             <legend className="mb-1.5 text-2xs font-medium text-subtle">Show on the card</legend>
             <div className="flex flex-wrap gap-1.5">
-              {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['fullName', 'Full name'], ['referral', 'Referral code']] as [keyof CardOpts, string][]).map(([k, label]) => (
+              {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['fullName', 'Full name']] as [keyof CardOpts, string][]).map(([k, label]) => (
                 <label key={k} className={`inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium ${opts[k] ? 'border-accent/50 bg-accent/10 text-fg' : 'border-line text-muted'}`}>
                   <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={opts[k]} onChange={(e) => set({ cardOpts: { ...opts, [k]: e.target.checked } })} />
                   {label}

@@ -147,8 +147,8 @@ export const useTerminal = create<State>()(
     }),
     {
       name: 'sg-terminal-v1',
-      version: 2,
-      // v2: card options changed (Full name, site always shown) → reset them to the new defaults
+      version: 3,
+      // v3: card options reset to the new defaults (referral code is always shown, no checkbox)
       migrate: (persisted: unknown) => ({ ...(persisted as object), cardOpts: DEFAULT_CARD_OPTS }) as never,
       storage: createJSONStorage(() => (typeof window === 'undefined' ? noopStorage : window.localStorage)),
       partialize: (s) => ({
