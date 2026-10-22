@@ -147,7 +147,9 @@ export const useTerminal = create<State>()(
     }),
     {
       name: 'sg-terminal-v1',
-      version: 1,
+      version: 2,
+      // v2: card options changed (Full name, site always shown) → reset them to the new defaults
+      migrate: (persisted: unknown) => ({ ...(persisted as object), cardOpts: DEFAULT_CARD_OPTS }) as never,
       storage: createJSONStorage(() => (typeof window === 'undefined' ? noopStorage : window.localStorage)),
       partialize: (s) => ({
         symbol: s.symbol,

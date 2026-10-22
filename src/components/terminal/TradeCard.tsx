@@ -25,10 +25,10 @@ export function TradeCardModal() {
 
   const [local, setLocal] = useState<string | null>(null);
   const user = useUser();
-  const opts = useTerminal((s) => s.cardOpts) ?? DEFAULT_CARD_OPTS;
+  const opts: CardOpts = { ...DEFAULT_CARD_OPTS, ...(useTerminal((s) => s.cardOpts) ?? {}) };
   const refQ = useApi<Referrals>(card?.data && opts.referral ? '/referrals' : null);
   const ref = refQ.data ? { code: refQ.data.referral_code, discount: refQ.data.friend_discount_pct } : null;
-  const username = (user.full_name || user.email?.split('@')[0] || '').trim();
+  const username = (user.full_name || user.email?.split('@')[0] || '').trim(); // full name
   useEffect(() => { setState('loading'); setAttempt(0); }, [card?.id]);
 
   // Draw the card here in the browser (always works, no network). The API image is only a fallback when we have no trade data.
@@ -80,7 +80,7 @@ export function TradeCardModal() {
           <fieldset className="mb-3">
             <legend className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-subtle">Show on the card</legend>
             <div className="flex flex-wrap gap-1.5">
-              {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['username', 'Username'], ['site', 'sogdia.site'], ['referral', 'Referral code']] as [keyof CardOpts, string][]).map(([k, label]) => (
+              {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['fullName', 'Full name'], ['referral', 'Referral code']] as [keyof CardOpts, string][]).map(([k, label]) => (
                 <label key={k} className={`inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium ${opts[k] ? 'border-accent/50 bg-accent/10 text-fg' : 'border-line text-muted'}`}>
                   <input type="checkbox" className="h-4 w-4 accent-[rgb(var(--accent))]" checked={opts[k]} onChange={(e) => set({ cardOpts: { ...opts, [k]: e.target.checked } })} />
                   {label}

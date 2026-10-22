@@ -116,7 +116,7 @@ function fmtCountdown(sec: number): string {
 }
 
 interface Legend { o: number; h: number; l: number; c: number; v: number; chg: number }
-interface LineSpec { key: string; price: number; color: string; style: LineStyle; title: string; width?: 1 | 2 }
+interface LineSpec { key: string; price: number; color: string; style: LineStyle; title: string; width?: 1 | 2; axis?: boolean }
 
 /* ── indicators / levels menu ─────────────────────────────────────────────── */
 function MenuRow({ label, hint, checked, onToggle }: { label: string; hint?: string; checked: boolean; onToggle: () => void }) {
@@ -259,7 +259,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: p.text, fontFamily: 'var(--font-mono), ui-monospace, monospace', fontSize: 11, attributionLogo: false } as any,
       grid: { vertLines: { color: p.grid }, horzLines: { color: p.grid } },
       rightPriceScale: { borderColor: p.border, scaleMargins: { top: 0.08, bottom: 0.22 } },
-      timeScale: { borderColor: p.border, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: window.innerWidth < 640 ? 6 : 8, minBarSpacing: 1 },
+      timeScale: { borderColor: p.border, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: window.innerWidth < 640 ? 6 : 8, minBarSpacing: 1, maxBarSpacing: 40 },
       crosshair: {
         mode: CrosshairMode.Magnet,
         vertLine: { color: p.cross, width: 1, style: LineStyle.Dashed, labelBackgroundColor: p.border },
@@ -352,7 +352,12 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     if (f.ma) MA_DEFS.forEach((d, i) => maRefs.current[i]?.setData(buildMA(cs, d.len)));
     if (f.ema) EMA_DEFS.forEach((d, i) => emaRefs.current[i]?.setData(buildEMA(cs, d.len)));
     if (f.bb) { const bb = buildBB(cs); bbRefs.current[0]?.setData(bb.up); bbRefs.current[1]?.setData(bb.mid); bbRefs.current[2]?.setData(bb.low); }
-    if (fit) chartRef.current?.timeScale().scrollToRealTime();
+    if (fit) {
+      // a new timeframe always starts at the normal zoom (an old pinch-zoom must not carry over), showing the latest candles
+      const ts = chartRef.current?.timeScale();
+      ts?.applyOptions({ barSpacing: window.innerWidth < 640 ? 6 : 8 });
+      ts?.scrollToRealTime();
+    }
     updateCountdown();
   };
 
@@ -496,11 +501,12 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         if (p.symbol !== symbol) continue;
         const long = p.side === 'long';
         const qty = fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1);
-        const add = (suffix: string, price: number | null | undefined, color: string, style: LineStyle, title: string, width: 1 | 2 = 1) => {
-          if (price != null && Number.isFinite(price) && price > 0) specs.push({ key: `p:${p.id}:${suffix}`, price, color, style, title, width });
+        const add = (suffix: string, price: number | null | undefined, color: string, style: LineStyle, title: string, width: 1 | 2 = 1, axis = true) => {
+          if (price != null && Number.isFinite(price) && price > 0) specs.push({ key: `p:${p.id}:${suffix}`, price, color, style, title, width, axis });
         };
-        add('entry', p.entry_price, info, LineStyle.LargeDashed, mob ? (long ? 'BUY' : 'SELL') : `${long ? 'BUY' : 'SELL'} ${qty} · ${fmtSigned(p.unrealized_pnl)}`);
-        add('liq', p.liquidation_price, warn, LineStyle.Dotted, mob ? 'LIQ' : 'LIQUIDATION');
+        // like TradingView / MT5: the tag shows live profit and is coloured by it; side is shown by the entry arrow
+        add('entry', p.entry_price, p.unrealized_pnl >= 0 ? up : down, LineStyle.LargeDashed, mob ? fmtSigned(p.unrealized_pnl) : `${long ? 'BUY' : 'SELL'} ${qty}  ${fmtSigned(p.unrealized_pnl)}`);
+        add('liq', p.liquidation_price, warn, LineStyle.Dotted, mob ? 'LIQ' : 'LIQUIDATION', 1, false);
         add('tp', p.take_profit, up, LineStyle.Dashed, mob ? 'TP' : 'TAKE PROFIT');
         add('sl', p.stop_loss, down, LineStyle.Dashed, mob ? 'SL' : 'STOP LOSS');
       }
@@ -520,7 +526,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       if (!keep.has(k)) { try { series.removePriceLine(l); } catch { /* already gone */ } lineMap.current.delete(k); }
     }
     for (const sp of specs) {
-      const opts = { price: sp.price, color: sp.color, lineWidth: sp.width ?? 1, lineStyle: sp.style, axisLabelVisible: true, title: sp.title };
+      const opts = { price: sp.price, color: sp.color, lineWidth: sp.width ?? 1, lineStyle: sp.style, axisLabelVisible: sp.axis !== false, title: sp.title };
       const ex = lineMap.current.get(sp.key);
       if (ex) ex.applyOptions(opts); else lineMap.current.set(sp.key, series.createPriceLine(opts));
     }
@@ -541,7 +547,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         let lo = 0, hi = cs.length - 1;
         while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (cs[mid].time <= t) lo = mid; else hi = mid - 1; }
         const long = p.side === 'long';
-        markers.push({ time: cs[lo].time as UTCTimestamp, position: long ? 'belowBar' : 'aboveBar', color: long ? cssRgb('up') : cssRgb('down'), shape: long ? 'arrowUp' : 'arrowDown', text: `${long ? 'BUY' : 'SELL'} ${fmtPrice(p.entry_price)}` });
+        markers.push({ time: cs[lo].time as UTCTimestamp, position: long ? 'belowBar' : 'aboveBar', color: long ? cssRgb('up') : cssRgb('down'), shape: long ? 'arrowUp' : 'arrowDown', size: 0.8 });
       }
       markers.sort((a, b) => (a.time as number) - (b.time as number));
     }

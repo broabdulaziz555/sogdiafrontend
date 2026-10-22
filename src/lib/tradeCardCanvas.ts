@@ -14,9 +14,9 @@ export interface CardData {
 }
 
 export interface CardOpts {
-  roi: boolean; pnl: boolean; leverage: boolean; entry: boolean; exit: boolean; size: boolean; margin: boolean; date: boolean; username: boolean; site: boolean; referral: boolean;
+  roi: boolean; pnl: boolean; leverage: boolean; entry: boolean; exit: boolean; size: boolean; margin: boolean; date: boolean; fullName: boolean; referral: boolean;
 }
-export const DEFAULT_CARD_OPTS: CardOpts = { roi: true, pnl: true, leverage: true, entry: true, exit: true, size: false, margin: false, date: true, username: true, site: true, referral: false };
+export const DEFAULT_CARD_OPTS: CardOpts = { roi: true, pnl: false, leverage: true, entry: true, exit: true, size: true, margin: true, date: true, fullName: true, referral: true };
 
 const W = 1200, H = 630;
 const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -94,9 +94,9 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
   }
 
   // footer: site address (+ referral offer)
-  if (o.site || (o.referral && ref)) {
+  {
     g.font = `600 22px ${SANS}`;
-    if (o.site) { g.fillStyle = 'rgba(230,236,244,0.75)'; g.fillText('sogdia.site', 64, 606); }
+    g.fillStyle = 'rgba(230,236,244,0.75)'; g.fillText('sogdia.site', 64, 606); // always shown
     if (o.referral && ref) {
       g.textAlign = 'right'; g.fillStyle = '#b6f35a';
       g.fillText(`Join with code ${ref.code}${ref.discount ? ` · ${ref.discount}% off` : ''}`, W - 64, 606);
@@ -107,7 +107,7 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
   // header right: username + date
   g.textAlign = 'right';
   let ty = 92;
-  if (o.username && username) { g.fillStyle = '#e6ecf4'; g.font = `700 26px ${SANS}`; g.fillText(username, W - 64, ty); ty += 32; }
+  if (o.fullName && username) { g.fillStyle = '#e6ecf4'; g.font = `700 26px ${SANS}`; g.fillText(username, W - 64, ty); ty += 32; }
   if (o.date) {
     g.fillStyle = 'rgba(230,236,244,0.40)'; g.font = `500 18px ${SANS}`;
     g.fillText(live ? `Opened ${when(d.opened)}` : `${when(d.opened)}  →  ${when(d.closed)}`, W - 64, ty);
