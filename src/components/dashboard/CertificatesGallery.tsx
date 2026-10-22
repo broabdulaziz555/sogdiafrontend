@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Award, ChevronLeft, ChevronRight, Download, Loader2, Search, X, ZoomIn } from 'lucide-react';
+import { Award, ChevronLeft, ChevronRight, Download, ExternalLink, Loader2, RefreshCw, Search, X, ZoomIn } from 'lucide-react';
 import { PageHead } from './PageHead';
 import { accountLabel } from './AccountCard';
 import { Badge, Input, Segmented } from '@/components/ui/Primitives';
@@ -13,39 +13,43 @@ import { useToast } from '@/components/ui/Toast';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useApi } from '@/hooks/useApi';
 import { assetUrl } from '@/lib/api';
+import { saveOrOpen } from '@/lib/shareImage';
 import { dateShort, fmtUsd } from '@/lib/format';
 import type { Certificate } from '@/lib/types';
 
 type Filter = 'all' | 'payout' | 'eval_pass';
 const typeLabel = (t: string) => (t === 'payout' ? 'Payout' : t === 'eval_pass' ? 'Evaluation passed' : t.replace(/_/g, ' '));
 
-async function downloadCert(c: Certificate) {
-  const res = await fetch(assetUrl(c.image_url));
-  if (!res.ok) throw new Error('Could not download the certificate image.');
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `sogdia-certificate-${c.code}.png`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+/** Saves the PNG; if the API blocks the cross-origin read it opens the image so it can be saved manually. */
+async function downloadCert(c: Certificate): Promise<'saved' | 'opened'> {
+  return saveOrOpen(assetUrl(c.image_url), `sogdia-certificate-${c.code}.png`);
 }
 
 function CertImage({ c, className, eager }: { c: Certificate; className?: string; eager?: boolean }) {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const src = `${assetUrl(c.image_url)}${attempt ? `?r=${attempt}` : ''}`;
   return (
     <div className={`relative overflow-hidden bg-panel2 ${className ?? ''}`}>
       {state === 'loading' && <Skeleton className="absolute inset-0 rounded-none" />}
       {state === 'error' ? (
-        <div className="absolute inset-0 grid place-items-center text-xs text-subtle">Preview unavailable</div>
+        <div className="absolute inset-0 grid place-items-center p-3 text-center">
+          <div className="space-y-2">
+            <p className="text-xs text-muted">Preview unavailable</p>
+            <div className="flex items-center justify-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); setState('loading'); setAttempt((n) => n + 1); }} className="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-panel px-2 text-xs hover:border-accent/60"><RefreshCw className="h-3 w-3" />Retry</button>
+              <a href={src} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-panel px-2 text-xs hover:border-accent/60"><ExternalLink className="h-3 w-3" />Open</a>
+            </div>
+          </div>
+        </div>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={assetUrl(c.image_url)}
+          key={attempt}
+          src={src}
           alt={`${typeLabel(c.type)} certificate ${c.code}`}
           loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
           onLoad={() => setState('ok')}
           onError={() => setState('error')}
           className={`h-full w-full object-contain transition-opacity duration-300 ${state === 'ok' ? 'opacity-100' : 'opacity-0'}`}
@@ -81,7 +85,7 @@ function Lightbox({ items, index, setIndex, onClose }: { items: Certificate[]; i
 
   const dl = async () => {
     setBusy(true);
-    try { await downloadCert(c); } catch (e) { toast.error('Download failed', e instanceof Error ? e.message : undefined); } finally { setBusy(false); }
+    try { if ((await downloadCert(c)) === 'opened') toast.info('Image opened in a new tab', 'Press and hold (or right-click) the certificate to save it.'); } finally { setBusy(false); }
   };
 
   return createPortal(
@@ -197,7 +201,7 @@ function DownloadButton({ cert }: { cert: Certificate }) {
       icon={busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
       onClick={async () => {
         setBusy(true);
-        try { await downloadCert(cert); } catch (e) { toast.error('Download failed', e instanceof Error ? e.message : undefined); } finally { setBusy(false); }
+        try { if ((await downloadCert(cert)) === 'opened') toast.info('Image opened in a new tab', 'Press and hold (or right-click) the certificate to save it.'); } finally { setBusy(false); }
       }}
     >
       PNG

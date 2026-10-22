@@ -154,9 +154,7 @@
     "q5": "Hansı bazarlarda ticarət edə bilərəm?",
     "a5": "Ən yaxşı 50 USDT cütü, long və ya short, 1×-dən 200×-ə qədər leverecli, sutkanın 24 saatı, həftənin 7 günü.",
     "q6": "Necə ödəyim?",
-    "a6": "NOWPayments vasitəsilə kriptovalyutada. Ödəniş şəbəkədə təsdiqlənən kimi hesabınız avtomatik yaradılır.",
-    "q7": "Ticarət mühiti canlı bazar icrasıdır?",
-    "a7": "Qiymətlər Binance-dən götürülür və giriş və çıxışda treyderin əleyhinə 0,05% spred tətbiq olunur. Satın almadan əvvəl hüquqi bölmədəki risk və icra açıqlamasını tam oxuyun."
+    "a6": "NOWPayments vasitəsilə kriptovalyutada. Ödəniş şəbəkədə təsdiqlənən kimi hesabınız avtomatik yaradılır."
   },
   "cta": {
     "title": "Bazar bağlanmır. Üstünlüyünüz də bağlanmamalıdır.",

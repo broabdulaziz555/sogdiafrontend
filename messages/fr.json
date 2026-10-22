@@ -154,9 +154,7 @@
     "q5": "Quels marchés puis-je trader ?",
     "a5": "Les 50 meilleures paires USDT, en long ou en short, avec un levier de 1× à 200×, 24h/24, 7j/7.",
     "q6": "Comment payer ?",
-    "a6": "En crypto via NOWPayments. Votre compte est créé automatiquement dès que le paiement est confirmé sur le réseau.",
-    "q7": "S'agit-il d'une exécution de marché réelle ?",
-    "a7": "Les prix proviennent de Binance et un spread de 0,05 % défavorable au trader s'applique à l'entrée et à la sortie. Lisez l'information complète sur le risque et l'exécution dans la section légale avant d'acheter."
+    "a6": "En crypto via NOWPayments. Votre compte est créé automatiquement dès que le paiement est confirmé sur le réseau."
   },
   "cta": {
     "title": "Le marché ne ferme jamais. Votre avantage non plus.",

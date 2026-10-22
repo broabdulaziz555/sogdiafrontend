@@ -30,7 +30,7 @@ export const useTerminalData = () => {
 
 const REASON: Record<string, string> = { liquidation: 'Liquidated', stop_loss: 'Stop-loss hit', take_profit: 'Take-profit hit' };
 
-/** Single 2-second poll of /trade/positions shared by every panel. */
+/** Single shared poll of /trade/positions (3 s with open trades, 10 s when flat). */
 export function TerminalDataProvider({ accountId, children }: { accountId: string; children: React.ReactNode }) {
   const toast = useToast();
   const seen = useRef(new Set<string>());
@@ -39,7 +39,8 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const swr = useSWR<PositionsResponse>(
     ['terminal-positions', accountId],
     () => get<PositionsResponse>('/trade/positions', { account_id: accountId }),
-    { refreshInterval: 2000, dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 2000, shouldRetryOnError: true },
+    // the server runs its risk sweep on every call, so poll fast only while something is actually open
+    { refreshInterval: (d) => (d?.positions?.length ? 3000 : 10_000), dedupingInterval: 1500, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
   );
 
   const data = swr.data;

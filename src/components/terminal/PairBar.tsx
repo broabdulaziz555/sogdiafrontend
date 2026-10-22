@@ -3,7 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search, Star } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { fmtCompact, fmtNum, fmtPrice } from '@/lib/format';
+import { fmtNum, fmtPrice } from '@/lib/format';
 import { Flash } from './Flash';
 import { useTerminal } from './store';
 
@@ -94,30 +94,49 @@ function Cell({ k, children, className }: { k: string; children: React.ReactNode
   return <div className={cn('shrink-0', className)}><div className="text-2xs uppercase tracking-wider text-subtle">{k}</div><div className="num font-mono text-xs">{children}</div></div>;
 }
 
-function PairBarInner() {
-  const symbol = useTerminal((s) => s.symbol);
+function PairBarInner({ compact }: { compact?: boolean }) {
   const t = useTerminal((s) => s.tickers[s.symbol]);
   const p = useTerminal((s) => s.prices[s.symbol]);
   const lastLive = useTerminal((s) => s.last);
   const dir = useTerminal((s) => s.lastDir);
   const last = lastLive ?? t?.last ?? p?.price ?? null;
   const chg = t?.changePct;
-  const base = symbol.replace('USDT', '');
+  const chgTone = chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down';
+  const chgText = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`;
+  const priceTone = dir > 0 ? 'text-up' : dir < 0 ? 'text-down' : 'text-fg';
+
+  if (compact) {
+    return (
+      <div className="border-b border-line bg-panel px-2 py-1.5" aria-label="Instrument">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <Picker />
+            <Flash value={last} className={cn('num px-2 font-mono text-2xl font-semibold leading-tight', priceTone)}>{last != null ? fmtPrice(last) : '—'}</Flash>
+          </div>
+          <dl className="grid shrink-0 grid-cols-[auto_auto] gap-x-3 gap-y-0.5 pt-1 text-right text-2xs">
+            <dt className="text-subtle">Daily</dt><dd className={cn('num font-mono text-xs font-semibold', chgTone)}>{chgText}</dd>
+            <dt className="text-subtle">High</dt><dd className="num font-mono text-xs">{t ? fmtPrice(t.high) : '—'}</dd>
+            <dt className="text-subtle">Low</dt><dd className="num font-mono text-xs">{t ? fmtPrice(t.low) : '—'}</dd>
+          </dl>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-4 overflow-x-auto border-b border-line bg-panel px-2 py-1.5 scroll-none" aria-label="Instrument">
+    <div className="flex items-center gap-4 border-b border-line bg-panel px-2 py-1.5" aria-label="Instrument">
       <Picker />
       <div className="shrink-0">
-        <Flash value={last} className={cn('num font-mono text-lg font-semibold leading-none', dir > 0 ? 'text-up' : dir < 0 ? 'text-down' : 'text-fg')}>{last != null ? fmtPrice(last) : '—'}</Flash>
-        <div className="mt-0.5 text-2xs text-subtle">≈ ${last != null ? fmtPrice(last) : '—'}</div>
+        <Flash value={last} className={cn('num font-mono text-lg font-semibold leading-none', priceTone)}>{last != null ? fmtPrice(last) : '—'}</Flash>
+        <div className={cn('num mt-0.5 font-mono text-2xs', chgTone)}>{chgText} <span className="text-subtle">daily</span></div>
       </div>
-      <Cell k="24h change"><span className={chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down'}>{chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`}</span></Cell>
-      <Cell k="24h high">{t ? fmtPrice(t.high) : '—'}</Cell>
-      <Cell k="24h low">{t ? fmtPrice(t.low) : '—'}</Cell>
-      <Cell k={`24h vol (${base})`}>{t ? fmtCompact(t.baseVol) : '—'}</Cell>
-      <Cell k="24h vol (USDT)">{t ? fmtCompact(t.quoteVol) : '—'}</Cell>
-      <Cell k="Engine bid" className="max-md:hidden"><span className="text-up">{p ? fmtPrice(p.bid) : '—'}</span></Cell>
-      <Cell k="Engine ask" className="max-md:hidden"><span className="text-down">{p ? fmtPrice(p.ask) : '—'}</span></Cell>
+      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto scroll-none">
+        <Cell k="Bid"><span className="text-up">{p ? fmtPrice(p.bid) : '—'}</span></Cell>
+        <Cell k="Ask"><span className="text-down">{p ? fmtPrice(p.ask) : '—'}</span></Cell>
+        <Cell k="Spread">{p ? fmtPrice(p.ask - p.bid) : '—'}</Cell>
+        <Cell k="Daily high">{t ? fmtPrice(t.high) : '—'}</Cell>
+        <Cell k="Daily low">{t ? fmtPrice(t.low) : '—'}</Cell>
+      </div>
     </div>
   );
 }

@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react';
 import { mutate } from 'swr';
+import { captureInstallPrompt } from '@/lib/pwa';
 
 export function RegisterSW() {
   useEffect(() => {
+    captureInstallPrompt();
     if (!('serviceWorker' in navigator)) return;
 
     // When the SW revalidates an API response and finds fresher data, refresh matching SWR keys.

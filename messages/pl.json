@@ -154,9 +154,7 @@
     "q5": "Jakimi rynkami mogę handlować?",
     "a5": "50 najlepszymi parami USDT, long lub short, z dźwignią od 1× do 200×, 24 godziny na dobę, 7 dni w tygodniu.",
     "q6": "Jak zapłacić?",
-    "a6": "Kryptowalutą przez NOWPayments. Twoje konto powstaje automatycznie, gdy tylko płatność zostanie potwierdzona w sieci.",
-    "q7": "Czy to rzeczywista realizacja rynkowa?",
-    "a7": "Ceny pochodzą z Binance, a przy wejściu i wyjściu stosowany jest spread 0,05% na niekorzyść tradera. Przed zakupem przeczytaj pełną informację o ryzyku i realizacji zleceń w sekcji prawnej."
+    "a6": "Kryptowalutą przez NOWPayments. Twoje konto powstaje automatycznie, gdy tylko płatność zostanie potwierdzona w sieci."
   },
   "cta": {
     "title": "Rynek nigdy się nie zamyka. Twoja przewaga też nie powinna.",

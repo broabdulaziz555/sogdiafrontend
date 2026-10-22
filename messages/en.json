@@ -154,9 +154,7 @@
     "q5": "Which markets can I trade?",
     "a5": "The top 50 USDT pairs, long or short, with leverage from 1× to 200×, 24 hours a day, 7 days a week.",
     "q6": "How do I pay?",
-    "a6": "In crypto through NOWPayments. Your account is created automatically as soon as the payment is confirmed on-chain.",
-    "q7": "Is the trading environment live market execution?",
-    "a7": "Prices are sourced from Binance and a 0.05% spread is applied against the trader on entry and exit. Read the full risk and execution disclosure in the legal section before purchasing."
+    "a6": "In crypto through NOWPayments. Your account is created automatically as soon as the payment is confirmed on-chain."
   },
   "cta": {
     "title": "The market doesn't close. Neither should your edge.",

@@ -154,9 +154,7 @@
     "q5": "Quali mercati posso operare?",
     "a5": "Le prime 50 coppie USDT, long o short, con leva da 1× a 200×, 24 ore su 24, 7 giorni su 7.",
     "q6": "Come pago?",
-    "a6": "In crypto tramite NOWPayments. Il tuo conto viene creato automaticamente appena il pagamento è confermato sulla rete.",
-    "q7": "È un'esecuzione di mercato reale?",
-    "a7": "I prezzi provengono da Binance e in ingresso e in uscita si applica uno spread dello 0,05% a sfavore del trader. Leggi l'informativa completa su rischio ed esecuzione nella sezione legale prima di acquistare."
+    "a6": "In crypto tramite NOWPayments. Il tuo conto viene creato automaticamente appena il pagamento è confermato sulla rete."
   },
   "cta": {
     "title": "Il mercato non chiude mai. Neanche il tuo vantaggio dovrebbe.",

@@ -45,7 +45,7 @@ function Item({ q, a, open, onToggle, index }: { q: string; a: string; open: boo
 export function FAQ() {
   const t = useTranslations('faq');
   const [open, setOpen] = useState<number | null>(0);
-  const items = [1, 2, 3, 4, 5, 6, 7].map((n) => ({ q: t(`q${n}`), a: t(`a${n}`) }));
+  const items = [1, 2, 3, 4, 5, 6].map((n) => ({ q: t(`q${n}`), a: t(`a${n}`) }));
 
   return (
     <section id="faq" className="scroll-mt-20 border-b border-line">

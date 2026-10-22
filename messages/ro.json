@@ -154,9 +154,7 @@
     "q5": "Pe ce piețe pot tranzacționa?",
     "a5": "Primele 50 de perechi USDT, long sau short, cu levier de la 1× la 200×, 24 de ore pe zi, 7 zile pe săptămână.",
     "q6": "Cum plătesc?",
-    "a6": "În crypto, prin NOWPayments. Contul tău se creează automat imediat ce plata este confirmată în rețea.",
-    "q7": "Este execuție reală pe piață?",
-    "a7": "Prețurile provin de la Binance, iar la intrare și la ieșire se aplică un spread de 0,05% în defavoarea traderului. Citește informarea completă despre risc și execuție din secțiunea juridică înainte de a cumpăra."
+    "a6": "În crypto, prin NOWPayments. Contul tău se creează automat imediat ce plata este confirmată în rețea."
   },
   "cta": {
     "title": "Piața nu se închide niciodată. Nici avantajul tău nu ar trebui.",

@@ -18,7 +18,7 @@ export const HOTKEYS: { keys: string[]; label: string }[] = [
   { keys: ['M'], label: 'Focus the margin field' },
   { keys: ['Shift', 'X'], label: 'Close all positions' },
   { keys: ['Shift', 'F'], label: 'Flatten the current symbol' },
-  { keys: ['Alt', '1…8'], label: 'Chart timeframe 1m · 3m · 5m · 15m · 30m · 1H · 4H · 1D' },
+  { keys: ['Alt', '1…9'], label: 'Chart timeframe 1m · 3m · 5m · 15m · 30m · 1H · 2H · 4H · 6H' },
   { keys: ['Alt', '↑ / ↓'], label: 'Previous / next pair' },
   { keys: ['/'], label: 'Search pairs (also Ctrl + K)' },
   { keys: ['G'], label: 'Toggle magnet crosshair' },
@@ -64,7 +64,7 @@ export function Hotkeys() {
       if (inField || e.ctrlKey || e.metaKey) return;
 
       if (e.altKey && !e.shiftKey) {
-        const m = /^(?:Digit|Numpad)([1-8])$/.exec(e.code);
+        const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
         if (m) { e.preventDefault(); st.set({ timeframe: TIMEFRAMES[Number(m[1]) - 1].key }); return; }
         if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
           e.preventDefault();

@@ -10,6 +10,10 @@ import { useTerminal } from './store';
 
 type SortKey = 'pair' | 'bid' | 'chg';
 
+/** Symbol · Bid · Ask · Daily change. The change column drops out only on the narrow desktop sidebar. */
+const GRID = 'grid grid-cols-[16px_minmax(0,1fr)_76px_76px_56px] lg:max-xl:grid-cols-[16px_minmax(0,1fr)_72px_72px]';
+const CHG = 'lg:max-xl:hidden';
+
 const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; base: string; active: boolean; fav: boolean }) {
   const p = useTerminal((s) => s.prices[symbol]);
   const t = useTerminal((s) => s.tickers[symbol]);
@@ -24,8 +28,7 @@ const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; b
         aria-current={active}
         onClick={() => setSymbol(symbol)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSymbol(symbol); } }}
-        className={cn('grid cursor-pointer grid-cols-[18px_1fr_1fr_1fr_52px] items-center gap-1 px-2 font-mono text-xs transition-colors hover:bg-fg/[0.05]', active && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}
-        style={{ height: 26 }}
+        className={cn(GRID, 'h-[26px] cursor-pointer items-center gap-1 px-2 font-mono text-xs transition-colors hover:bg-fg/[0.05] max-lg:h-11 max-lg:text-sm', active && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}
       >
         <button onClick={(e) => { e.stopPropagation(); toggle(symbol); }} aria-label={fav ? `Remove ${base} from favorites` : `Add ${base} to favorites`} aria-pressed={fav} className="grid h-4 w-4 place-items-center text-subtle hover:text-warn">
           <Star className={cn('h-3 w-3', fav && 'fill-warn text-warn')} />
@@ -33,7 +36,7 @@ const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; b
         <span className="truncate font-sans font-medium text-fg">{base}<span className="text-subtle">/USDT</span></span>
         <Flash value={p?.bid} className="num text-right text-up">{p ? fmtPrice(p.bid) : '—'}</Flash>
         <Flash value={p?.ask} className="num text-right text-down">{p ? fmtPrice(p.ask) : '—'}</Flash>
-        <span className={cn('num text-right', chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down')}>{chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`}</span>
+        <span className={cn('num text-right', CHG, chg == null ? 'text-subtle' : chg >= 0 ? 'text-up' : 'text-down')}>{chg == null ? '—' : `${chg >= 0 ? '+' : ''}${fmtNum(chg)}%`}</span>
       </div>
     </li>
   );
@@ -71,11 +74,15 @@ function WatchlistInner() {
   );
 
   return (
-    <section className="flex h-full min-h-0 flex-col" aria-label="Watchlist">
+    <section className="flex h-full min-h-0 flex-col" aria-label="Market Watch">
+      <div className="flex items-center justify-between border-b border-line px-2.5 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Market Watch</h2>
+        <span className="text-2xs text-subtle">Bid / Ask · live</span>
+      </div>
       <div className="space-y-1.5 border-b border-line p-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search 50 pairs…" aria-label="Search pairs" className="h-7 w-full rounded-md border border-line bg-panel2 pl-7 pr-6 text-xs placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search 50 pairs…" aria-label="Search pairs" className="h-7 w-full rounded-md border border-line bg-panel2 pl-7 pr-6 text-xs max-lg:h-9 max-lg:text-sm placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40" />
           {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 text-subtle hover:text-fg"><X className="h-3 w-3" /></button>}
         </div>
         <div className="flex gap-1">
@@ -86,8 +93,8 @@ function WatchlistInner() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-[18px_1fr_1fr_1fr_52px] gap-1 px-2 py-1 text-2xs text-subtle">
-        <span /><Head k="pair">Pair</Head><Head k="bid" right>Bid</Head><span className="text-right uppercase tracking-wider">Ask</span><Head k="chg" right>24h</Head>
+      <div className={cn(GRID, 'gap-1 border-b border-line px-2 py-1 text-2xs text-subtle')}>
+        <span /><Head k="pair">Symbol</Head><Head k="bid" right>Bid</Head><span className="text-right uppercase tracking-wider">Ask</span><span className={cn('flex justify-end', CHG)}><Head k="chg" right>Daily</Head></span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {symbols.length === 0 ? (

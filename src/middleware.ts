@@ -82,7 +82,7 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Skip API, Next internals, and anything that looks like a static file.
-    '/((?!api/|_next/|icons/|favicon.ico|sw.js|manifest.json|offline.html|.*\\..*).*)',
+    '/((?!api/|_next/|icons/|favicon.ico|sw.js|manifest.json|manifest.webmanifest|offline.html|.*\\..*).*)',
   ],
 };
 

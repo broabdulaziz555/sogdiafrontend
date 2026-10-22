@@ -15,7 +15,7 @@ export interface Column<T> {
   align?: 'left' | 'right' | 'center';
   className?: string;
   headerClassName?: string;
-  hideBelow?: 'sm' | 'md' | 'lg';
+  hideBelow?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 export interface ServerMode {
@@ -57,7 +57,7 @@ interface Props<T> {
   footerNote?: React.ReactNode;
 }
 
-const hide = { sm: 'max-sm:hidden', md: 'max-md:hidden', lg: 'max-lg:hidden' } as const;
+const hide = { sm: 'max-sm:hidden', md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden', '2xl': 'max-2xl:hidden' } as const;
 
 export function DataTable<T>({
   columns,

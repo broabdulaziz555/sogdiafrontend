@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { BarChart3, LineChart, ListOrdered, Wallet } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Wallet } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { cn } from '@/lib/cn';
 import type { Account } from '@/lib/types';
@@ -14,26 +14,19 @@ import { AccountPanel } from './AccountPanel';
 import { TerminalDataProvider, useTerminalData } from './data';
 import { useSymbolFeed, useSymbolsFeed, usePricesFeed, useTickersFeed } from './feeds';
 import { Hotkeys } from './hotkeys';
-import { MarketTrades } from './MarketTrades';
-import { OrderBook } from './OrderBook';
+import { MobileTerminal } from './mobile/MobileTerminal';
 import { OrderTicket } from './OrderTicket';
 import { PairBar } from './PairBar';
 import { usePendingEngine } from './pendingEngine';
 import { PositionsPanel } from './PositionsPanel';
 import { PriceChart } from './PriceChart';
-import { useTerminal, type MobileTab } from './store';
+import { useTerminal } from './store';
 import { TopBar } from './TopBar';
+import { TradeCardModal } from './TradeCard';
+import { useTerminalLayout } from './useLayout';
 import { Watchlist } from './Watchlist';
 
 const LAST_ACCOUNT = 'sg-terminal-account';
-
-function useMedia(query: string): boolean | null {
-  return useSyncExternalStore(
-    (cb) => { const m = window.matchMedia(query); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
-    () => window.matchMedia(query).matches,
-    () => null as unknown as boolean,
-  );
-}
 
 const Panel = ({ children, label, className }: { children: React.ReactNode; label: string; className?: string }) => (
   <div className={cn('min-h-0 min-w-0 bg-panel', className)}><ErrorBoundary label={label} compact>{children}</ErrorBoundary></div>
@@ -42,30 +35,23 @@ const Panel = ({ children, label, className }: { children: React.ReactNode; labe
 function Workspace({ accountsList, onAccountChange }: { accountsList: Account[]; onAccountChange: (id: string) => void }) {
   const { accountId, positions, refresh } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
-  const mobileTab = useTerminal((s) => s.mobileTab);
-  const set = useTerminal((s) => s.set);
-  const wide = useMedia('(min-width: 1680px)');
-  const desktop = useMedia('(min-width: 1024px)');
+  const layout = useTerminalLayout();
 
   useEffect(() => { useTerminal.setState({ accountId }); }, [accountId]);
   usePendingEngine(accountId, refresh);
 
-  const chart = <PriceChart positions={positions} />;
-
   let body: React.ReactNode;
-  if (desktop === null) body = <div className="grid flex-1 place-items-center"><BootScreen label="Loading terminal" /></div>;
-  else if (desktop) {
+  if (layout === null) body = <div className="grid flex-1 place-items-center"><BootScreen label="Loading terminal" /></div>;
+  else if (layout === 'mobile') body = <MobileTerminal />;
+  else {
+    // MetaTrader layout: Market Watch · chart + terminal · order ticket
     body = (
-      <div className={cn('grid min-h-0 flex-1 gap-px bg-line', wide ? 'grid-cols-[300px_minmax(0,1fr)_290px_330px]' : 'grid-cols-[minmax(0,1fr)_280px_320px]')}>
-        {wide && <Panel label="Watchlist"><Watchlist /></Panel>}
-        <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(180px,34%)] gap-px bg-line">
+      <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_290px] gap-px bg-line xl:grid-cols-[240px_minmax(0,1fr)_300px] 2xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+        <Panel label="Market Watch"><Watchlist /></Panel>
+        <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(200px,34%)] gap-px bg-line">
           <PairBar />
-          <Panel label="Chart">{chart}</Panel>
-          <Panel label="Positions"><PositionsPanel className="h-full" /></Panel>
-        </div>
-        <div className="grid min-h-0 grid-rows-[minmax(0,3fr)_minmax(0,2fr)] gap-px bg-line">
-          <Panel label="Order book"><OrderBook /></Panel>
-          <Panel label="Market trades"><MarketTrades /></Panel>
+          <Panel label="Chart"><PriceChart positions={positions} /></Panel>
+          <Panel label="Terminal"><PositionsPanel className="h-full" /></Panel>
         </div>
         <Panel label="Order ticket" className="overflow-y-auto overscroll-contain">
           <OrderTicket />
@@ -73,40 +59,14 @@ function Workspace({ accountsList, onAccountChange }: { accountsList: Account[];
         </Panel>
       </div>
     );
-  } else {
-    body = (
-      <>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-bg pb-16">
-          {mobileTab === 'markets' && <Panel label="Watchlist" className="h-[calc(100dvh-7rem)]"><Watchlist /></Panel>}
-          {mobileTab === 'chart' && (
-            <div className="space-y-px bg-line">
-              <PairBar />
-              <Panel label="Chart" className="h-[52dvh] min-h-[320px]">{chart}</Panel>
-              <Panel label="Order book" className="h-[380px]"><OrderBook /></Panel>
-              <Panel label="Market trades" className="h-[300px]"><MarketTrades /></Panel>
-            </div>
-          )}
-          {mobileTab === 'trade' && <Panel label="Order ticket"><PairBar /><OrderTicket /><AccountPanel /></Panel>}
-          {mobileTab === 'positions' && <Panel label="Positions" className="min-h-[60dvh]"><PositionsPanel className="min-h-[60dvh]" /><AccountPanel /></Panel>}
-        </div>
-        <nav aria-label="Terminal sections" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)]">
-          {([['markets', 'Markets', ListOrdered], ['chart', 'Chart', LineChart], ['trade', 'Trade', BarChart3], ['positions', 'Positions', Wallet]] as [MobileTab, string, typeof Wallet][]).map(([k, label, Icon]) => (
-            <button key={k} onClick={() => set({ mobileTab: k })} aria-current={mobileTab === k ? 'page' : undefined}
-              className={cn('relative flex h-14 flex-col items-center justify-center gap-0.5 text-2xs font-medium', mobileTab === k ? 'text-accent' : 'text-muted')}>
-              <Icon className="h-5 w-5" />{label}
-              {k === 'positions' && positions.length > 0 && <span className="num absolute right-[calc(50%-20px)] top-1.5 rounded-full bg-accent px-1 text-[10px] text-accent-fg">{positions.length}</span>}
-            </button>
-          ))}
-        </nav>
-      </>
-    );
   }
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-bg" data-symbol={symbol}>
+    <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg" data-symbol={symbol}>
       <TopBar accounts={accountsList} onAccountChange={onAccountChange} />
       {body}
       <Hotkeys />
+      <TradeCardModal />
     </div>
   );
 }

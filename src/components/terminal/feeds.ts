@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import useSWR from 'swr';
-import { binanceGet, FeedSocket, mapMini, mapRest24, type AggTrade, type Level } from '@/lib/binance';
+import { binanceGet, FeedSocket, mapMini, mapRest24 } from '@/lib/binance';
 import { get } from '@/lib/api';
 import type { MarketPricesResponse, MarketSymbol } from '@/lib/types';
 import { useTerminal } from './store';
@@ -74,72 +74,40 @@ export function useTickersFeed(symbols: MarketSymbol[]) {
   }, [key]);
 }
 
-/** Order book + aggregated trades + last price for the selected symbol. */
+/**
+ * Last traded price for the selected symbol. The terminal no longer renders a depth ladder or a trade
+ * tape, so only the (light) aggTrade stream is opened — and its updates are throttled to ~4 per second.
+ */
 export function useSymbolFeed(symbol: string) {
-  const mounted = useRef(0);
   useEffect(() => {
-    const id = ++mounted.current;
     const s = symbol.toLowerCase();
     let alive = true;
     let wsLive = false;
-
-    let bids: Level[] = [];
-    let asks: Level[] = [];
-    let bookDirty = false;
-    let tradeBuf: AggTrade[] = [];
-    let trades: AggTrade[] = [];
     let lastPx: number | null = null;
-
+    let dirty = false;
     const st = useTerminal.getState;
-    const set = useTerminal.setState;
 
-    const parseLevels = (a: string[][]): Level[] => a.map(([p, q]) => [+p, +q] as Level);
-    const parseTrade = (d: any): AggTrade => ({ id: d.a, price: +d.p, qty: +d.q, time: d.T, sell: !!d.m });
-
-    // REST seeding / fallback
     const seed = async () => {
       try {
-        const [d, t] = await Promise.all([
-          binanceGet<{ bids: string[][]; asks: string[][] }>('/api/v3/depth', { symbol, limit: 20 }),
-          binanceGet<any[]>('/api/v3/aggTrades', { symbol, limit: 60 }),
-        ]);
-        if (!alive || id !== mounted.current) return;
-        if (!wsLive) { bids = parseLevels(d.bids); asks = parseLevels(d.asks); bookDirty = true; }
-        if (!trades.length) {
-          trades = t.map(parseTrade).reverse();
-          lastPx = trades[0]?.price ?? lastPx;
-          set({ trades: trades.slice(0, 60) });
-          if (lastPx != null) st().setLast(lastPx);
-        }
+        const r = await binanceGet<{ price: string }>('/api/v3/ticker/price', { symbol });
+        if (!alive) return;
+        lastPx = +r.price;
+        if (Number.isFinite(lastPx)) st().setLast(lastPx);
       } catch { /* the websocket / next poll will fill in */ }
     };
     seed();
-    const restPoll = setInterval(() => { if (!wsLive) seed(); }, 2000);
+    const restPoll = setInterval(() => { if (!wsLive) seed(); }, 4000);
 
     const flush = setInterval(() => {
-      if (!alive) return;
-      if (bookDirty) { bookDirty = false; set({ book: { bids, asks, at: Date.now() } }); }
-      if (tradeBuf.length) {
-        trades = [...tradeBuf.reverse(), ...trades].slice(0, 60);
-        tradeBuf = [];
-        set({ trades });
-      }
-      if (lastPx != null) st().setLast(lastPx);
-    }, 150);
+      if (!alive || !dirty || lastPx == null) return;
+      dirty = false;
+      st().setLast(lastPx);
+    }, 250);
 
     const sock = new FeedSocket(
-      [`${s}@depth20@100ms`, `${s}@aggTrade`],
-      (stream, data) => {
-        if (stream.includes('@depth')) {
-          bids = parseLevels(data.bids); asks = parseLevels(data.asks); bookDirty = true;
-        } else if (stream.includes('@aggTrade')) {
-          const t = parseTrade(data);
-          tradeBuf.push(t);
-          if (tradeBuf.length > 80) tradeBuf = tradeBuf.slice(-80);
-          lastPx = t.price;
-        }
-      },
-      (status) => { wsLive = status === 'live'; set({ socket: status }); },
+      [`${s}@aggTrade`],
+      (_stream, data) => { const px = +data?.p; if (Number.isFinite(px)) { lastPx = px; dirty = true; } },
+      (status) => { wsLive = status === 'live'; useTerminal.setState({ socket: status }); },
     );
 
     return () => { alive = false; clearInterval(restPoll); clearInterval(flush); sock.close(); };

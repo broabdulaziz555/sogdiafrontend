@@ -1,10 +1,9 @@
 /**
- * Public Binance market-data access (no keys). The SOGDIA contract does not expose candles, depth
- * or a trade tape, so the terminal reads those directly from Binance's public feeds. Execution,
- * balances and positions always go through the SOGDIA API.
+ * Public market-data access (no keys). Candles and 24h stats are read directly from public feeds.
+ * Execution, balances and positions always go through the SOGDIA API.
  *
  * Override the hosts with NEXT_PUBLIC_BINANCE_REST / NEXT_PUBLIC_BINANCE_WS. A market-data-only
- * mirror (data-api.binance.vision) is tried automatically when the primary host is unreachable.
+ * mirror is tried automatically when the primary host is unreachable.
  */
 const trim = (s: string) => s.replace(/\/$/, '');
 
@@ -18,29 +17,41 @@ export const WS_HOSTS = [
   'wss://data-stream.binance.vision',
 ].filter((v, i, a) => a.indexOf(v) === i);
 
-let restIdx = 0;
+const REST_TIMEOUT_MS = 6000;
 
+/**
+ * Asks every REST host at once and takes the first good answer, so a blocked / hanging primary host
+ * (common on some ISPs) never stalls the terminal. Losers are aborted.
+ */
 export async function binanceGet<T>(path: string, params?: Record<string, string | number>, signal?: AbortSignal): Promise<T> {
   const qs = params ? `?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString()}` : '';
-  let lastErr: unknown;
-  for (let i = 0; i < REST_HOSTS.length; i++) {
-    const host = REST_HOSTS[(restIdx + i) % REST_HOSTS.length];
-    try {
-      const res = await fetch(`${host}${path}${qs}`, { signal });
-      if (!res.ok) throw new Error(`Binance ${res.status}`);
-      restIdx = (restIdx + i) % REST_HOSTS.length; // stick with the host that worked
-      return (await res.json()) as T;
-    } catch (e) {
-      if ((e as Error)?.name === 'AbortError') throw e;
-      lastErr = e;
-    }
+  const ctrls = REST_HOSTS.map(() => new AbortController());
+  const onAbort = () => ctrls.forEach((c) => c.abort());
+  signal?.addEventListener('abort', onAbort);
+  const timers = ctrls.map((c) => setTimeout(() => c.abort(), REST_TIMEOUT_MS));
+  try {
+    const attempts = REST_HOSTS.map(async (host, i) => {
+      const res = await fetch(`${host}${path}${qs}`, { signal: ctrls[i].signal });
+      if (!res.ok) throw new Error(`Market data ${res.status}`);
+      const body = (await res.json()) as T;
+      ctrls.forEach((c, j) => { if (j !== i) c.abort(); });
+      return body;
+    });
+    return await Promise.any(attempts);
+  } catch (e) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    throw new Error('Market data unreachable');
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+    timers.forEach(clearTimeout);
   }
-  throw lastErr instanceof Error ? lastErr : new Error('Market data unreachable');
 }
 
 export type SocketStatus = 'connecting' | 'live' | 'down';
 
-/** WebSocket with exponential backoff, host rotation and a stale-feed watchdog. */
+let wsPref = 0; // index of the host that last delivered data
+
+/** WebSocket with exponential backoff, host rotation, a connect timeout and a stale-feed watchdog. */
 export class FeedSocket {
   private ws: WebSocket | null = null;
   private attempt = 0;
@@ -64,7 +75,7 @@ export class FeedSocket {
   private open() {
     if (this.closed) return;
     this.onStatus?.(this.attempt === 0 ? 'connecting' : 'down');
-    const host = WS_HOSTS[this.attempt % WS_HOSTS.length];
+    const host = WS_HOSTS[(wsPref + this.attempt) % WS_HOSTS.length];
     let ws: WebSocket;
     try {
       ws = new WebSocket(`${host}/stream?streams=${this.streams.join('/')}`);
@@ -73,10 +84,12 @@ export class FeedSocket {
       return;
     }
     this.ws = ws;
-    ws.onopen = () => { this.lastMsg = Date.now(); };
+    // a blocked host can hang for a minute: give up after 4 s and rotate to the next one
+    const connectTimer = setTimeout(() => { if (ws.readyState !== WebSocket.OPEN) ws.close(); }, 4000);
+    ws.onopen = () => { this.lastMsg = Date.now(); clearTimeout(connectTimer); };
     ws.onmessage = (ev) => {
       this.lastMsg = Date.now();
-      if (this.attempt !== 0) this.attempt = 0;
+      if (this.attempt !== 0) { wsPref = (wsPref + this.attempt) % WS_HOSTS.length; this.attempt = 0; }
       this.onStatus?.('live');
       try {
         const m = JSON.parse(ev.data as string);
@@ -84,14 +97,14 @@ export class FeedSocket {
       } catch { /* ignore malformed frame */ }
     };
     ws.onerror = () => { /* onclose follows */ };
-    ws.onclose = () => { if (this.ws === ws) this.retry(); };
+    ws.onclose = () => { clearTimeout(connectTimer); if (this.ws === ws) this.retry(); };
   }
 
   private retry() {
     if (this.closed) return;
     this.onStatus?.('down');
     this.attempt++;
-    const delay = Math.min(15_000, 500 * 2 ** Math.min(this.attempt, 5)) * (0.75 + Math.random() * 0.5);
+    const delay = this.attempt <= 1 ? 150 : Math.min(15_000, 500 * 2 ** Math.min(this.attempt, 5)) * (0.75 + Math.random() * 0.5);
     this.timer = setTimeout(() => this.open(), delay);
   }
 
@@ -117,8 +130,15 @@ export const TIMEFRAMES = [
   { key: '15m', label: '15m', seconds: 900 },
   { key: '30m', label: '30m', seconds: 1800 },
   { key: '1h', label: '1H', seconds: 3600 },
+  { key: '2h', label: '2H', seconds: 7200 },
   { key: '4h', label: '4H', seconds: 14400 },
+  { key: '6h', label: '6H', seconds: 21600 },
+  { key: '8h', label: '8H', seconds: 28800 },
+  { key: '12h', label: '12H', seconds: 43200 },
   { key: '1d', label: '1D', seconds: 86400 },
+  { key: '3d', label: '3D', seconds: 259200 },
+  { key: '1w', label: '1W', seconds: 604800 },
+  { key: '1M', label: '1Mo', seconds: 2592000 }, // calendar month: real close time is computed separately
 ] as const;
 export type TimeframeKey = (typeof TIMEFRAMES)[number]['key'];
 

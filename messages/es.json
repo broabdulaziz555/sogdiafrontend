@@ -154,9 +154,7 @@
     "q5": "¿Qué mercados puedo operar?",
     "a5": "Los 50 mejores pares USDT, en long o short, con apalancamiento de 1× a 200×, las 24 horas, los 7 días de la semana.",
     "q6": "¿Cómo pago?",
-    "a6": "En cripto a través de NOWPayments. Tu cuenta se crea automáticamente en cuanto el pago se confirma en la red.",
-    "q7": "¿Es esto ejecución real de mercado?",
-    "a7": "Los precios provienen de Binance y se aplica un spread del 0,05% en contra del trader en la entrada y la salida. Lee la información completa sobre riesgo y ejecución en la sección legal antes de comprar."
+    "a6": "En cripto a través de NOWPayments. Tu cuenta se crea automáticamente en cuanto el pago se confirma en la red."
   },
   "cta": {
     "title": "El mercado no cierra. Tu ventaja tampoco debería.",

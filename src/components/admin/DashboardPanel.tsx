@@ -55,9 +55,9 @@ function useSalesSeries() {
 
 function Kpi({ icon: Icon, label, value, sub, warn }: { icon: typeof Users; label: string; value: React.ReactNode; sub?: string; warn?: boolean }) {
   return (
-    <div className="rounded-xl border border-line bg-panel p-4">
-      <div className="flex items-center justify-between"><p className="label">{label}</p><Icon className={warn ? 'h-4 w-4 text-warn' : 'h-4 w-4 text-subtle'} /></div>
-      <p className="num mt-1.5 text-2xl font-bold tracking-tight">{value}</p>
+    <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel p-3.5 sm:p-4">
+      <div className="flex items-center justify-between gap-2"><p className="label truncate">{label}</p><Icon className={warn ? 'h-4 w-4 shrink-0 text-warn' : 'h-4 w-4 shrink-0 text-subtle'} /></div>
+      <p className="num mt-1.5 whitespace-nowrap text-[clamp(1rem,5vw,1.5rem)] font-bold leading-tight tracking-tight">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { mutate as globalMutate } from 'swr';
 import { CheckCircle2, Clock, FileCheck2, FileText, BookOpen, Contact, ShieldAlert, UploadCloud, X } from 'lucide-react';
 import { PageHead } from './PageHead';
@@ -16,6 +16,13 @@ import type { KycStatus } from '@/lib/types';
 
 interface KycStatusResponse { kyc_status: KycStatus; document_url: string | null; note: string | null }
 interface UploadResponse { path: string; signed_url: string; expires_in: number; kyc_status: KycStatus }
+
+const SENT_KEY = 'sg-kyc-sent';
+const SENT_TTL = 14 * 24 * 3600 * 1000;
+interface Sent { name: string; at: number }
+const readSent = (): Sent | null => {
+  try { const v = JSON.parse(window.localStorage.getItem(SENT_KEY) || 'null') as Sent | null; return v && Date.now() - v.at < SENT_TTL ? v : null; } catch { return null; }
+};
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPT = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -64,7 +71,10 @@ function StatusPanel({ status, note }: { status: KycStatus; note: string | null 
 
 export function KycPanel() {
   const toast = useToast();
-  const { data, error, isLoading, mutate } = useApi<KycStatusResponse>('/kyc/status');
+  const { data, error, isLoading, mutate } = useApi<KycStatusResponse>('/kyc/status', undefined, { refreshInterval: (d) => (d?.kyc_status === 'pending' ? 30_000 : 0), revalidateOnFocus: true });
+  const [sent, setSent] = useState<Sent | null>(null);
+  const [sentNow, setSentNow] = useState(false);
+  useEffect(() => { setSent(readSent()); }, []);
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState('passport');
   const [fileError, setFileError] = useState<string | null>(null);
@@ -99,7 +109,11 @@ export function KycPanel() {
     try {
       const res = await upload<UploadResponse>('/kyc/upload', fd, setProgress);
       toast.success('Document uploaded', 'Your verification is now pending review.');
-      await mutate({ kyc_status: res.kyc_status, document_url: res.path, note: null }, { revalidate: true });
+      const rec = { name: file.name, at: Date.now() };
+      try { window.localStorage.setItem(SENT_KEY, JSON.stringify(rec)); } catch { /* storage blocked */ }
+      setSent(rec); setSentNow(true);
+      // show "pending" immediately; the server value is re-read in the background and never downgrades this
+      await mutate({ kyc_status: res.kyc_status ?? 'pending', document_url: res.path ?? null, note: null }, { revalidate: false });
       globalMutate('/me');
       clear();
     } catch (e) {
@@ -109,7 +123,13 @@ export function KycPanel() {
     }
   };
 
-  const status = data?.kyc_status ?? 'not_submitted';
+  const server = data?.kyc_status ?? 'not_submitted';
+  // The server is the source of truth, but a document we just uploaded (or one it already holds) must never look like "nothing submitted".
+  const status: KycStatus =
+    server === 'verified' ? 'verified'
+    : sentNow && server !== 'pending' ? 'pending'
+    : server === 'not_submitted' && (data?.document_url || sent) ? 'pending'
+    : server;
   const canUpload = status !== 'verified' && status !== 'pending';
 
   return (
@@ -124,6 +144,12 @@ export function KycPanel() {
         <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
           <div className="space-y-4">
             <StatusPanel status={status} note={data?.note ?? null} />
+            {status === 'pending' && (sent || data?.document_url) && (
+              <div role="status" className="flex items-start gap-3 rounded-xl border border-warn/30 bg-warn/10 px-4 py-3 text-sm">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
+                <p><span className="font-medium">Document received</span>{sent ? <> — {sent.name}, sent {new Date(sent.at).toLocaleString()}</> : null}. It is waiting for review; nothing more is needed from you.</p>
+              </div>
+            )}
 
             {canUpload ? (
               <section className="rounded-2xl border border-line bg-panel p-5" aria-labelledby="kyc-upload">

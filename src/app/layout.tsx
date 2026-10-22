@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: { default: 'SOGDIA — Institutional Crypto Prop Firm', template: '%s · SOGDIA' },
   description: 'Trade crypto 24/7. Keep more of what you earn. SOGDIA is built for traders who refuse to wait.',
   applicationName: 'SOGDIA',
-  manifest: '/manifest.json',
+  manifest: '/manifest.webmanifest',
   icons: { icon: '/icons/icon.svg', apple: '/icons/icon-192.png' },
   appleWebApp: { capable: true, title: 'SOGDIA', statusBarStyle: 'black-translucent' },
   openGraph: { title: 'SOGDIA — Institutional Crypto Prop Firm', siteName: 'SOGDIA', type: 'website' },

@@ -14,10 +14,10 @@ export function PageHead({ title, subtitle, actions, className }: { title: strin
 
 export function Stat({ label, value, sub, tone, className }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: 'up' | 'down'; className?: string }) {
   return (
-    <div className={cn('rounded-xl border border-line bg-panel p-4', className)}>
-      <p className="label">{label}</p>
-      <p className={cn('num mt-1.5 text-2xl font-bold tracking-tight', tone === 'up' && 'text-up', tone === 'down' && 'text-down')}>{value}</p>
-      {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
+    <div className={cn('min-w-0 overflow-hidden rounded-xl border border-line bg-panel p-3.5 sm:p-4', className)}>
+      <p className="label truncate">{label}</p>
+      <p className={cn('num mt-1.5 whitespace-nowrap text-[clamp(1rem,5vw,1.5rem)] font-bold leading-tight tracking-tight', tone === 'up' && 'text-up', tone === 'down' && 'text-down')}>{value}</p>
+      {sub && <p className="mt-0.5 text-xs leading-snug text-muted">{sub}</p>}
     </div>
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { Share2, SlidersHorizontal, X } from 'lucide-react';
-import { assetUrl, errMsg, get, post } from '@/lib/api';
+import { errMsg, get, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, timeHMS } from '@/lib/format';
+import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, qtyDecimals, shortId, timeHMS } from '@/lib/format';
 import type { HistoryOrder, HistoryResponse, Position, Side } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -19,13 +19,17 @@ import { useTerminal, type PendingOrder } from './store';
 
 type Tab = 'positions' | 'pending' | 'history';
 
-const sym = (s: string) => s.replace('USDT', '/USDT');
-const SideTag = ({ side }: { side: Side }) => (
+export const sym = (s: string) => s.replace('USDT', '/USDT');
+export const SideTag = ({ side }: { side: Side }) => (
   <span className={cn('rounded px-1 py-px text-2xs font-semibold uppercase', side === 'long' ? 'bg-up/15 text-up' : 'bg-down/15 text-down')}>{side}</span>
+);
+/** MetaTrader wording: long = buy, short = sell. */
+export const TypeTag = ({ side }: { side: Side }) => (
+  <span className={cn('text-xs font-semibold uppercase', side === 'long' ? 'text-up' : 'text-down')}>{side === 'long' ? 'buy' : 'sell'}</span>
 );
 
 /* ── TP / SL editor ─────────────────────────────────────────────────────── */
-function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null; onClose: () => void; onDone: () => void }) {
+export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [tp, setTp] = useState('');
   const [sl, setSl] = useState('');
@@ -110,32 +114,31 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     setCloseAll(false);
   }, [toast, refresh]);
 
-  const share = async (p: Position) => {
-    const url = assetUrl(`/api/og/trade/${p.id}`);
-    try { await navigator.clipboard.writeText(url); toast.success('Share link copied', 'Opens a 1200×630 image of this trade.'); } catch { /* clipboard blocked */ }
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
+  const share = (p: Position) => useTerminal.getState().set({ tradeCard: { id: p.id, label: `${sym(p.symbol)} ${p.side === 'long' ? 'Buy' : 'Sell'}`, live: true } });
 
   const cols: Column<Position>[] = useMemo(() => [
-    { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => `${p.symbol} ${p.side}`,
-      cell: (p) => <button onClick={() => setSymbol(p.symbol)} className={cn('flex items-center gap-1.5 text-left font-medium hover:text-accent', p.symbol === current && 'text-accent')}>{sym(p.symbol)}<SideTag side={p.side} /><span className="num text-2xs text-subtle">{p.leverage}×</span></button> },
-    { key: 'size', header: 'Size', align: 'right', sortValue: (p) => p.position_size, cell: (p) => <span className="num font-mono">{fmtNum(p.position_size)}</span> },
-    { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', sortValue: (p) => p.entry_price, cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
-    { key: 'mark', header: 'Mark', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
-    { key: 'liq', header: 'Liq.', align: 'right', hideBelow: 'md', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
-    { key: 'margin', header: 'Margin', align: 'right', hideBelow: 'md', sortValue: (p) => p.margin, cell: (p) => <span className="num font-mono">{fmtNum(p.margin)}</span> },
-    { key: 'tpsl', header: 'TP / SL', align: 'right', hideBelow: 'lg', cell: (p) => (
-      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-muted hover:text-accent" aria-label={`Edit TP/SL for ${sym(p.symbol)}`}>
-        <span className="text-up">{p.take_profit ? fmtPrice(p.take_profit) : '—'}</span> / <span className="text-warn">{p.stop_loss ? fmtPrice(p.stop_loss) : '—'}</span>
-      </button>) },
-    { key: 'pnl', header: 'PnL (ROE)', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
+    { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => `${p.symbol} ${p.side} ${p.id}`,
+      cell: (p) => <button onClick={() => setSymbol(p.symbol)} className={cn('text-left font-medium hover:text-accent', p.symbol === current && 'text-accent')}>{sym(p.symbol)}</button> },
+    { key: 'ticket', header: 'Ticket', hideBelow: 'xl', sortValue: (p) => p.id, cell: (p) => <span className="num font-mono text-xs text-muted">#{shortId(p.id)}</span> },
+    { key: 'time', header: 'Time', hideBelow: 'xl', sortValue: (p) => Date.parse(p.created_at), cell: (p) => <span className="num text-xs text-muted">{dateTime(p.created_at)}</span> },
+    { key: 'type', header: 'Type', sortValue: (p) => p.side, cell: (p) => <TypeTag side={p.side} /> },
+    { key: 'size', header: 'Volume', align: 'right', sortValue: (p) => p.quantity, cell: (p) => <span className="num font-mono">{fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1)}</span> },
+    { key: 'lev', header: 'Lev.', align: 'right', hideBelow: 'xl', sortValue: (p) => p.leverage, cell: (p) => <span className="num font-mono text-muted">{p.leverage}×</span> },
+    { key: 'entry', header: 'Price', align: 'right', sortValue: (p) => p.entry_price, cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
+    { key: 'sl', header: 'S / L', align: 'right', sortValue: (p) => p.stop_loss ?? 0, cell: (p) => (
+      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-warn hover:underline" aria-label={`Edit stop-loss for ${sym(p.symbol)}`}>{p.stop_loss ? fmtPrice(p.stop_loss) : <span className="text-subtle">—</span>}</button>) },
+    { key: 'tp', header: 'T / P', align: 'right', sortValue: (p) => p.take_profit ?? 0, cell: (p) => (
+      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-up hover:underline" aria-label={`Edit take-profit for ${sym(p.symbol)}`}>{p.take_profit ? fmtPrice(p.take_profit) : <span className="text-subtle">—</span>}</button>) },
+    { key: 'mark', header: 'Current', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
+    { key: 'liq', header: 'Liq.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
+    { key: 'pnl', header: 'Profit', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
       <span className={cn('num font-mono font-semibold', pnlClass(p.unrealized_pnl))}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 text-2xs font-normal opacity-80">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
     { key: 'act', header: <span className="sr-only">Actions</span>, align: 'right', cell: (p) => (
       <div className="relative flex justify-end gap-1">
-        <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="TP / SL"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
+        <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
         <button onClick={() => share(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Share" title="Share"><Share2 className="h-3.5 w-3.5" /></button>
         <div className="relative">
-          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40">%</button>
+          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
           {menu === p.id && (
             <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md border border-line bg-panel shadow-xl">
               {[25, 50, 75].map((n) => <button key={n} role="menuitem" onClick={() => close(p, n)} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-fg/[0.06]">Close {n}%</button>)}
@@ -151,7 +154,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
       compact bare dense
       columns={cols} rows={positions} rowKey={(p) => p.id}
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
-      pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search positions"
+      pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
       initialSort={{ key: 'pnl', dir: 'asc' }}
       toolbar={positions.length > 1 ? <Button size="xs" variant="danger" loading={closeAll} onClick={() => flatten(positions)}>Close all ({positions.length})</Button> : undefined}
       empty={{ title: 'No open positions', description: 'Orders you open appear here and update every two seconds.' }}
@@ -191,9 +194,9 @@ function PendingTable() {
 }
 
 /* ── History (server-paginated) ─────────────────────────────────────────── */
-const REASON: Record<string, string> = { manual: 'Manual', liquidation: 'Liquidated', stop_loss: 'Stop-loss', take_profit: 'Take-profit', DAILY_DRAWDOWN: 'Daily DD', MAX_DRAWDOWN: 'Max DD', partial: 'Partial' };
+export const REASON: Record<string, string> = { manual: 'Manual', liquidation: 'Liquidated', stop_loss: 'Stop-loss', take_profit: 'Take-profit', DAILY_DRAWDOWN: 'Daily DD', MAX_DRAWDOWN: 'Max DD', partial: 'Partial' };
 
-function HistoryTable() {
+function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | null) => void }) {
   const { accountId } = useTerminalData();
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(25);
@@ -204,15 +207,20 @@ function HistoryTable() {
     { keepPreviousData: true, revalidateOnFocus: false, dedupingInterval: 5000 },
   );
 
+  useEffect(() => { onStats?.(data?.stats ?? null); }, [data, onStats]);
+
   const cols: Column<HistoryOrder>[] = [
-    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.close_reason ?? ''}`, cell: (o) => <span className="flex items-center gap-1.5 font-medium">{sym(o.symbol)}<SideTag side={o.side} /><span className="num text-2xs text-subtle">{o.leverage}×</span></span> },
-    { key: 'size', header: 'Size', align: 'right', hideBelow: 'md', sortValue: (o) => o.position_size, cell: (o) => <span className="num font-mono">{fmtNum(o.position_size)}</span> },
-    { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', sortValue: (o) => o.entry_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span> },
-    { key: 'exit', header: 'Exit', align: 'right', hideBelow: 'sm', sortValue: (o) => o.close_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span> },
-    { key: 'pnl', header: 'PnL', align: 'right', sortValue: (o) => o.pnl, cell: (o) => <span className={cn('num font-mono font-semibold', pnlClass(o.pnl))}>{fmtSigned(o.pnl)}</span> },
+    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.id} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{sym(o.symbol)}</span> },
+    { key: 'ticket', header: 'Ticket', hideBelow: 'xl', cell: (o) => <span className="num font-mono text-xs text-muted">#{shortId(o.id)}</span> },
+    { key: 'opened', header: 'Open time', hideBelow: 'xl', sortValue: (o) => Date.parse(o.created_at), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.created_at)}</span> },
+    { key: 'type', header: 'Type', sortValue: (o) => o.side, cell: (o) => <TypeTag side={o.side} /> },
+    { key: 'size', header: 'Volume', align: 'right', hideBelow: 'md', sortValue: (o) => o.position_size, cell: (o) => <span className="num font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</span> },
+    { key: 'entry', header: 'Price', align: 'right', hideBelow: 'sm', sortValue: (o) => o.entry_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span> },
+    { key: 'exit', header: 'Close price', align: 'right', hideBelow: 'sm', sortValue: (o) => o.close_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span> },
+    { key: 'closed', header: 'Close time', align: 'right', sortValue: (o) => (o.closed_at ? Date.parse(o.closed_at) : 0), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.closed_at)}</span> },
     { key: 'reason', header: 'Reason', hideBelow: 'lg', sortValue: (o) => o.close_reason, cell: (o) => <span className="text-xs text-muted">{o.close_reason ? REASON[o.close_reason] ?? o.close_reason : '—'}</span> },
-    { key: 'closed', header: 'Closed', align: 'right', sortValue: (o) => (o.closed_at ? Date.parse(o.closed_at) : 0), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.closed_at)}</span> },
-    { key: 'share', header: <span className="sr-only">Share</span>, align: 'right', cell: (o) => <a href={assetUrl(`/api/og/trade/${o.id}`)} target="_blank" rel="noopener noreferrer" className="inline-grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label={`Share ${sym(o.symbol)} trade`}><Share2 className="h-3.5 w-3.5" /></a> },
+    { key: 'pnl', header: 'Profit', align: 'right', sortValue: (o) => o.pnl, cell: (o) => <span className={cn('num font-mono font-semibold', pnlClass(o.pnl))}>{fmtSigned(o.pnl)}</span> },
+    { key: 'share', header: <span className="sr-only">Share</span>, align: 'right', cell: (o) => <button onClick={() => useTerminal.getState().set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Buy' : 'Sell'}`, live: false } })} className="inline-grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label={`Trade card for ${sym(o.symbol)}`} title="Trade card"><Share2 className="h-3.5 w-3.5" /></button> },
   ];
 
   return (
@@ -226,22 +234,58 @@ function HistoryTable() {
   );
 }
 
+/* ── MetaTrader-style account line ─────────────────────────────────────── */
+function Kv({ k, v, tone }: { k: string; v: React.ReactNode; tone?: 'up' | 'down' | 'warn' }) {
+  return <span className="whitespace-nowrap"><span className="text-subtle">{k}: </span><span className={cn('num font-mono', tone === 'up' && 'text-up', tone === 'down' && 'text-down', tone === 'warn' && 'text-warn')}>{v}</span></span>;
+}
+
+function AccountLine({ tab, stats }: { tab: Tab; stats: HistoryResponse['stats'] | null }) {
+  const { account, metrics, positions } = useTerminalData();
+  if (tab === 'history') {
+    return (
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line bg-panel2/60 px-3 py-1.5 text-xs">
+        {stats ? (<>
+          <Kv k="Trades" v={stats.trades} />
+          <Kv k="Win rate" v={`${fmtNum(stats.win_rate, 1)}%`} />
+          <Kv k="Wins / Losses" v={`${stats.wins} / ${stats.losses}`} />
+          <span className="ml-auto"><Kv k="Net profit" v={fmtSigned(stats.net_pnl)} tone={stats.net_pnl > 0 ? 'up' : stats.net_pnl < 0 ? 'down' : undefined} /></span>
+        </>) : <span className="text-subtle">Loading statistics…</span>}
+      </div>
+    );
+  }
+  if (!account || !metrics) return null;
+  const ml = metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
+  const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line bg-panel2/60 px-3 py-1.5 text-xs">
+      <Kv k="Balance" v={fmtUsd(account.balance)} />
+      <Kv k="Equity" v={fmtUsd(metrics.equity)} />
+      <Kv k="Margin" v={fmtUsd(metrics.used_margin)} />
+      <Kv k="Free margin" v={fmtUsd(metrics.free_margin)} />
+      <Kv k="Margin level" v={ml == null ? '—' : `${fmtNum(ml, 2)}%`} tone={ml != null && ml < 120 ? 'down' : ml != null && ml < 200 ? 'warn' : undefined} />
+      <span className="ml-auto"><Kv k="Profit" v={fmtSigned(total)} tone={total > 0 ? 'up' : total < 0 ? 'down' : undefined} /></span>
+    </div>
+  );
+}
+
 /* ── Container ──────────────────────────────────────────────────────────── */
 function PositionsPanelInner({ className }: { className?: string }) {
   const { positions, refresh, accountId } = useTerminalData();
   const pendingCount = useTerminal((s) => s.pending.filter((o) => o.accountId === accountId).length);
   const [tab, setTab] = useState<Tab>('positions');
   const [editing, setEditing] = useState<Position | null>(null);
+  const [stats, setStats] = useState<HistoryResponse['stats'] | null>(null);
 
   return (
-    <section className={cn('flex min-h-0 flex-col bg-panel', className)} aria-label="Orders and positions">
+    <section className={cn('flex min-h-0 flex-col bg-panel', className)} aria-label="Terminal: trades, pending orders and history">
       <Tabs<Tab> className="shrink-0 px-3 pt-1.5" value={tab} onChange={setTab}
-        tabs={[{ value: 'positions', label: 'Open positions', count: positions.length }, { value: 'pending', label: 'Pending orders', count: pendingCount }, { value: 'history', label: 'Trade history' }]} />
+        tabs={[{ value: 'positions', label: 'Trade', count: positions.length }, { value: 'pending', label: 'Pending orders', count: pendingCount }, { value: 'history', label: 'History' }]} />
       <div className="min-h-0 flex-1 overflow-auto">
         {tab === 'positions' && <PositionsTable onEdit={setEditing} />}
         {tab === 'pending' && <PendingTable />}
-        {tab === 'history' && <HistoryTable />}
+        {tab === 'history' && <HistoryTable onStats={setStats} />}
       </div>
+      <AccountLine tab={tab} stats={stats} />
       <ProtectionModal pos={editing} onClose={() => setEditing(null)} onDone={() => void refresh()} />
     </section>
   );

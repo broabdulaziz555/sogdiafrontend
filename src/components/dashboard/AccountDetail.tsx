@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { SiteLink } from '@/components/ui/SiteLink';
 import { useApi } from '@/hooks/useApi';
 import { dateShort, dateTime, fmtNum, fmtPct, fmtPrice, fmtSigned, fmtUsd, pnlClass, titleCase } from '@/lib/format';
-import type { Account, AccountMetrics, EquityCurveResponse, HistoryOrder, HistoryResponse, RiskState } from '@/lib/types';
+import type { Account, AccountMetrics, EquityCurveResponse, HistoryOrder, HistoryResponse, Position, PositionsResponse, RiskState } from '@/lib/types';
 
 interface Detail { account: Account; metrics: AccountMetrics; risk: RiskState }
 
@@ -38,6 +38,7 @@ export function AccountDetail({ id }: { id: string }) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
   const [q, setQ] = useState('');
+  const open = useApi<PositionsResponse>('/trade/positions', { account_id: id }, { refreshInterval: (d) => (d?.positions?.length ? 4000 : 12_000), revalidateOnFocus: true });
   const hist = useApi<HistoryResponse>('/trade/history', { account_id: id, limit: pageSize, offset: page * pageSize, status: 'closed' });
 
   const back = (
@@ -73,6 +74,18 @@ export function AccountDetail({ id }: { id: string }) {
   ];
 
   const stats = hist.data?.stats;
+  const openRows = open.data?.positions ?? [];
+  const openPnl = openRows.reduce((t, x) => t + x.unrealized_pnl, 0);
+  const openCols: Column<Position>[] = [
+    { key: 'symbol', header: 'Symbol', cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '')}<span className="text-subtle">/USDT</span></span>, sortValue: (o) => o.symbol },
+    { key: 'side', header: 'Side', cell: (o) => <Badge tone={o.side === 'long' ? 'up' : 'down'}>{o.side === 'long' ? 'buy' : 'sell'} {o.leverage}×</Badge>, sortValue: (o) => o.side },
+    { key: 'size', header: 'Size', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtUsd(o.position_size)}</span>, sortValue: (o) => o.position_size },
+    { key: 'entry', header: 'Entry', align: 'right', cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span>, sortValue: (o) => o.entry_price },
+    { key: 'mark', header: 'Current', align: 'right', hideBelow: 'md', cell: (o) => <span className="num font-mono">{fmtPrice(o.mark_price)}</span>, sortValue: (o) => o.mark_price },
+    { key: 'liq', header: 'Liq.', align: 'right', hideBelow: 'lg', cell: (o) => <span className="num font-mono text-down">{fmtPrice(o.liquidation_price)}</span>, sortValue: (o) => o.liquidation_price },
+    { key: 'time', header: 'Opened', hideBelow: 'lg', cell: (o) => <span className="num text-muted">{dateTime(o.created_at)}</span>, sortValue: (o) => new Date(o.created_at).getTime() },
+    { key: 'pnl', header: 'Profit', align: 'right', cell: (o) => <span className={`num font-mono font-medium ${pnlClass(o.unrealized_pnl)}`}>{fmtSigned(o.unrealized_pnl)}</span>, sortValue: (o) => o.unrealized_pnl },
+  ];
 
   return (
     <>
@@ -144,6 +157,23 @@ export function AccountDetail({ id }: { id: string }) {
           </dl>
         </section>
       </div>
+
+      <section className="mb-6">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-md font-semibold">Open positions{openRows.length ? <span className="ml-2 num text-xs font-normal text-muted">{openRows.length} open · <span className={pnlClass(openPnl)}>{fmtSigned(openPnl)}</span></span> : null}</h2>
+          {a.status === 'active' && <SiteLink site="trade" path={`/?account=${a.id}`} className="text-xs font-medium text-accent hover:underline">Manage or close in terminal →</SiteLink>}
+        </div>
+        <DataTable
+          columns={openCols}
+          rows={open.data ? openRows : undefined}
+          rowKey={(o) => o.id}
+          loading={open.isLoading}
+          error={open.error}
+          onRetry={() => open.mutate()}
+          empty={{ title: 'No open positions', description: 'Positions you open in the terminal appear here with live profit.' }}
+          initialSort={{ key: 'time', dir: 'desc' }}
+        />
+      </section>
 
       <section>
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">

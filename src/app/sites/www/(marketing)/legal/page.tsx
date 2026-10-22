@@ -32,7 +32,7 @@ const SECTIONS: { id: string; title: string; body: string[] }[] = [
     id: 'execution',
     title: 'Execution & Spread Disclosure',
     body: [
-      'Trading on SOGDIA accounts is conducted within SOGDIA\'s own execution engine. Orders are not routed to an external exchange or liquidity provider. Reference prices are sourced from Binance and may differ from prices available on other venues or at other times.',
+      'Trading on SOGDIA accounts is conducted within SOGDIA\'s own execution engine. Orders are not routed to an external exchange. Prices are aggregated from liquidity providers, and orders are executed at the prevailing quoted bid or ask derived from those prices. Execution prices may differ from prices available on other venues or at other times.',
       'A spread of 0.05% is applied against the trader on every fill: long positions are filled at the ask and short positions at the bid, and the inverse applies on exit. Liquidation prices are computed from the entry price and leverage and are enforced by a server-side sweep.',
       'Because SOGDIA is the counterparty to trades executed in its engine, SOGDIA may benefit economically when traders lose. Prices, fills and account metrics are determined solely by SOGDIA\'s systems and are final, subject to correction of demonstrable errors.',
       'Market data, balances and positions may be delayed, interrupted or inaccurate due to connectivity or upstream failures. The risk engine evaluates drawdown on equity (balance plus unrealised PnL); if a limit is breached, all open positions are closed at market and the account is marked failed.',

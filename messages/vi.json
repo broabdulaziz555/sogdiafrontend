@@ -154,9 +154,7 @@
     "q5": "Tôi có thể giao dịch những thị trường nào?",
     "a5": "50 cặp USDT hàng đầu, long hoặc short, đòn bẩy từ 1× đến 200×, 24 giờ mỗi ngày, 7 ngày mỗi tuần.",
     "q6": "Tôi thanh toán bằng cách nào?",
-    "a6": "Bằng tiền mã hóa qua NOWPayments. Tài khoản của bạn được tạo tự động ngay khi thanh toán được xác nhận trên mạng.",
-    "q7": "Đây có phải là khớp lệnh thị trường thực không?",
-    "a7": "Giá lấy từ Binance, và chênh lệch 0,05% bất lợi cho nhà giao dịch được áp dụng khi vào và ra lệnh. Hãy đọc đầy đủ phần công bố rủi ro và khớp lệnh trong mục pháp lý trước khi mua."
+    "a6": "Bằng tiền mã hóa qua NOWPayments. Tài khoản của bạn được tạo tự động ngay khi thanh toán được xác nhận trên mạng."
   },
   "cta": {
     "title": "Thị trường không bao giờ đóng cửa. Lợi thế của bạn cũng không nên.",

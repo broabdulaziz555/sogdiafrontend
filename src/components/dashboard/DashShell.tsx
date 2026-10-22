@@ -15,6 +15,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Badge } from '@/components/ui/Primitives';
 import { SiteLink } from '@/components/ui/SiteLink';
 import { Notifications } from './Notifications';
+import { InstallApp } from '@/components/pwa/InstallApp';
 import { clearSession } from '@/lib/auth';
 import { siteHref } from '@/lib/sites';
 import { cn } from '@/lib/cn';
@@ -102,6 +103,7 @@ function UserMenu() {
                 <ShieldAlert className="h-4 w-4" />{t('adminPanel')}
               </SiteLink>
             )}
+            <InstallApp className="h-8 rounded-md px-2.5 text-muted hover:text-fg" onDone={() => setOpen(false)} />
             <button
               role="menuitem"
               onClick={() => { clearSession(); window.location.href = siteHref('www', '/'); }}

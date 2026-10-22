@@ -21,7 +21,7 @@ export interface PendingOrder {
   error?: string;
 }
 
-export type MobileTab = 'markets' | 'chart' | 'trade' | 'positions';
+export type MobileTab = 'markets' | 'chart' | 'trade' | 'positions' | 'history';
 export type BookView = 'both' | 'bids' | 'asks';
 
 interface State {
@@ -35,6 +35,13 @@ interface State {
   showMA: boolean;
   bookView: BookView;
   bookGroup: number; // index into the per-symbol group ladder
+  showVol: boolean;
+  showEMA: boolean;
+  showBB: boolean;
+  showLevels: boolean;
+  showOrders: boolean;
+  showQuotes: boolean;
+  quickMargin: string;
   leverage: number;
   pending: PendingOrder[];
 
@@ -53,6 +60,7 @@ interface State {
   mobileTab: MobileTab;
   hotkeysOpen: boolean;
   pickedPrice: { price: number; n: number } | null;
+  tradeCard: { id: string; label: string; live: boolean } | null;
 
   set: (p: Partial<State>) => void;
   setSymbol: (s: string) => void;
@@ -79,6 +87,13 @@ export const useTerminal = create<State>()(
       showMA: true,
       bookView: 'both',
       bookGroup: 0,
+      showVol: false,
+      showEMA: false,
+      showBB: false,
+      showLevels: true,
+      showOrders: true,
+      showQuotes: true,
+      quickMargin: '100',
       leverage: 20,
       pending: [],
 
@@ -96,6 +111,7 @@ export const useTerminal = create<State>()(
       mobileTab: 'chart',
       hotkeysOpen: false,
       pickedPrice: null,
+      tradeCard: null,
 
       set: (p) => set(p),
       setSymbol: (symbol) => {
@@ -139,6 +155,13 @@ export const useTerminal = create<State>()(
         magnet: s.magnet,
         showMA: s.showMA,
         bookView: s.bookView,
+        showVol: s.showVol,
+        showEMA: s.showEMA,
+        showBB: s.showBB,
+        showLevels: s.showLevels,
+        showOrders: s.showOrders,
+        showQuotes: s.showQuotes,
+        quickMargin: s.quickMargin,
         leverage: s.leverage,
         // 'filling' is never persisted: other tabs must not see an in-flight order as fillable, and a crash mid-fill must not replay it.
         pending: s.pending.filter((o) => o.status !== 'filling'),

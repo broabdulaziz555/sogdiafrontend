@@ -3,8 +3,7 @@
     "footnote": "Drawdown is measured on equity (balance + unrealised PnL). A breach closes all open positions at market and ends the account."
   },
   "faq": {
-    "a2": "On equity, which is balance plus unrealised PnL. Daily drawdown is measured from your daily starting balance (reset at 00:00 UTC); max drawdown is measured from the initial account size.",
-    "a7": "Prices are sourced from Binance and a 0.05% spread is applied against the trader on entry and exit. Read the full risk and execution disclosure in the legal section before purchasing."
+    "a2": "On equity, which is balance plus unrealised PnL. Daily drawdown is measured from your daily starting balance (reset at 00:00 UTC); max drawdown is measured from the initial account size."
   },
   "footer": {
     "disclaimer": "Trading digital assets involves substantial risk of loss and is not suitable for every individual. Nothing on this site is investment, financial, legal or tax advice. Past performance is not indicative of future results. Review the full disclosures before purchasing any account."

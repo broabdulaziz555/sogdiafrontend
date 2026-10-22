@@ -108,4 +108,5 @@
 }
 
 /* Terminal / admin pages never scroll the body */
-body.app-locked { overflow: hidden; overscroll-behavior: none; }
+html:has(body.app-locked) { overflow: hidden; height: 100%; }
+body.app-locked { overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%; max-width: 100vw; }

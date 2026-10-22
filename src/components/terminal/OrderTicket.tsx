@@ -25,7 +25,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
 
 function NumInput({ id, value, onChange, suffix, placeholder, invalid, disabled, inputRef, step }: { id: string; value: string; onChange: (v: string) => void; suffix?: string; placeholder?: string; invalid?: boolean; disabled?: boolean; inputRef?: React.Ref<HTMLInputElement>; step?: string }) {
   return (
-    <div className={cn('relative flex h-9 items-center rounded-md border bg-panel2 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25', invalid ? 'border-down' : 'border-line hover:border-subtle/60', disabled && 'opacity-50')}>
+    <div className={cn('relative flex h-9 items-center rounded-md border bg-panel2 max-lg:h-11 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25', invalid ? 'border-down' : 'border-line hover:border-subtle/60', disabled && 'opacity-50')}>
       <input
         id={id}
         ref={inputRef}
@@ -38,7 +38,7 @@ function NumInput({ id, value, onChange, suffix, placeholder, invalid, disabled,
         aria-invalid={invalid || undefined}
         data-step={step}
         onChange={(e) => { const v = e.target.value.replace(',', '.'); if (/^\d*\.?\d*$/.test(v)) onChange(v); }}
-        className="num h-full min-w-0 flex-1 bg-transparent px-2.5 font-mono text-sm outline-none placeholder:text-subtle"
+        className="num h-full min-w-0 flex-1 bg-transparent px-2.5 font-mono text-sm outline-none placeholder:text-subtle max-lg:text-base"
       />
       {suffix && <span className="pr-2.5 text-xs text-subtle">{suffix}</span>}
     </div>
@@ -54,12 +54,11 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
   );
 }
 
-function OrderTicketInner() {
+function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
   const { accountId, account, metrics, positions, refresh } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
-  const last = useTerminal((s) => s.last);
   const lev = useTerminal((s) => s.leverage);
   const confirmOrders = useTerminal((s) => s.confirmOrders);
   const soundOn = useTerminal((s) => s.soundOn);
@@ -67,7 +66,7 @@ function OrderTicketInner() {
   const set = useTerminal((s) => s.set);
   const addPending = useTerminal((s) => s.addPending);
 
-  const [side, setSide] = useState<Side>('long');
+  const [side, setSide] = useState<Side>(initialSide ?? 'long');
   const [type, setType] = useState<OType>('market');
   const [margin, setMargin] = useState('');
   const [price, setPrice] = useState('');
@@ -77,6 +76,8 @@ function OrderTicketInner() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<Side | null>(null);
   const [touched, setTouched] = useState(false);
+  // free-text buffer for the leverage box so the field can be emptied and retyped (null = mirror the store)
+  const [levText, setLevText] = useState<string | null>(null);
   const marginRef = useRef<HTMLInputElement>(null);
 
   const base = symbol.replace('USDT', '');
@@ -95,6 +96,7 @@ function OrderTicketInner() {
   // reset price-bound fields when the instrument changes
   useEffect(() => { setPrice(''); setTp(''); setSl(''); setTouched(false); }, [symbol]);
 
+  const last = px?.price ?? null; // 2 s engine price — the ticket must not re-render on every trade tick
   const bid = px?.bid ?? null;
   const ask = px?.ask ?? null;
   const fillNow = side === 'long' ? ask : bid;
@@ -141,6 +143,7 @@ function OrderTicketInner() {
   const rewardAtTp = entry && Number.isFinite(tpN) && Number.isFinite(size) ? (size * Math.abs(tpN - entry)) / entry : null;
 
   const setLev = (v: number) => set({ leverage: Math.max(1, Math.min(maxLev, Math.round(v) || 1)) });
+  const pickLev = (v: number) => { setLevText(null); setLev(v); };
   const setPct = (p: number) => { setMargin(free > 0 ? String(floorCents((free * p) / 100)) : ''); setTouched(true); };
 
   const doSubmit = useCallback(async (s: Side) => {
@@ -157,6 +160,7 @@ function OrderTicketInner() {
         if (soundOn) beep(s === 'long' ? 'up' : 'down');
         setMargin(''); setTp(''); setSl(''); setTouched(false);
         await refresh();
+        onPlaced?.();
       } else {
         addPending({
           id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
@@ -164,6 +168,7 @@ function OrderTicketInner() {
         });
         toast.info('Conditional order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)} — kept in this browser while the terminal is open.`);
         setMargin(''); setPrice(''); setTouched(false);
+        onPlaced?.();
       }
     } catch (e) {
       toast.error('Order rejected', errMsg(e));
@@ -171,12 +176,12 @@ function OrderTicketInner() {
       setBusy(false);
       setConfirm(null);
     }
-  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, addPending]);
+  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, addPending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);
     setTouched(true);
-    if (!tradable || hasError) { if (hasError) toast.warn('Check the order', Object.values(errors)[0]); return; }
+    if (!tradable || hasError) { if (hasError) toast.warn('Check the order', String(Object.values(errors)[0] ?? '')); return; }
     if (confirmOrders) setConfirm(s); else void doSubmit(s);
   }, [tradable, hasError, errors, confirmOrders, doSubmit, toast]);
 
@@ -199,8 +204,8 @@ function OrderTicketInner() {
       <div role="tablist" aria-label="Direction" className="grid grid-cols-2 gap-1 rounded-lg bg-panel2 p-1">
         {(['long', 'short'] as Side[]).map((s) => (
           <button key={s} role="tab" aria-selected={side === s} onClick={() => setSide(s)}
-            className={cn('h-8 rounded-md text-sm font-semibold transition-all', side === s ? (s === 'long' ? 'bg-up text-black shadow-[0_0_20px_-4px_rgb(var(--up)/0.7)]' : 'bg-down text-white shadow-[0_0_20px_-4px_rgb(var(--down)/0.7)]') : 'text-muted hover:text-fg')}>
-            {s === 'long' ? 'Long / Buy' : 'Short / Sell'}
+            className={cn('h-8 rounded-md text-sm font-semibold transition-all max-lg:h-10', side === s ? (s === 'long' ? 'bg-up text-black shadow-[0_0_20px_-4px_rgb(var(--up)/0.7)]' : 'bg-down text-white shadow-[0_0_20px_-4px_rgb(var(--down)/0.7)]') : 'text-muted hover:text-fg')}>
+            {s === 'long' ? 'Buy / Long' : 'Sell / Short'}
           </button>
         ))}
       </div>
@@ -235,14 +240,18 @@ function OrderTicketInner() {
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="t-lev" className="text-muted">Leverage</label>
           <div className="flex h-7 items-center rounded-md border border-line bg-panel2 focus-within:border-accent">
-            <input id="t-lev" inputMode="numeric" value={leverage} onChange={(e) => setLev(Number(e.target.value.replace(/\D/g, '')))} className="num w-10 bg-transparent text-right font-mono text-sm outline-none" aria-label="Leverage multiplier" />
+            <input id="t-lev" inputMode="numeric" autoComplete="off" value={levText ?? String(leverage)}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 3); setLevText(d); if (d !== '') setLev(Number(d)); }}
+              onBlur={() => setLevText(null)}
+              className="num w-10 bg-transparent text-right font-mono text-sm outline-none" aria-label="Leverage multiplier" />
             <span className="pl-0.5 pr-2 text-sm text-subtle">×</span>
           </div>
         </div>
-        <input type="range" min={1} max={maxLev} step={1} value={leverage} onChange={(e) => setLev(Number(e.target.value))} aria-label="Leverage slider" aria-valuetext={`${leverage}x`} className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(to right, rgb(var(--accent)) ${((leverage - 1) / Math.max(1, maxLev - 1)) * 100}%, rgb(var(--line)) 0)` }} />
+        <input type="range" min={1} max={maxLev} step={1} value={leverage} onChange={(e) => pickLev(Number(e.target.value))} aria-label="Leverage slider" aria-valuetext={`${leverage}x`} className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(to right, rgb(var(--accent)) ${((leverage - 1) / Math.max(1, maxLev - 1)) * 100}%, rgb(var(--line)) 0)` }} />
         <div className="flex justify-between">
           {LEV_PRESETS.filter((p) => p <= maxLev).map((p) => (
-            <button key={p} onClick={() => setLev(p)} className={cn('rounded px-1 py-0.5 font-mono text-2xs transition-colors', leverage === p ? 'bg-accent/15 text-accent' : 'text-subtle hover:text-fg')}>{p}×</button>
+            <button key={p} onClick={() => pickLev(p)} className={cn('rounded px-1 py-1 font-mono text-2xs max-lg:px-1.5 max-lg:text-xs transition-colors', leverage === p ? 'bg-accent/15 text-accent' : 'text-subtle hover:text-fg')}>{p}×</button>
           ))}
         </div>
         {leverage >= 50 && <p className="flex items-start gap-1.5 text-2xs text-warn"><AlertTriangle className="mt-px h-3 w-3 shrink-0" />At {leverage}× a {fmtNum(100 / leverage)}% adverse move liquidates the position.</p>}
@@ -311,21 +320,23 @@ function OrderTicketInner() {
         <p className="flex items-start gap-1.5 text-2xs text-warn"><AlertTriangle className="mt-px h-3 w-3 shrink-0" />You’ve used {fmtNum(dd.daily * 100, 0)}% of today’s drawdown allowance.</p>
       )}
 
-      <Button
-        variant={sideColor === 'up' ? 'up' : 'down'}
-        size="lg"
-        block
-        loading={busy}
-        disabled={!tradable}
-        onClick={() => request(side)}
-        className="h-11"
-      >
-        {type === 'market' ? 'Open' : type === 'limit' ? 'Place limit' : 'Place stop'} {side === 'long' ? 'Long' : 'Short'} · {base}
-      </Button>
+      <div className="sticky bottom-0 z-10 -mx-3 border-t border-line bg-panel px-3 py-2">
+        <Button
+          variant={sideColor === 'up' ? 'up' : 'down'}
+          size="lg"
+          block
+          loading={busy}
+          disabled={!tradable}
+          onClick={() => request(side)}
+          className="h-12 lg:h-11"
+        >
+          {side === 'long' ? 'Buy' : 'Sell'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
+        </Button>
+      </div>
 
       <div className="flex items-center justify-between text-xs text-muted">
         <label className="flex items-center gap-2"><Switch checked={confirmOrders} onChange={(v) => set({ confirmOrders: v })} label="Confirm orders" />Confirm orders</label>
-        <button onClick={() => set({ hotkeysOpen: true })} className="inline-flex items-center gap-1 text-subtle hover:text-fg"><Keyboard className="h-3.5 w-3.5" />Hotkeys<span className="kbd">?</span></button>
+        <button onClick={() => set({ hotkeysOpen: true })} className="inline-flex items-center gap-1 text-subtle hover:text-fg max-lg:hidden"><Keyboard className="h-3.5 w-3.5" />Hotkeys<span className="kbd">?</span></button>
       </div>
 
       <Modal

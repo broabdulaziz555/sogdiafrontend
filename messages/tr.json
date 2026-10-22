@@ -154,9 +154,7 @@
     "q5": "Hangi piyasalarda işlem yapabilirim?",
     "a5": "İlk 50 USDT paritesi, long veya short, 1×'ten 200×'e kaldıraçla, günün 24 saati, haftanın 7 günü.",
     "q6": "Nasıl ödeme yaparım?",
-    "a6": "NOWPayments üzerinden kriptoyla. Ödeme zincirde onaylanır onaylanmaz hesabınız otomatik oluşturulur.",
-    "q7": "İşlem ortamı canlı piyasa icrası mı?",
-    "a7": "Fiyatlar Binance'ten alınır ve giriş ile çıkışta trader aleyhine %0,05 spread uygulanır. Satın almadan önce yasal bölümdeki risk ve icra açıklamasını okuyun."
+    "a6": "NOWPayments üzerinden kriptoyla. Ödeme zincirde onaylanır onaylanmaz hesabınız otomatik oluşturulur."
   },
   "cta": {
     "title": "Piyasa kapanmaz. Avantajınız da kapanmamalı.",
