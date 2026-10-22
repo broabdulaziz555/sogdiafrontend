@@ -49,9 +49,15 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const seen = useRef(new Set<string>());
   const soundOn = useTerminal((s) => s.soundOn);
 
+  const pollStartedAt = useRef(0);
   const swr = useSWR<PositionsResponse>(
     ['terminal-positions', accountId],
-    () => get<PositionsResponse>('/trade/positions', { account_id: accountId }),
+    async () => {
+      const startedAt = Date.now();
+      const res = await get<PositionsResponse>('/trade/positions', { account_id: accountId });
+      pollStartedAt.current = startedAt; // the list below reflects the database as it was at this moment
+      return res;
+    },
     // the server runs its risk sweep on every call, so poll fast only while something is actually open
     { refreshInterval: (d) => (d?.positions?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
   );
@@ -81,7 +87,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   // Reconciliation layer. The server's list is eventually consistent (a poll can land before the new row is visible),
   // so a row we know about — provisional or just confirmed by /trade/open — is pinned until the server list has it.
   // Likewise a position we just closed stays hidden until the server list stops returning it.
-  const PIN_MS = 30_000;
+  const PIN_MAX_MS = 5 * 60_000;
   const [pinned, setPinned] = useState<{ pos: Position; at: number }[]>([]);
   const [closedIds, setClosedIds] = useState<Record<string, number>>({});
 
@@ -103,9 +109,6 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     setTimeout(() => { void mutate(); }, 1500);
   }, [mutate]);
 
-  const pinnedRef = useRef(pinned);
-  pinnedRef.current = pinned;
-
   const closePositions = useCallback(async (ids: string[]): Promise<CloseOutcome[]> => {
     const real = ids.filter((id) => !id.startsWith('tmp-'));
     const now = Date.now();
@@ -126,25 +129,29 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     }));
   }, [applyClosed, mutate]);
 
-  // housekeeping: forget pins the server now lists (or that outlived the grace period), and closes it has caught up with
+  // Housekeeping. A pinned (just opened) position is dropped once the server list shows it, or once a poll that STARTED
+  // after it was confirmed still does not list it (so it is genuinely gone: closed by SL/TP/liquidation). A stale or
+  // failed poll proves nothing, so it can never remove a position. Same rule for closes we are hiding. 5 min is a safety cap.
   useEffect(() => {
     if (!data) return;
     const ids = new Set(data.positions.map((p) => p.id));
     const gone = new Set((data.liquidated ?? []).map((l) => l.id));
     const now = Date.now();
-    // Diagnostic: the server confirmed this order, yet its own list never showed it. Say so, with the id, instead of vanishing silently.
-    for (const x of pinnedRef.current) {
-      if (x.pos.id.startsWith('tmp-') || ids.has(x.pos.id) || gone.has(x.pos.id) || now - x.at < PIN_MS) continue;
-      console.warn('[terminal] confirmed order missing from server list', x.pos.id, x.pos.symbol);
-      toast.warn('Position not found on server', `Order ${x.pos.id.slice(0, 8)} (${x.pos.symbol}) was confirmed but is not in the open list.`);
-    }
-    setPinned((l) => { const n = l.filter((x) => !ids.has(x.pos.id) && !gone.has(x.pos.id) && (x.pos.id.startsWith('tmp-') || now - x.at < PIN_MS)); return n.length === l.length ? l : n; });
+    const fresh = pollStartedAt.current;
+    setPinned((l) => {
+      const n = l.filter((x) => {
+        if (ids.has(x.pos.id) || gone.has(x.pos.id)) return false;
+        if (x.pos.id.startsWith('tmp-')) return true;
+        return !(fresh > x.at) && now - x.at < PIN_MAX_MS;
+      });
+      return n.length === l.length ? l : n;
+    });
     setClosedIds((c) => {
       const keys = Object.keys(c);
-      const n = keys.filter((k) => ids.has(k) && now - c[k] < PIN_MS);
+      const n = keys.filter((k) => (ids.has(k) || !(fresh > c[k])) && now - c[k] < PIN_MAX_MS);
       return n.length === keys.length ? c : Object.fromEntries(n.map((k) => [k, c[k]]));
     });
-  }, [data, toast]);
+  }, [data]);
 
   const positions = useMemo(() => {
     const server = (data?.positions ?? []).filter((p) => !closedIds[p.id]);
