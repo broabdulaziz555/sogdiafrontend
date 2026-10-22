@@ -38,6 +38,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        {/* Chrome fires beforeinstallprompt once, often before React has hydrated — catch it immediately so the Install button can use it */}
+        <script dangerouslySetInnerHTML={{ __html: "window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__sgBip=e;window.dispatchEvent(new Event('sg:bip'))});window.addEventListener('appinstalled',function(){window.__sgBip=null});" }} />
+      </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>{children}</Providers>

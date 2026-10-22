@@ -7,6 +7,7 @@ import {
   BadgeCheck, CandlestickChart, ChevronDown, FileClock, LayoutDashboard, LogOut, Menu, ScrollText, Settings2, ShieldAlert, Users, Wallet, WalletCards, X, ArrowLeftRight,
 } from 'lucide-react';
 import { clearSession } from '@/lib/auth';
+import { InstallApp } from '@/components/pwa/InstallApp';
 import { cn } from '@/lib/cn';
 import { siteHref } from '@/lib/sites';
 import { useUser } from '@/components/ui/AuthGate';
@@ -108,6 +109,7 @@ function Account() {
           <div className="p-1.5">
             <SiteLink site="app" role="menuitem" className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg"><LayoutDashboard className="h-4 w-4" />Trader dashboard</SiteLink>
             <SiteLink site="trade" role="menuitem" className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg"><CandlestickChart className="h-4 w-4" />Terminal</SiteLink>
+            <InstallApp className="h-8 rounded-md px-2.5 text-muted hover:text-fg" onDone={() => setOpen(false)} />
             <button role="menuitem" onClick={() => { clearSession(); window.location.href = siteHref('www', '/'); }} className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-down hover:bg-down/10"><LogOut className="h-4 w-4" />Sign out</button>
           </div>
         </div>

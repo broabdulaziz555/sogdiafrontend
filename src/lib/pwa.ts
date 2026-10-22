@@ -15,6 +15,9 @@ let wired = false;
 export function captureInstallPrompt() {
   if (wired || typeof window === 'undefined') return;
   wired = true;
+  const early = (window as unknown as { __sgBip?: InstallEvent | null }).__sgBip;
+  if (early) deferred = early; // event fired before React was ready
+  window.addEventListener('sg:bip', () => { deferred = (window as unknown as { __sgBip?: InstallEvent | null }).__sgBip ?? null; listeners.forEach((f) => f()); });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as InstallEvent; listeners.forEach((f) => f()); });
   window.addEventListener('appinstalled', () => { deferred = null; listeners.forEach((f) => f()); });
 }
@@ -35,6 +38,7 @@ export function useInstall() {
     return () => { listeners.delete(f); };
   }, []);
   const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  const android = /android/i.test(ua);
   const ios = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1);
   const install = useCallback(async () => {
     if (!deferred) return false;
@@ -44,5 +48,5 @@ export function useInstall() {
     listeners.forEach((fn) => fn());
     return r.outcome === 'accepted';
   }, []);
-  return { canInstall: !!deferred, installed: standalone, ios, install };
+  return { canInstall: !!deferred, installed: standalone, ios, android, install };
 }
