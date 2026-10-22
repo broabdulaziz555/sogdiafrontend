@@ -174,7 +174,8 @@ export function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   return send<T>(path, opts, false);
 }
 
-export const get = <T>(path: string, query?: Query, opts: RequestOpts = {}) => api<T>(path, { ...opts, query });
+// Reads fail after 15 s instead of hanging forever: a stuck poll would otherwise freeze the terminal's live data.
+export const get = <T>(path: string, query?: Query, opts: RequestOpts = {}) => api<T>(path, { timeoutMs: 15_000, ...opts, query });
 export const post = <T>(path: string, body?: unknown, opts: RequestOpts = {}) => api<T>(path, { ...opts, method: 'POST', body });
 export const put = <T>(path: string, body?: unknown, opts: RequestOpts = {}) => api<T>(path, { ...opts, method: 'PUT', body });
 export const patch = <T>(path: string, body?: unknown, opts: RequestOpts = {}) => api<T>(path, { ...opts, method: 'PATCH', body });
