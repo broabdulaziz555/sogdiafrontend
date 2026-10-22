@@ -26,6 +26,20 @@ const px = (n: number) => (!Number.isFinite(n) ? '—' : n >= 1000 ? n.toLocaleS
 const usd = (n: number) => `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const when = (s: string | null) => (s ? new Date(s).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—');
 
+/** Two-tone, letter-spaced brand line: the domain in accent, the descriptor muted. Returns the drawn width. */
+function brandLine(g: CanvasRenderingContext2D, x: number, y: number, size: number, spacing: number, domain: string, rest: string, domainColor: string, restColor: string): number {
+  const ctx = g as CanvasRenderingContext2D & { letterSpacing?: string };
+  const prev = ctx.letterSpacing;
+  g.font = `700 ${size}px ${SANS}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${spacing}px`;
+  g.fillStyle = domainColor; g.fillText(domain, x, y);
+  const w1 = g.measureText(domain).width;
+  g.fillStyle = restColor; g.fillText(rest, x + w1, y);
+  const w2 = g.measureText(rest).width;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = prev ?? '0px';
+  return w1 + w2;
+}
+
 export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAULT_CARD_OPTS, username = '', ref: { code: string; discount: number } | null = null): Promise<Blob> {
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -45,11 +59,18 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
   g.fillStyle = glow; g.fillRect(0, 0, W, H);
   g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 2; g.strokeRect(1, 1, W - 2, H - 2);
 
-  // brand
-  g.fillStyle = '#e6ecf4'; g.font = `800 34px ${SANS}`; g.textBaseline = 'alphabetic';
-  g.fillText('SOGDIA', 64, 92);
+  // top accent rule
+  const bar = g.createLinearGradient(0, 0, W, 0);
+  bar.addColorStop(0, accent); bar.addColorStop(0.55, 'rgba(255,255,255,0.0)');
+  g.fillStyle = bar; g.fillRect(0, 0, W, 5);
+
+  // brand: descriptor line above the wordmark
+  g.textBaseline = 'alphabetic';
+  brandLine(g, 64, 52, 15, 3, 'SOGDIA.SITE', '  ·  INSTITUTIONAL CRYPTO PROP FIRM', '#b6f35a', 'rgba(230,236,244,0.55)');
+  g.fillStyle = '#e6ecf4'; g.font = `800 34px ${SANS}`;
+  g.fillText('SOGDIA', 64, 96);
   g.fillStyle = 'rgba(230,236,244,0.45)'; g.font = `500 20px ${SANS}`;
-  g.fillText(live ? 'LIVE POSITION' : 'CLOSED TRADE', 64, 122);
+  g.fillText(live ? 'LIVE POSITION' : 'CLOSED TRADE', 64, 126);
 
   // symbol + side
   const base = d.symbol.replace('USDT', '');
@@ -95,11 +116,11 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
 
   // footer: site address (+ referral offer)
   {
+    brandLine(g, 64, 608, 15, 2.5, 'SOGDIA.SITE', '  ·  INSTITUTIONAL CRYPTO PROP FIRM', '#b6f35a', 'rgba(230,236,244,0.60)'); // always shown
     g.font = `600 22px ${SANS}`;
-    g.fillStyle = 'rgba(230,236,244,0.75)'; g.fillText('sogdia.site · Institutional Crypto Prop Firm', 64, 606); // always shown
     if (o.referral && ref) {
       g.textAlign = 'right'; g.fillStyle = '#b6f35a';
-      g.fillText(`Join with code ${ref.code}${ref.discount ? ` · ${ref.discount}% off` : ''}`, W - 64, 606);
+      g.fillText(`Join with code ${ref.code}${ref.discount ? ` · ${ref.discount}% off` : ''}`, W - 64, 608);
       g.textAlign = 'left';
     }
   }
