@@ -10,8 +10,6 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
-import { SiteLink } from '@/components/ui/SiteLink';
-import { EXECUTION_PATH, EXECUTION_SHORT } from '@/lib/legal';
 import { useTerminalData } from './data';
 import { beep } from './sound';
 import { useTerminal } from './store';
@@ -58,7 +56,7 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
 
 function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened, addOptimistic, dropOptimistic } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -157,12 +155,32 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
         if (Number.isFinite(tpN)) body.take_profit = tpN;
         if (Number.isFinite(slN)) body.stop_loss = slN;
-        const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 25_000 });
-        applyOpened(res); // the position appears immediately; the next poll only confirms it
-        toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
-        if (soundOn) beep(s === 'long' ? 'up' : 'down');
+        // Optimistic: show the position and free the ticket at once; the server's reply swaps in the real row.
+        const px0 = s === 'long' ? ask : bid;
+        const tmpId = `tmp-${Date.now()}`;
+        const saved = { margin, tp, sl };
+        if (px0) {
+          const sz = marginRounded * leverage;
+          addOptimistic({
+            id: tmpId, account_id: accountId, symbol, side: s, leverage, margin: marginRounded, position_size: sz, quantity: sz / px0,
+            entry_price: px0, mark_price: px0, unrealized_pnl: 0, unrealized_pnl_pct: 0, status: 'open', created_at: new Date().toISOString(),
+            liquidation_price: s === 'long' ? px0 * (1 - 1 / leverage) : px0 * (1 + 1 / leverage),
+            take_profit: Number.isFinite(tpN) ? tpN : null, stop_loss: Number.isFinite(slN) ? slN : null,
+          });
+        }
         setMargin(''); setTp(''); setSl(''); setTouched(false);
+        setBusy(false); setConfirm(null);
         onPlaced?.();
+        if (soundOn) beep(s === 'long' ? 'up' : 'down');
+        try {
+          const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 25_000 });
+          applyOpened(res, tmpId);
+          toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+        } catch (e) {
+          dropOptimistic(tmpId);
+          setMargin(saved.margin); setTp(saved.tp); setSl(saved.sl);
+          throw e;
+        }
       } else {
         addPending({
           id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
@@ -179,7 +197,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
       setBusy(false);
       setConfirm(null);
     }
-  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addPending, onPlaced]);
+  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic, ask, bid, margin, tp, sl, addPending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);
@@ -336,8 +354,6 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           {side === 'long' ? 'Buy' : 'Sell'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
         </Button>
       </div>
-
-      <p className="text-2xs leading-relaxed text-subtle">{EXECUTION_SHORT} <SiteLink site="www" path={EXECUTION_PATH} target="_blank" rel="noopener noreferrer" className="underline hover:text-fg">Execution Disclosure</SiteLink>.</p>
 
       <div className="flex items-center justify-between text-xs text-muted">
         <label className="flex items-center gap-2"><Switch checked={confirmOrders} onChange={(v) => set({ confirmOrders: v })} label="Confirm orders" />Confirm orders</label>

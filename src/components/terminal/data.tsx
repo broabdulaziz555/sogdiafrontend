@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { get } from '@/lib/api';
 import { fmtSigned, fmtPrice } from '@/lib/format';
@@ -20,7 +20,12 @@ interface Ctx {
   stale: boolean;
   refresh: () => Promise<unknown>;
   /** Show a just-opened position at once (no waiting for the next poll); the poll then confirms it. */
-  applyOpened: (r: { order: Position; account?: Account; metrics?: AccountMetrics }) => void;
+  applyOpened: (r: { order: Position; account?: Account; metrics?: AccountMetrics }, tmpId?: string) => void;
+  /** Put a provisional position on screen the instant the order is sent; replaced by the server's row on reply. */
+  addOptimistic: (p: Position) => void;
+  dropOptimistic: (id: string) => void;
+  /** Remove a closed position at once and apply the account/metrics the close endpoint returned. */
+  applyClosed: (id: string, r?: { account?: Account; metrics?: AccountMetrics }) => void;
 }
 
 const DataCtx = createContext<Ctx | null>(null);
@@ -66,29 +71,71 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   }, [data, toast, accountId, soundOn]);
 
   const refresh = useCallback(() => swr.mutate(), [swr]);
-  const applyOpened = useCallback((r: { order: Position; account?: Account; metrics?: AccountMetrics }) => {
+  // Reconciliation layer. The server's list is eventually consistent (a poll can land before the new row is visible),
+  // so a row we know about — provisional or just confirmed by /trade/open — is pinned until the server list has it.
+  // Likewise a position we just closed stays hidden until the server list stops returning it.
+  const PIN_MS = 20_000;
+  const [pinned, setPinned] = useState<{ pos: Position; at: number }[]>([]);
+  const [closedIds, setClosedIds] = useState<Record<string, number>>({});
+
+  const dropOptimistic = useCallback((id: string) => setPinned((l) => l.filter((x) => x.pos.id !== id)), []);
+  const addOptimistic = useCallback((p: Position) => setPinned((l) => [{ pos: p, at: Date.now() }, ...l]), []);
+
+  const applyOpened = useCallback((r: { order: Position; account?: Account; metrics?: AccountMetrics }, tmpId?: string) => {
     void swr.mutate((cur) => {
       if (!cur) return cur;
       const rest = cur.positions.filter((p) => p.id !== r.order.id);
       return { ...cur, positions: [r.order, ...rest], account: r.account ?? cur.account, metrics: r.metrics ?? cur.metrics };
     }, { revalidate: false });
-    // confirm with the server a moment later, off the critical path
-    setTimeout(() => { void swr.mutate(); }, 800);
+    setPinned((l) => [{ pos: r.order, at: Date.now() }, ...l.filter((x) => x.pos.id !== tmpId && x.pos.id !== r.order.id)]);
+    setTimeout(() => { void swr.mutate(); }, 1500);
   }, [swr]);
+
+  const applyClosed = useCallback((id: string, r?: { account?: Account; metrics?: AccountMetrics }) => {
+    setClosedIds((c) => ({ ...c, [id]: Date.now() }));
+    setPinned((l) => l.filter((x) => x.pos.id !== id));
+    void swr.mutate((cur) => (cur ? { ...cur, positions: cur.positions.filter((p) => p.id !== id), account: r?.account ?? cur.account, metrics: r?.metrics ?? cur.metrics } : cur), { revalidate: false });
+    setTimeout(() => { void swr.mutate(); }, 1500);
+  }, [swr]);
+
+  // housekeeping: forget pins the server now lists (or that outlived the grace period), and closes it has caught up with
+  useEffect(() => {
+    if (!data) return;
+    const ids = new Set(data.positions.map((p) => p.id));
+    const gone = new Set((data.liquidated ?? []).map((l) => l.id));
+    const now = Date.now();
+    setPinned((l) => { const n = l.filter((x) => !ids.has(x.pos.id) && !gone.has(x.pos.id) && now - x.at < PIN_MS); return n.length === l.length ? l : n; });
+    setClosedIds((c) => {
+      const keys = Object.keys(c);
+      const n = keys.filter((k) => ids.has(k) && now - c[k] < PIN_MS);
+      return n.length === keys.length ? c : Object.fromEntries(n.map((k) => [k, c[k]]));
+    });
+  }, [data]);
+
+  const positions = useMemo(() => {
+    const server = (data?.positions ?? []).filter((p) => !closedIds[p.id]);
+    if (!pinned.length) return server;
+    const ids = new Set(server.map((p) => p.id));
+    return [...pinned.map((x) => x.pos).filter((p) => !ids.has(p.id) && !closedIds[p.id]), ...server];
+  }, [data, pinned, closedIds]);
+
   const value = useMemo<Ctx>(
     () => ({
       accountId,
       account: data?.account ?? null,
       metrics: data?.metrics ?? null,
       risk: data?.risk ?? null,
-      positions: data?.positions ?? [],
+      positions,
       loading: swr.isLoading && !data,
       error: swr.error,
       stale: !!swr.error && !!data,
       refresh,
       applyOpened,
+      addOptimistic,
+      dropOptimistic,
+      applyClosed,
     }),
-    [accountId, data, swr.isLoading, swr.error, refresh, applyOpened],
+    [accountId, data, positions, swr.isLoading, swr.error, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed],
   );
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

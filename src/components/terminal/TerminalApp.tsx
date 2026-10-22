@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Wallet } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { cn } from '@/lib/cn';
@@ -20,12 +21,14 @@ import { OrderTicket } from './OrderTicket';
 import { PairBar } from './PairBar';
 import { usePendingEngine } from './pendingEngine';
 import { PositionsPanel } from './PositionsPanel';
-import { PriceChart } from './PriceChart';
 import { useTerminal } from './store';
 import { TopBar } from './TopBar';
-import { TradeCardModal } from './TradeCard';
 import { useTerminalLayout } from './useLayout';
 import { Watchlist } from './Watchlist';
+
+// the charting library and the share-card modal are only needed once the terminal is up — keep them out of the first bundle
+const PriceChart = dynamic(() => import('./PriceChart').then((m) => m.PriceChart), { ssr: false, loading: () => <div className="grid h-full place-items-center text-sm text-muted">Loading chart…</div> });
+const TradeCardModal = dynamic(() => import('./TradeCard').then((m) => m.TradeCardModal), { ssr: false });
 
 const LAST_ACCOUNT = 'sg-terminal-account';
 

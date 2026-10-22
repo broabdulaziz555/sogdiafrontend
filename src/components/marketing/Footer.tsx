@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/ui/Logo';
-import { EXECUTION_PATH, TRADING_FOOTER } from '@/lib/legal';
 
 const ENTITY = process.env.NEXT_PUBLIC_LEGAL_ENTITY || 'SOGDIA';
 const EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sogdia.site';
@@ -27,7 +26,6 @@ export function Footer() {
               <li><Link className="hover:text-fg" href="/#platform">{n('platform')}</Link></li>
               <li><Link className="hover:text-fg" href="/#pricing">{n('pricing')}</Link></li>
               <li><Link className="hover:text-fg" href="/#faq">{n('faq')}</Link></li>
-              <li><Link className="hover:text-fg" href={EXECUTION_PATH}>Execution &amp; Spread</Link></li>
             </ul>
           </nav>
 
@@ -40,10 +38,6 @@ export function Footer() {
         </div>
 
         <div className="mt-10 space-y-4 border-t border-line pt-6 text-xs leading-relaxed text-subtle">
-          <p>
-            {TRADING_FOOTER}{' '}
-            <Link href={EXECUTION_PATH} className="text-muted underline hover:text-fg">Execution Disclosure</Link>
-          </p>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-subtle">
             <span>© {year} {ENTITY}. {t('rights')}</span>
             <span className="font-mono">Prices in USD · Payments via NOWPayments</span>

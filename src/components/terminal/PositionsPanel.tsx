@@ -6,7 +6,7 @@ import { Share2, SlidersHorizontal, X } from 'lucide-react';
 import { errMsg, get, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, qtyDecimals, shortId, timeHMS } from '@/lib/format';
-import type { HistoryOrder, HistoryResponse, Position, Side } from '@/lib/types';
+import type { Account, AccountMetrics, HistoryOrder, HistoryResponse, Position, Side } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
@@ -81,7 +81,7 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
 /* ── Open positions ─────────────────────────────────────────────────────── */
 function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
   const toast = useToast();
-  const { positions, loading, error, refresh } = useTerminalData();
+  const { positions, loading, error, refresh, applyClosed } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const soundOn = useTerminal((s) => s.soundOn);
   const current = useTerminal((s) => s.symbol);
@@ -93,16 +93,17 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     setBusy(p.id); setMenu(null);
     try {
       if (percent >= 100) {
-        const r = await post<{ order: { pnl: number; close_price: number } }>('/trade/close', { order_id: p.id });
+        const r = await post<{ order: { pnl: number; close_price: number }; account?: Account; metrics?: AccountMetrics }>('/trade/close', { order_id: p.id });
         toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
         if (soundOn) beep(r.order.pnl >= 0 ? 'up' : 'down');
+        applyClosed(p.id, r);
       } else {
         const r = await post<{ closed: { pnl: number; close_price: number } }>('/trade/partial-close', { order_id: p.id, percent });
         toast.success(`${percent}% of ${sym(p.symbol)} closed`, `${fmtSigned(r.closed.pnl)} USDT at ${fmtPrice(r.closed.close_price)}`);
+        void refresh();
       }
-      await refresh();
-    } catch (e) { toast.error('Close failed', errMsg(e)); } finally { setBusy(null); }
-  }, [toast, refresh, soundOn]);
+    } catch (e) { toast.error('Close failed', errMsg(e)); void refresh(); } finally { setBusy(null); }
+  }, [toast, refresh, soundOn, applyClosed]);
 
   const flatten = useCallback(async (list: Position[]) => {
     setCloseAll(true);
@@ -138,13 +139,13 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
         <button onClick={() => share(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Share" title="Share"><Share2 className="h-3.5 w-3.5" /></button>
         <div className="relative">
-          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
+          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id || p.id.startsWith('tmp-')} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
           {menu === p.id && (
             <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md card shadow-xl">
               {[25, 50, 75].map((n) => <button key={n} role="menuitem" onClick={() => close(p, n)} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-fg/[0.06]">Close {n}%</button>)}
             </div>)}
         </div>
-        <Button size="xs" variant="danger" loading={busy === p.id} onClick={() => close(p)}>Close</Button>
+        <Button size="xs" variant="danger" loading={busy === p.id || p.id.startsWith('tmp-')} onClick={() => close(p)}>Close</Button>
       </div>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [current, menu, busy, onEdit, setSymbol, close]);

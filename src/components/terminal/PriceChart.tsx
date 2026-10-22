@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import type { Position } from '@/lib/types';
 import { Spinner } from '@/components/ui/States';
 import { OneClickTrade } from './OneClickTrade';
+import { OrderOverlay } from './OrderOverlay';
 import { cssRgb } from './theme';
 import { useTerminalLayout } from './useLayout';
 import { useTerminal } from './store';
@@ -507,20 +508,21 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       for (const p of positions) {
         if (p.symbol !== symbol) continue;
         const long = p.side === 'long';
-        const qty = fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1);
         const add = (suffix: string, price: number | null | undefined, color: string, style: LineStyle, title: string, width: 1 | 2 = 1, axis = true) => {
           if (price != null && Number.isFinite(price) && price > 0) specs.push({ key: `p:${p.id}:${suffix}`, price, color, style, title, width, axis });
         };
         // like TradingView / MT5: the tag shows live profit and is coloured by it; side is shown by the entry arrow
-        add('entry', p.entry_price, p.unrealized_pnl >= 0 ? up : down, LineStyle.LargeDashed, mob ? fmtSigned(p.unrealized_pnl) : `${long ? 'BUY' : 'SELL'} ${qty}  ${fmtSigned(p.unrealized_pnl)}`);
-        add('liq', p.liquidation_price, warn, LineStyle.Dotted, mob ? 'LIQ' : 'LIQUIDATION', 1, false);
-        add('tp', p.take_profit, up, LineStyle.Dashed, mob ? 'TP' : 'TAKE PROFIT');
-        add('sl', p.stop_loss, down, LineStyle.Dashed, mob ? 'SL' : 'STOP LOSS');
+        add('entry', p.entry_price, info, LineStyle.Dashed, '');
+        add('liq', p.liquidation_price, down, LineStyle.SparseDotted, mob ? 'LIQ' : 'LIQUIDATION', 1, false);
+        add('tp', p.take_profit, up, LineStyle.Dotted, '');
+        add('sl', p.stop_loss, warn, LineStyle.Dotted, '');
       }
     }
     if (showOrders) {
       for (const o of pending) {
-        specs.push({ key: `o:${o.id}`, price: o.trigger, color: o.status === 'failed' ? down : muted, style: LineStyle.Dashed, title: `${o.side === 'long' ? 'BUY' : 'SELL'} ${o.kind.toUpperCase()}${o.status === 'failed' ? ' · FAILED' : ''}` });
+        specs.push({ key: `o:${o.id}`, price: o.trigger, color: o.status === 'failed' ? down : info, style: LineStyle.Dashed, title: '' });
+        if (o.tp) specs.push({ key: `o:${o.id}:tp`, price: o.tp, color: up, style: LineStyle.Dotted, title: '' });
+        if (o.sl) specs.push({ key: `o:${o.id}:sl`, price: o.sl, color: warn, style: LineStyle.Dotted, title: '' });
       }
     }
     if (showQuotes && quote && !mob) {
@@ -622,7 +624,9 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         {/* time left until the current candle closes */}
         <div ref={cdRef} aria-label="Time until the candle closes" title="Time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden min-w-[58px] rounded-sm px-1.5 py-px text-center font-mono text-2xs font-semibold" />
 
-        <div className="absolute left-2 top-11 z-[3] max-lg:hidden"><OneClickTrade /></div>
+        <OrderOverlay chart={chartRef.current} series={candleRef.current} symbol={symbol} positions={positions} showLevels={showLevels} showOrders={showOrders} compact={mob} />
+
+        <div className="absolute left-2 top-11 z-[4] max-lg:hidden"><OneClickTrade /></div>
 
         {status === 'loading' && (
           <div className="absolute inset-0 z-[2] grid place-items-center bg-panel/60 backdrop-blur-[1px]"><div className="flex items-center gap-2 text-sm text-muted"><Spinner className="h-4 w-4" />Loading {symbol.replace('USDT', '/USDT')}…</div></div>
