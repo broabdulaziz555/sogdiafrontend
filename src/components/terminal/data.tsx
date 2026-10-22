@@ -110,24 +110,33 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     setTimeout(() => { void mutate(); }, 1500);
   }, [mutate]);
 
+  const closing = useRef(new Set<string>());
   const closePositions = useCallback(async (ids: string[]): Promise<CloseOutcome[]> => {
-    const real = ids.filter((id) => !id.startsWith('tmp-'));
+    // a close already in flight for an id is not sent again (double tap, hotkey + button, close-all + single close)
+    const skipped = ids.filter((id) => closing.current.has(id)).map((id): CloseOutcome => ({ id, ok: true }));
+    const real = ids.filter((id) => !id.startsWith('tmp-') && !closing.current.has(id));
+    real.forEach((id) => closing.current.add(id));
     const now = Date.now();
     setClosedIds((c) => { const n = { ...c }; for (const id of real) n[id] = now; return n; });
     setPinned((l) => l.filter((x) => !real.includes(x.pos.id)));
-    return Promise.all(real.map(async (id): Promise<CloseOutcome> => {
+    const sent = await Promise.all(real.map(async (id): Promise<CloseOutcome> => {
       try {
         const res = await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: 30_000 });
         applyClosed(id, res);
         return { id, ok: true, res };
       } catch (error) {
-        // "already closed" means it is gone on the server too, so it stays hidden; anything else brings the row back.
-        if (!(error instanceof ApiError && error.code === 'ORDER_NOT_OPEN')) {
-          setClosedIds((c) => { const n = { ...c }; delete n[id]; return n; });
-        } else void mutate();
+        // "already closed" is not a failure: it is gone on the server too, so it stays hidden and the list is refreshed.
+        if (error instanceof ApiError && error.code === 'ORDER_NOT_OPEN') {
+          void mutate();
+          return { id, ok: true };
+        }
+        setClosedIds((c) => { const n = { ...c }; delete n[id]; return n; });
         return { id, ok: false, error };
+      } finally {
+        closing.current.delete(id);
       }
     }));
+    return [...skipped, ...sent];
   }, [applyClosed, mutate]);
 
   // Housekeeping. A pinned (just opened) position is dropped once the server list shows it, or once a poll that STARTED

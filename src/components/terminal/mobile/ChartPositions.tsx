@@ -35,6 +35,7 @@ function ChartPositionsInner() {
     setBusy(p.id);
     try {
       const [o] = await closePositions([p.id]);
+      if (o?.ok && !o.res) { void refresh(); return; }
       if (!o?.ok || !o.res) throw o?.error ?? new Error('Close failed');
       const r = o.res;
       toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);

@@ -99,9 +99,9 @@ function MobileHistoryInner() {
                     <p className={cn('num font-mono text-lg font-semibold leading-tight', pnlClass(o.pnl))}>{fmtSigned(o.pnl)}</p>
                   </div>
                   <dl className="mt-2 grid grid-cols-3 gap-x-2 text-sm">
-                    <div><dt className="text-2xs text-subtle">Volume</dt><dd className="num font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</dd></div>
-                    <div><dt className="text-2xs text-subtle">Price</dt><dd className="num font-mono">{fmtPrice(o.entry_price)}</dd></div>
-                    <div><dt className="text-2xs text-subtle">Close</dt><dd className="num font-mono">{fmtPrice(o.close_price)}</dd></div>
+                    <div className="min-w-0"><dt className="text-2xs text-subtle">Volume</dt><dd className="num truncate font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</dd></div>
+                    <div className="min-w-0"><dt className="text-2xs text-subtle">Price</dt><dd className="num truncate font-mono">{fmtPrice(o.entry_price)}</dd></div>
+                    <div className="min-w-0"><dt className="text-2xs text-subtle">Close</dt><dd className="num truncate font-mono">{fmtPrice(o.close_price)}</dd></div>
                   </dl>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-2xs text-subtle">Opened {dateTime(o.created_at)}</p>
