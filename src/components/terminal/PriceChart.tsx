@@ -259,7 +259,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: p.text, fontFamily: 'var(--font-mono), ui-monospace, monospace', fontSize: 11, attributionLogo: false } as any,
       grid: { vertLines: { color: p.grid }, horzLines: { color: p.grid } },
       rightPriceScale: { borderColor: p.border, scaleMargins: { top: 0.08, bottom: 0.22 } },
-      timeScale: { borderColor: p.border, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: window.innerWidth < 640 ? 6 : 8, minBarSpacing: 1, maxBarSpacing: 40 },
+      timeScale: { borderColor: p.border, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: window.innerWidth < 640 ? 6 : 8, minBarSpacing: 1 },
       crosshair: {
         mode: CrosshairMode.Magnet,
         vertLine: { color: p.cross, width: 1, style: LineStyle.Dashed, labelBackgroundColor: p.border },
