@@ -53,8 +53,8 @@ export function Footer() {
           <p>
             SOGDIA accounts are evaluation and funded-trader products priced in USD and paid in cryptocurrency. Fees are non-refundable except
             where required by law. Profit splits, drawdown limits and payout cycles are defined by the rules snapshotted on each account at the
-            time of purchase. Trading is conducted against SOGDIA&apos;s internal execution engine using reference prices from third-party
-            venues; a spread of 0.05% is applied against the trader on entry and exit. Market data may be delayed, interrupted or inaccurate.
+            time of purchase. Trading is conducted within SOGDIA&apos;s own execution engine. Prices are aggregated from liquidity providers, and
+            orders are executed at the prevailing quoted bid or ask derived from those prices; a spread of 0.05% is applied against the trader on entry and exit. Market data may be delayed, interrupted or inaccurate.
             Access may be restricted in jurisdictions where the service is prohibited or where sanctions apply. Users are responsible for
             complying with local laws and for any applicable taxes. Payouts are subject to identity verification (KYC), a wallet address on file,
             and review for compliance with the Terms of Service, including prohibitions on latency arbitrage, tick scalping, account sharing and
