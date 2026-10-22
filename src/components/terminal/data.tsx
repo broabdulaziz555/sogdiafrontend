@@ -47,7 +47,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     ['terminal-positions', accountId],
     () => get<PositionsResponse>('/trade/positions', { account_id: accountId }),
     // the server runs its risk sweep on every call, so poll fast only while something is actually open
-    { refreshInterval: (d) => (d?.positions?.length ? 4000 : 15_000), dedupingInterval: 2000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
+    { refreshInterval: (d) => (d?.positions?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
   );
 
   const data = swr.data;
@@ -70,11 +70,12 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     }
   }, [data, toast, accountId, soundOn]);
 
-  const refresh = useCallback(() => swr.mutate(), [swr]);
+  const { mutate } = swr; // stable across renders, unlike the `swr` object
+  const refresh = useCallback(() => mutate(), [mutate]);
   // Reconciliation layer. The server's list is eventually consistent (a poll can land before the new row is visible),
   // so a row we know about — provisional or just confirmed by /trade/open — is pinned until the server list has it.
   // Likewise a position we just closed stays hidden until the server list stops returning it.
-  const PIN_MS = 20_000;
+  const PIN_MS = 30_000;
   const [pinned, setPinned] = useState<{ pos: Position; at: number }[]>([]);
   const [closedIds, setClosedIds] = useState<Record<string, number>>({});
 
@@ -82,21 +83,21 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const addOptimistic = useCallback((p: Position) => setPinned((l) => [{ pos: p, at: Date.now() }, ...l]), []);
 
   const applyOpened = useCallback((r: { order: Position; account?: Account; metrics?: AccountMetrics }, tmpId?: string) => {
-    void swr.mutate((cur) => {
+    void mutate((cur) => {
       if (!cur) return cur;
       const rest = cur.positions.filter((p) => p.id !== r.order.id);
       return { ...cur, positions: [r.order, ...rest], account: r.account ?? cur.account, metrics: r.metrics ?? cur.metrics };
     }, { revalidate: false });
     setPinned((l) => [{ pos: r.order, at: Date.now() }, ...l.filter((x) => x.pos.id !== tmpId && x.pos.id !== r.order.id)]);
-    setTimeout(() => { void swr.mutate(); }, 1500);
-  }, [swr]);
+    setTimeout(() => { void mutate(); }, 1500);
+  }, [mutate]);
 
   const applyClosed = useCallback((id: string, r?: { account?: Account; metrics?: AccountMetrics }) => {
     setClosedIds((c) => ({ ...c, [id]: Date.now() }));
     setPinned((l) => l.filter((x) => x.pos.id !== id));
-    void swr.mutate((cur) => (cur ? { ...cur, positions: cur.positions.filter((p) => p.id !== id), account: r?.account ?? cur.account, metrics: r?.metrics ?? cur.metrics } : cur), { revalidate: false });
-    setTimeout(() => { void swr.mutate(); }, 1500);
-  }, [swr]);
+    void mutate((cur) => (cur ? { ...cur, positions: cur.positions.filter((p) => p.id !== id), account: r?.account ?? cur.account, metrics: r?.metrics ?? cur.metrics } : cur), { revalidate: false });
+    setTimeout(() => { void mutate(); }, 1500);
+  }, [mutate]);
 
   // housekeeping: forget pins the server now lists (or that outlived the grace period), and closes it has caught up with
   useEffect(() => {
@@ -104,7 +105,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     const ids = new Set(data.positions.map((p) => p.id));
     const gone = new Set((data.liquidated ?? []).map((l) => l.id));
     const now = Date.now();
-    setPinned((l) => { const n = l.filter((x) => !ids.has(x.pos.id) && !gone.has(x.pos.id) && now - x.at < PIN_MS); return n.length === l.length ? l : n; });
+    setPinned((l) => { const n = l.filter((x) => !ids.has(x.pos.id) && !gone.has(x.pos.id) && (x.pos.id.startsWith('tmp-') || now - x.at < PIN_MS)); return n.length === l.length ? l : n; });
     setClosedIds((c) => {
       const keys = Object.keys(c);
       const n = keys.filter((k) => ids.has(k) && now - c[k] < PIN_MS);

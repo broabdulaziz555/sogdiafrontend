@@ -15,6 +15,7 @@ import { beep } from './sound';
 import { useTerminal } from './store';
 import { ticketApi } from './ticketApi';
 import { ddUsage } from './risk';
+import { buildOptimistic } from './optimistic';
 
 type OType = 'market' | 'limit' | 'stop';
 const LEV_PRESETS = [1, 5, 10, 25, 50, 100, 200];
@@ -56,7 +57,7 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
 
 function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened } = useTerminalData();
+  const { accountId, account, metrics, positions, refresh, applyOpened, addOptimistic, dropOptimistic } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -73,8 +74,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const [tp, setTp] = useState('');
   const [sl, setSl] = useState('');
   const [tpslOpen, setTpslOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState<Side | null>(null);
+    const [confirm, setConfirm] = useState<Side | null>(null);
   const [touched, setTouched] = useState(false);
   // free-text buffer for the leverage box so the field can be emptied and retyped (null = mirror the store)
   const [levText, setLevText] = useState<string | null>(null);
@@ -146,39 +146,41 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const pickLev = (v: number) => { setLevText(null); setLev(v); };
   const setPct = (p: number) => { setMargin(free > 0 ? String(floorCents((free * p) / 100)) : ''); setTouched(true); };
 
-  const doSubmit = useCallback(async (s: Side) => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const marginRounded = floorCents(m);
-      if (type === 'market') {
-        const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
-        if (Number.isFinite(tpN)) body.take_profit = tpN;
-        if (Number.isFinite(slN)) body.stop_loss = slN;
-        // The form and the confirm dialog stay as they are (with a spinner) until the server answers; the engine can be slow.
-        const res = await post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 30_000 });
-        applyOpened(res); // insert the confirmed row into the table now; the poll only re-confirms it
-        toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
-        if (soundOn) beep(s === 'long' ? 'up' : 'down');
-        setMargin(''); setTp(''); setSl(''); setTouched(false);
-        onPlaced?.();
-      } else {
-        addPending({
-          id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
-          leverage, margin: marginRounded, tp: Number.isFinite(tpN) ? tpN : null, sl: Number.isFinite(slN) ? slN : null, createdAt: Date.now(), status: 'working',
+  const doSubmit = useCallback((s: Side) => {
+    const marginRounded = floorCents(m);
+    setConfirm(null);
+    if (type === 'market') {
+      const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
+      if (Number.isFinite(tpN)) body.take_profit = tpN;
+      if (Number.isFinite(slN)) body.stop_loss = slN;
+
+      // Instant: the position goes on screen at the live market price this very moment and the form is free again.
+      // The server fill happens behind it; its confirmed row (authoritative price) replaces the provisional one.
+      const tmp = buildOptimistic({ accountId, symbol, side: s, leverage, margin: marginRounded, tp: Number.isFinite(tpN) ? tpN : null, sl: Number.isFinite(slN) ? slN : null });
+      if (tmp) addOptimistic(tmp);
+      setMargin(''); setTp(''); setSl(''); setTouched(false);
+      onPlaced?.();
+
+      post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 30_000 })
+        .then((res) => {
+          applyOpened(res, tmp?.id);
+          toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+          if (soundOn) beep(s === 'long' ? 'up' : 'down');
+        }, (e) => {
+          if (tmp) dropOptimistic(tmp.id);
+          toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
+          void refresh(); // on a timeout the order may still have gone through; either way re-read the truth
         });
-        toast.info('Conditional order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)} — kept in this browser while the terminal is open.`);
-        setMargin(''); setPrice(''); setTouched(false);
-        onPlaced?.();
-      }
-    } catch (e) {
-      toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
-      if (e instanceof ApiError && e.code === 'TIMEOUT') void refresh(); // it may have gone through
-    } finally {
-      setBusy(false);
-      setConfirm(null);
+    } else {
+      addPending({
+        id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
+        leverage, margin: marginRounded, tp: Number.isFinite(tpN) ? tpN : null, sl: Number.isFinite(slN) ? slN : null, createdAt: Date.now(), status: 'working',
+      });
+      toast.info('Conditional order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)} — kept in this browser while the terminal is open.`);
+      setMargin(''); setPrice(''); setTouched(false);
+      onPlaced?.();
     }
-  }, [busy, m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addPending, onPlaced]);
+  }, [m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic, addPending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);
@@ -327,7 +329,6 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           variant={sideColor === 'up' ? 'up' : 'down'}
           size="lg"
           block
-          loading={busy}
           disabled={!tradable}
           onClick={() => request(side)}
           className="h-12"
@@ -346,7 +347,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         onClose={() => setConfirm(null)}
         size="sm"
         title={`Confirm ${confirm === 'long' ? 'long' : 'short'} · ${base}/USDT`}
-        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} loading={busy} onClick={() => confirm && doSubmit(confirm)} data-autofocus>Confirm</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} onClick={() => confirm && doSubmit(confirm)} data-autofocus>Confirm</Button></>}
       >
         <div className="space-y-2 p-5 text-sm">
           <Row k="Type" v={<span className="capitalize">{type}</span>} />

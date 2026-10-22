@@ -96,7 +96,7 @@ export function renderTradeCard(d: CardData, live: boolean, o: CardOpts = DEFAUL
   // footer: site address (+ referral offer)
   {
     g.font = `600 22px ${SANS}`;
-    g.fillStyle = 'rgba(230,236,244,0.75)'; g.fillText('sogdia.site', 64, 606); // always shown
+    g.fillStyle = 'rgba(230,236,244,0.75)'; g.fillText('sogdia.site · Institutional Crypto Prop Firm', 64, 606); // always shown
     if (o.referral && ref) {
       g.textAlign = 'right'; g.fillStyle = '#b6f35a';
       g.fillText(`Join with code ${ref.code}${ref.discount ? ` · ${ref.discount}% off` : ''}`, W - 64, 606);

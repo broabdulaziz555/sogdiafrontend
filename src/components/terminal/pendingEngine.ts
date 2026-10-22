@@ -7,6 +7,7 @@ import type { Account, AccountMetrics, Position } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
 import { useTerminal, type PendingOrder } from './store';
+import { buildOptimistic, liveQuote } from './optimistic';
 
 const STORAGE_KEY = 'sg-terminal-v1';
 
@@ -29,7 +30,13 @@ const crossed = (o: PendingOrder, bid: number, ask: number) => {
  * engine bid/ask and sends a market order when the trigger is crossed. A Web Lock plus a re-read of the
  * persisted list stops two open tabs from filling the same order.
  */
-export function usePendingEngine(accountId: string | null, refresh: () => Promise<unknown>, applyOpened?: (r: { order: Position; account?: Account; metrics?: AccountMetrics }) => void) {
+export function usePendingEngine(
+  accountId: string | null,
+  refresh: () => Promise<unknown>,
+  applyOpened?: (r: { order: Position; account?: Account; metrics?: AccountMetrics }, tmpId?: string) => void,
+  addOptimistic?: (p: Position) => void,
+  dropOptimistic?: (id: string) => void,
+) {
   const toast = useToast();
 
   // Orders left mid-fill by a closed/crashed tab are not retried — we can't know if the server accepted them.
@@ -52,6 +59,9 @@ export function usePendingEngine(accountId: string | null, refresh: () => Promis
       const st = useTerminal.getState();
       if (persistedStatus(o.id) !== 'working') { void useTerminal.persist.rehydrate(); return; }
       st.updatePending(o.id, { status: 'filling', error: undefined });
+      // Show the filled position at once: a limit opens at its own price, a stop at the live market price.
+      const tmp = buildOptimistic({ accountId: o.accountId, symbol: o.symbol, side: o.side, leverage: o.leverage, margin: o.margin, tp: o.tp, sl: o.sl, limitPrice: o.kind === 'limit' ? o.trigger : null });
+      if (tmp && addOptimistic) addOptimistic(tmp);
       try {
         const body: Record<string, unknown> = { account_id: o.accountId, symbol: o.symbol, side: o.side, leverage: o.leverage, margin: o.margin };
         if (o.tp != null) body.take_profit = o.tp;
@@ -60,8 +70,9 @@ export function usePendingEngine(accountId: string | null, refresh: () => Promis
         useTerminal.getState().removePending(o.id);
         toast.success(`${o.kind === 'limit' ? 'Limit' : 'Stop'} filled · ${o.symbol.replace('USDT', '/USDT')}`, `${o.side} ${o.leverage}× at ${fmtPrice(r.order.entry_price)}`);
         if (useTerminal.getState().soundOn) beep(o.side === 'long' ? 'up' : 'down');
-        if (applyOpened) applyOpened(r); else void refresh(); // show the filled position at once; the poll re-confirms
+        if (applyOpened) applyOpened(r, tmp?.id); else void refresh(); // show the filled position at once; the poll re-confirms
       } catch (e) {
+        if (tmp && dropOptimistic) dropOptimistic(tmp.id);
         useTerminal.getState().updatePending(o.id, { status: 'failed', error: errMsg(e) });
         toast.error(`Conditional order failed · ${o.symbol.replace('USDT', '/USDT')}`, errMsg(e));
       }
@@ -77,12 +88,12 @@ export function usePendingEngine(accountId: string | null, refresh: () => Promis
       const st = useTerminal.getState();
       for (const o of st.pending) {
         if (o.accountId !== accountId || o.status !== 'working') continue;
-        const px = st.prices[o.symbol];
-        if (px && crossed(o, px.bid, px.ask)) tryFill(o);
+        const q = liveQuote(o.symbol); // websocket price for the open chart, engine quote otherwise
+        if (q && crossed(o, q.bid, q.ask)) tryFill(o);
       }
     };
 
     scan();
-    return useTerminal.subscribe((s, prev) => { if (s.prices !== prev.prices || s.pending !== prev.pending) scan(); });
-  }, [accountId, refresh, applyOpened, toast]);
+    return useTerminal.subscribe((s, prev) => { if (s.prices !== prev.prices || s.last !== prev.last || s.pending !== prev.pending) scan(); });
+  }, [accountId, refresh, applyOpened, addOptimistic, dropOptimistic, toast]);
 }

@@ -7,15 +7,15 @@ import { get } from '@/lib/api';
 import type { MarketPricesResponse, MarketSymbol } from '@/lib/types';
 import { useTerminal } from './store';
 
-/** Contract prices (the exact bid/ask the engine fills at) — polled every 2 s. */
+/** Contract prices (the exact bid/ask the engine fills at) — polled every 1.5 s. */
 export function usePricesFeed() {
   const setPrices = useTerminal((s) => s.setPrices);
   useSWR<MarketPricesResponse>(
     ['terminal-prices'],
     () => get<MarketPricesResponse>('/market/prices'),
     {
-      refreshInterval: 3000,
-      dedupingInterval: 2000,
+      refreshInterval: 1500,
+      dedupingInterval: 1000,
       revalidateOnFocus: true,
       keepPreviousData: true,
       onSuccess: (d) => setPrices(d.prices),

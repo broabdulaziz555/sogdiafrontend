@@ -166,6 +166,11 @@ async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promi
 }
 
 export function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
+  // A position shown instantly (id "tmp-…") has no server row yet; closing / editing it would only 400.
+  const oid = (opts.body as { order_id?: unknown } | undefined)?.order_id;
+  if (typeof oid === 'string' && oid.startsWith('tmp-')) {
+    return Promise.reject(new ApiError('PENDING_CONFIRM', 'This order is still being confirmed — try again in a second.', 0));
+  }
   return send<T>(path, opts, false);
 }
 
