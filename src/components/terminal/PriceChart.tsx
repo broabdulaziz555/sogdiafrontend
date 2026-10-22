@@ -348,10 +348,13 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     const dp = priceDecimals(cs[cs.length - 1]?.close ?? 1);
     candleRef.current?.applyOptions({ priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp } });
     candleRef.current?.setData(cs.map((c) => ({ time: c.time as UTCTimestamp, open: c.open, high: c.high, low: c.low, close: c.close })));
-    if (f.vol) paintVolume(cs);
-    if (f.ma) MA_DEFS.forEach((d, i) => maRefs.current[i]?.setData(buildMA(cs, d.len)));
-    if (f.ema) EMA_DEFS.forEach((d, i) => emaRefs.current[i]?.setData(buildEMA(cs, d.len)));
-    if (f.bb) { const bb = buildBB(cs); bbRefs.current[0]?.setData(bb.up); bbRefs.current[1]?.setData(bb.mid); bbRefs.current[2]?.setData(bb.low); }
+    // Switched-off indicators must be EMPTIED, not just skipped: a hidden series still holds the previous timeframe's
+    // timestamps, and the time scale is the union of every series' times, so stale 15m/1h points make daily candles
+    // spread out with huge gaps (this was the broken 6H/12H/1D/1W charts).
+    if (f.vol) paintVolume(cs); else volRef.current?.setData([]);
+    if (f.ma) MA_DEFS.forEach((d, i) => maRefs.current[i]?.setData(buildMA(cs, d.len))); else maRefs.current.forEach((r) => r.setData([]));
+    if (f.ema) EMA_DEFS.forEach((d, i) => emaRefs.current[i]?.setData(buildEMA(cs, d.len))); else emaRefs.current.forEach((r) => r.setData([]));
+    if (f.bb) { const bb = buildBB(cs); bbRefs.current[0]?.setData(bb.up); bbRefs.current[1]?.setData(bb.mid); bbRefs.current[2]?.setData(bb.low); } else bbRefs.current.forEach((r) => r.setData([]));
     if (fit) {
       // a new timeframe always starts at the normal zoom (an old pinch-zoom must not carry over), showing the latest candles
       const ts = chartRef.current?.timeScale();
