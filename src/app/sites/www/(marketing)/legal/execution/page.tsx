@@ -9,6 +9,14 @@ const SECTIONS: { title: string; body: string }[] = [
     body: "Orders submitted through SOGDIA accounts are executed against SOGDIA's execution engine using reference prices obtained from third-party venues. A spread of 0.05% is applied against the trader on entry and exit. Trader orders are not routed to an external execution venue.",
   },
   {
+    title: 'Partner arrangements',
+    body: 'SOGDIA maintains relationships with third-party capital and execution partners, and may hedge or mirror aggregate exposure with those partners. Such arrangements are separate from the execution of trader orders and do not alter the price at which a trader\'s order fills.',
+  },
+  {
+    title: 'Funded trading',
+    body: 'Traders who meet the objectives and risk parameters assigned to their evaluation account will be offered a funded trading arrangement, subject to identity verification and execution of the applicable funding agreement. The contracting entity, capital provider, trading limits, loss allocation and compensation terms are specified in that agreement.',
+  },
+  {
     title: 'Reference prices',
     body: 'Displayed prices are obtained from third-party market data providers and are not a guarantee of execution price. Market data may be delayed, interrupted or inaccurate.',
   },

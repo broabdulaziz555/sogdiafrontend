@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/ui/Logo';
+import { EXECUTION_PATH, TRADING_FOOTER } from '@/lib/legal';
 
 const ENTITY = process.env.NEXT_PUBLIC_LEGAL_ENTITY || 'SOGDIA';
 const EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sogdia.site';
@@ -51,10 +52,13 @@ export function Footer() {
         <div className="mt-12 space-y-4 border-t border-line pt-8 text-xs leading-relaxed text-subtle">
           <p>{t('disclaimer')}</p>
           <p>
+            {TRADING_FOOTER}{' '}
+            <Link href={EXECUTION_PATH} className="text-muted underline hover:text-fg">Execution Disclosure</Link>
+          </p>
+          <p>
             SOGDIA accounts are evaluation and funded-trader products priced in USD and paid in cryptocurrency. Fees are non-refundable except
             where required by law. Profit splits, drawdown limits and payout cycles are defined by the rules snapshotted on each account at the
-            time of purchase. Trading is conducted within SOGDIA&apos;s own execution engine. Prices are aggregated from liquidity providers, and
-            orders are executed at the prevailing quoted bid or ask derived from those prices; a spread of 0.05% is applied against the trader on entry and exit. Market data may be delayed, interrupted or inaccurate.
+            time of purchase. 
             Access may be restricted in jurisdictions where the service is prohibited or where sanctions apply. Users are responsible for
             complying with local laws and for any applicable taxes. Payouts are subject to identity verification (KYC), a wallet address on file,
             and review for compliance with the Terms of Service, including prohibitions on latency arbitrage, tick scalping, account sharing and

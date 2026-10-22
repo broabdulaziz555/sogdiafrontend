@@ -60,3 +60,6 @@ export const TERMS_SECTIONS: { title: string; paras: string[] }[] = [
 ];
 
 export const TERMS_CLOSING = "These terms are subject to the applicable account agreement, partner agreements and governing law.";
+
+export const TRADING_FOOTER =
+  'Trading and execution. SOGDIA operates a proprietary trading and risk-management framework. Evaluation accounts are governed by the rules in effect at the time of purchase. Traders who meet the stated objectives will be offered a funded arrangement, subject to verification and the applicable funding terms. SOGDIA maintains capital and execution partner relationships. The execution model, spreads and fees applicable to each account are set out in the Execution Disclosure and the applicable account terms. Market data may be delayed, interrupted or inaccurate.';
