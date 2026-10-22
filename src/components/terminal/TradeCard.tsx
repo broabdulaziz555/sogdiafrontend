@@ -87,7 +87,7 @@ export function TradeCardModal() {
       <div className="p-4">
         {data && (
           <fieldset className="mb-3">
-            <legend className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-subtle">Show on the card</legend>
+            <legend className="mb-1.5 text-2xs font-medium text-subtle">Show on the card</legend>
             <div className="flex flex-wrap gap-1.5">
               {([['roi', 'Return %'], ['pnl', 'Profit'], ['leverage', 'Leverage'], ['entry', 'Entry price'], ['exit', card.live ? 'Mark price' : 'Exit price'], ['size', 'Size'], ['margin', 'Margin'], ['date', 'Date'], ['fullName', 'Full name'], ['referral', 'Referral code']] as [keyof CardOpts, string][]).map(([k, label]) => (
                 <label key={k} className={`inline-flex h-9 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium ${opts[k] ? 'border-accent/50 bg-accent/10 text-fg' : 'border-line text-muted'}`}>

@@ -56,18 +56,18 @@ function Picker() {
   return (
     <div ref={ref} className="relative">
       <button onClick={() => { setOpen((o) => !o); setTimeout(() => input.current?.focus(), 0); }} aria-haspopup="listbox" aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-md font-bold tracking-tight hover:bg-fg/[0.06]">
-        {base}<span className="text-subtle">/USDT</span><span className="ml-1 rounded bg-accent/15 px-1 py-px text-2xs font-semibold text-accent">PERP</span>
+        className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-md font-bold tracking-tight hover:bg-fg/[0.06]">
+        {base}<span className="text-subtle">/USDT</span><span className="ml-1 rounded-full bg-accent/15 px-2 py-0.5 text-2xs font-semibold text-accent">PERP</span>
         <ChevronDown className={cn('h-4 w-4 text-subtle transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-[min(92vw,360px)] overflow-hidden rounded-lg border border-line bg-panel shadow-2xl" onKeyDown={onKey}>
+        <div className="absolute left-0 top-full z-50 mt-1 w-[min(92vw,360px)] overflow-hidden rounded-2xl card shadow-pop" onKeyDown={onKey}>
           <div className="flex items-center gap-2 border-b border-line px-3">
             <Search className="h-4 w-4 text-subtle" />
             <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search pair  (BTC, SOL…)" aria-label="Search pair" className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-subtle" />
             <span className="kbd">Esc</span>
           </div>
-          <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-1.5 text-2xs uppercase tracking-wider text-subtle"><span>Pair</span><span className="text-right">Last</span><span className="w-14 text-right">24h</span></div>
+          <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-1.5 text-2xs text-subtle"><span>Pair</span><span className="text-right">Last</span><span className="w-14 text-right">24h</span></div>
           <ul role="listbox" aria-label="Pairs" className="max-h-[340px] overflow-y-auto pb-1">
             {list.length === 0 && <li className="px-3 py-6 text-center text-sm text-muted">{symbols.length ? 'No pairs match your search.' : 'Loading pairs…'}</li>}
             {list.map((s, i) => {
@@ -91,7 +91,7 @@ function Picker() {
 }
 
 function Cell({ k, children, className }: { k: string; children: React.ReactNode; className?: string }) {
-  return <div className={cn('shrink-0', className)}><div className="text-2xs uppercase tracking-wider text-subtle">{k}</div><div className="num font-mono text-xs">{children}</div></div>;
+  return <div className={cn('shrink-0', className)}><div className="text-2xs text-subtle">{k}</div><div className="num font-mono text-xs">{children}</div></div>;
 }
 
 function PairBarInner({ compact }: { compact?: boolean }) {
@@ -124,13 +124,13 @@ function PairBarInner({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-4 border-b border-line bg-panel px-2 py-1.5" aria-label="Instrument">
+    <div className="card flex items-center gap-5 rounded-2xl px-3 py-2.5" aria-label="Instrument">
       <Picker />
       <div className="shrink-0">
-        <Flash value={last} className={cn('num font-mono text-lg font-semibold leading-none', priceTone)}>{last != null ? fmtPrice(last) : '—'}</Flash>
+        <Flash value={last} className={cn('num text-xl font-semibold leading-none', priceTone)}>{last != null ? fmtPrice(last) : '—'}</Flash>
         <div className={cn('num mt-0.5 font-mono text-2xs', chgTone)}>{chgText} <span className="text-subtle">daily</span></div>
       </div>
-      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto scroll-none">
+      <div className="flex min-w-0 flex-1 items-center gap-6 overflow-x-auto scroll-none">
         <Cell k="Bid"><span className="text-up">{p ? fmtPrice(p.bid) : '—'}</span></Cell>
         <Cell k="Ask"><span className="text-down">{p ? fmtPrice(p.ask) : '—'}</span></Cell>
         <Cell k="Spread">{p ? fmtPrice(p.ask - p.bid) : '—'}</Cell>

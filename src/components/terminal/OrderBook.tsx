@@ -98,11 +98,11 @@ function OrderBookInner() {
       <button
         type="button"
         onClick={() => clickPrice(p)}
-        className="group relative grid w-full grid-cols-3 items-center px-2 text-left font-mono text-[11px] hover:bg-fg/[0.07]"
+        className="group relative grid w-full grid-cols-3 items-center px-3 text-left text-[12px] hover:bg-fg/[0.07]"
         style={{ height: ROW }}
         title="Use this price in the order ticket"
       >
-        <span className="absolute inset-y-0 right-0 transition-[width] duration-150" style={{ width: w, background: `rgb(${col} / 0.16)`, boxShadow: `inset 1px 0 0 rgb(${col} / 0.55)` }} aria-hidden />
+        <span className="absolute inset-y-0 right-0 transition-[width] duration-150" style={{ width: w, background: `linear-gradient(90deg, rgb(${col} / 0.02), rgb(${col} / 0.2))`, borderRadius: '6px 0 0 6px' }} aria-hidden />
         <span className={cn('num relative', side === 'ask' ? 'text-down' : 'text-up')}>{fmtNum(p, pdp)}</span>
         <span className="num relative text-right text-fg/90">{fmtNum(q, qd)}</span>
         <span className="num relative text-right text-muted">{fmtNum(c, qd)}</span>
@@ -125,14 +125,14 @@ function OrderBookInner() {
           ))}
           <label className="flex items-center">
             <span className="sr-only">Price grouping</span>
-            <select value={Math.min(gi, ladder.length - 1)} onChange={(e) => set({ bookGroup: Number(e.target.value) })} className="ml-1 h-5 border border-line bg-bg/60 px-1 font-mono text-2xs text-fg focus:border-accent focus:outline-none">
+            <select value={Math.min(gi, ladder.length - 1)} onChange={(e) => set({ bookGroup: Number(e.target.value) })} className="ml-1 h-6 rounded-md border border-line bg-panel2/80 px-1.5 font-mono text-2xs text-fg focus:border-accent focus:outline-none">
               {ladder.map((x, i) => <option key={x} value={i}>{x}</option>)}
             </select>
           </label>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 border-b border-line px-2 py-1 text-3xs font-semibold uppercase tracking-[0.1em] text-subtle">
+      <div className="grid grid-cols-3 px-3 py-1.5 text-3xs font-medium text-subtle">
         <span>Price</span><span className="text-right">Size ({symbol.replace('USDT', '')})</span><span className="text-right">Sum</span>
       </div>
 
@@ -147,9 +147,9 @@ function OrderBookInner() {
               </div>
             )}
 
-            <div className="flex flex-col justify-center border-y border-line2 bg-panel2 px-2" style={{ height: MID }}>
+            <div className="mx-2 flex flex-col justify-center rounded-xl bg-panel2/80 px-3" style={{ height: MID }}>
               <div className="flex items-center gap-2">
-                <span className={cn('num flex items-center gap-1 font-mono text-sm font-semibold leading-none', dir > 0 ? 'text-up' : dir < 0 ? 'text-down' : 'text-fg')}>
+                <span className={cn('num flex items-center gap-1 text-md font-semibold leading-none', dir > 0 ? 'text-up' : dir < 0 ? 'text-down' : 'text-fg')}>
                   {last != null ? fmtPrice(last, priceDecimals(last)) : '—'}
                   {dir > 0 ? <ArrowUp className="h-3 w-3" /> : dir < 0 ? <ArrowDown className="h-3 w-3" /> : null}
                 </span>
@@ -171,13 +171,13 @@ function OrderBookInner() {
         )}
       </div>
 
-      <div className="border-t border-line px-2 py-1.5" aria-label="Buy and sell pressure">
+      <div className="border-t border-line/60 px-3 py-2.5" aria-label="Buy and sell pressure">
         <div className="flex items-center gap-1.5 text-2xs font-medium">
           <span className="num font-mono text-up">B {buyPct.toFixed(0)}%</span>
-          <div className="flex h-1 flex-1 overflow-hidden bg-down/50"><div className="bg-up transition-[width] duration-300" style={{ width: `${buyPct}%` }} /></div>
+          <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-down/50"><div className="bg-up transition-[width] duration-300" style={{ width: `${buyPct}%` }} /></div>
           <span className="num font-mono text-down">{(100 - buyPct).toFixed(0)}% S</span>
         </div>
-        <p className="mt-1 text-3xs uppercase tracking-[0.08em] text-subtle">Reference depth · indicative only</p>
+        <p className="mt-1 text-3xs text-subtle">Reference depth · indicative only</p>
       </div>
     </section>
   );

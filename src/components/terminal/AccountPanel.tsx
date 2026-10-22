@@ -12,7 +12,7 @@ import { ddUsage, toneFor } from './risk';
 function Stat({ k, v, tone, big }: { k: string; v: React.ReactNode; tone?: 'up' | 'down' | 'warn'; big?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-2xs uppercase tracking-wider text-subtle">{k}</dt>
+      <dt className="truncate text-2xs text-subtle">{k}</dt>
       <dd className={cn('num truncate font-mono', big ? 'text-md font-semibold' : 'text-sm', tone === 'up' && 'text-up', tone === 'down' && 'text-down', tone === 'warn' && 'text-warn')}>{v}</dd>
     </div>
   );
@@ -50,7 +50,7 @@ function AccountPanelInner() {
   return (
     <section className="space-y-3 border-t border-line p-3" aria-label="Account">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Account</h2>
+        <h2 className="text-xs font-semibold text-muted">Account</h2>
         <StatusBadge status={account.status} />
       </div>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5">

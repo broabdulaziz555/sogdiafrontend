@@ -21,7 +21,7 @@ type Tab = 'positions' | 'pending' | 'history';
 
 export const sym = (s: string) => s.replace('USDT', '/USDT');
 export const SideTag = ({ side }: { side: Side }) => (
-  <span className={cn('px-1 py-px text-2xs font-semibold uppercase tracking-[0.06em]', side === 'long' ? 'bg-up/15 text-up' : 'bg-down/15 text-down')}>{side}</span>
+  <span className={cn('rounded-md px-2 py-0.5 text-2xs font-semibold uppercase', side === 'long' ? 'bg-up/15 text-up' : 'bg-down/15 text-down')}>{side}</span>
 );
 /** MetaTrader wording: long = buy, short = sell. */
 export const TypeTag = ({ side }: { side: Side }) => (
@@ -68,7 +68,7 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
             <label className={cn('text-xs', color)} htmlFor={`pm-${label}`}>{label}</label>
             <input id={`pm-${label}`} inputMode="decimal" value={val} placeholder="Not set" aria-invalid={!!err}
               onChange={(e) => { const v = e.target.value.replace(',', '.'); if (/^\d*\.?\d*$/.test(v)) setter(v); }}
-              className={cn('num h-9 w-full rounded-md border bg-panel2 px-2.5 font-mono text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/25', err ? 'border-down' : 'border-line')} />
+              className={cn('num h-10 w-full rounded-xl border bg-panel2/80 px-3 text-sm outline-none focus:border-accent/70 focus:ring-4 focus:ring-accent/10', err ? 'border-down' : 'border-line')} />
             {err && <p role="alert" className="text-2xs text-down">{err}</p>}
           </div>
         ))}
@@ -119,11 +119,11 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
   const cols: Column<Position>[] = useMemo(() => [
     { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => `${p.symbol} ${p.side} ${p.id}`,
       cell: (p) => <button onClick={() => setSymbol(p.symbol)} className={cn('text-left font-medium hover:text-accent', p.symbol === current && 'text-accent')}>{sym(p.symbol)}</button> },
-    { key: 'ticket', header: 'Ticket', hideBelow: 'xl', sortValue: (p) => p.id, cell: (p) => <span className="num font-mono text-xs text-muted">#{shortId(p.id)}</span> },
-    { key: 'time', header: 'Time', hideBelow: 'xl', sortValue: (p) => Date.parse(p.created_at), cell: (p) => <span className="num text-xs text-muted">{dateTime(p.created_at)}</span> },
+    { key: 'ticket', header: 'Ticket', hideBelow: '2xl', sortValue: (p) => p.id, cell: (p) => <span className="num font-mono text-xs text-muted">#{shortId(p.id)}</span> },
+    { key: 'time', header: 'Time', hideBelow: '2xl', sortValue: (p) => Date.parse(p.created_at), cell: (p) => <span className="num whitespace-nowrap text-xs text-muted">{dateTime(p.created_at)}</span> },
     { key: 'type', header: 'Type', sortValue: (p) => p.side, cell: (p) => <TypeTag side={p.side} /> },
     { key: 'size', header: 'Volume', align: 'right', sortValue: (p) => p.quantity, cell: (p) => <span className="num font-mono">{fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1)}</span> },
-    { key: 'lev', header: 'Lev.', align: 'right', hideBelow: 'xl', sortValue: (p) => p.leverage, cell: (p) => <span className="num font-mono text-muted">{p.leverage}×</span> },
+    { key: 'lev', header: 'Lev.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.leverage, cell: (p) => <span className="num font-mono text-muted">{p.leverage}×</span> },
     { key: 'entry', header: 'Price', align: 'right', sortValue: (p) => p.entry_price, cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
     { key: 'sl', header: 'S / L', align: 'right', sortValue: (p) => p.stop_loss ?? 0, cell: (p) => (
       <button onClick={() => onEdit(p)} className="num font-mono text-xs text-warn hover:underline" aria-label={`Edit stop-loss for ${sym(p.symbol)}`}>{p.stop_loss ? fmtPrice(p.stop_loss) : <span className="text-subtle">—</span>}</button>) },
@@ -132,7 +132,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     { key: 'mark', header: 'Current', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
     { key: 'liq', header: 'Liq.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
     { key: 'pnl', header: 'Profit', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
-      <span className={cn('num inline-block min-w-[96px] px-1.5 py-px text-right font-mono font-semibold', pnlClass(p.unrealized_pnl), p.unrealized_pnl > 0 ? 'bg-up/10' : p.unrealized_pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 text-2xs font-normal opacity-80">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
+      <span className={cn('num inline-block min-w-[84px] rounded-lg px-2 py-0.5 text-right font-semibold', pnlClass(p.unrealized_pnl), p.unrealized_pnl > 0 ? 'bg-up/10' : p.unrealized_pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 hidden text-2xs font-normal opacity-80 2xl:inline">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
     { key: 'act', header: <span className="sr-only">Actions</span>, align: 'right', cell: (p) => (
       <div className="relative flex justify-end gap-1">
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
@@ -140,7 +140,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         <div className="relative">
           <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
           {menu === p.id && (
-            <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md border border-line bg-panel shadow-xl">
+            <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md card shadow-xl">
               {[25, 50, 75].map((n) => <button key={n} role="menuitem" onClick={() => close(p, n)} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-fg/[0.06]">Close {n}%</button>)}
             </div>)}
         </div>
@@ -152,7 +152,6 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
   return (
     <DataTable<Position>
       compact bare dense zebra
-      rowClassName={(p) => (p.side === 'long' ? 'shadow-[inset_2px_0_0_rgb(var(--up))]' : 'shadow-[inset_2px_0_0_rgb(var(--down))]')}
       columns={cols} rows={positions} rowKey={(p) => p.id}
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
@@ -212,7 +211,7 @@ function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | n
 
   const cols: Column<HistoryOrder>[] = [
     { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.id} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{sym(o.symbol)}</span> },
-    { key: 'ticket', header: 'Ticket', hideBelow: 'xl', cell: (o) => <span className="num font-mono text-xs text-muted">#{shortId(o.id)}</span> },
+    { key: 'ticket', header: 'Ticket', hideBelow: '2xl', cell: (o) => <span className="num font-mono text-xs text-muted">#{shortId(o.id)}</span> },
     { key: 'opened', header: 'Open time', hideBelow: 'xl', sortValue: (o) => Date.parse(o.created_at), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.created_at)}</span> },
     { key: 'type', header: 'Type', sortValue: (o) => o.side, cell: (o) => <TypeTag side={o.side} /> },
     { key: 'size', header: 'Volume', align: 'right', hideBelow: 'md', sortValue: (o) => o.position_size, cell: (o) => <span className="num font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</span> },
@@ -227,7 +226,6 @@ function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | n
   return (
     <DataTable<HistoryOrder>
       compact bare dense zebra
-      rowClassName={(o) => (o.side === 'long' ? 'shadow-[inset_2px_0_0_rgb(var(--up)/0.6)]' : 'shadow-[inset_2px_0_0_rgb(var(--down)/0.6)]')}
       columns={cols} rows={data?.orders} rowKey={(o) => o.id}
       loading={isLoading && !data} error={error && !data ? error : undefined} onRetry={() => void mutate()}
       searchPlaceholder="Search this page" pageSizes={[10, 25, 50, 100]} initialSort={{ key: 'closed', dir: 'desc' }}

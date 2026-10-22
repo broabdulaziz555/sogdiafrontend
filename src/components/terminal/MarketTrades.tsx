@@ -17,7 +17,7 @@ function MarketTradesInner() {
 
   return (
     <section className="flex h-full min-h-0 flex-col" aria-label="Market trades">
-      <div className="grid grid-cols-3 border-b border-line px-2 py-1.5 text-2xs uppercase tracking-wider text-subtle">
+      <div className="grid grid-cols-3 border-b border-line px-2 py-1.5 text-2xs text-subtle">
         <span>Price</span><span className="text-right">Size ({symbol.replace('USDT', '')})</span><span className="text-right">Time (UTC)</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">

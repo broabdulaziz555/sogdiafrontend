@@ -78,10 +78,10 @@ export function KycReview() {
         actions={<Button size="sm" variant="secondary" icon={<ListFilter className="h-3.5 w-3.5" />} onClick={() => setQueueOpen(true)}>Queue{data ? ` · ${data.total}` : ''}</Button>}
       />
 
-      {error && !data ? <div className="border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div> : (
-        <div className="grid min-h-[640px] gap-px border border-line bg-line lg:h-[calc(100dvh-11.5rem)] lg:grid-cols-[minmax(0,1.3fr)_minmax(380px,1fr)]">
+      {error && !data ? <div className="card"><ErrorState error={error} onRetry={() => mutate()} /></div> : (
+        <div className="grid min-h-[640px] gap-4 lg:h-[calc(100dvh-11rem)] lg:grid-cols-[minmax(0,1.3fr)_minmax(380px,1fr)]">
           {/* ── LEFT: document ───────────────────────────────────────────── */}
-          <section className="min-h-[360px] min-w-0 bg-bg" aria-label="Document">
+          <section className="card min-h-[360px] min-w-0 overflow-hidden bg-bg/60" aria-label="Document">
             {!sel ? <div className="grid h-full place-items-center"><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={isLoading && !data ? 'Loading queue…' : q ? 'No matches' : 'Queue is clear'} description={isLoading && !data ? undefined : 'No KYC submissions are waiting for review.'} /></div>
               : url ? <DocViewer url={url} label={`${sel.full_name || sel.email} · identity document`} />
               : (
@@ -97,21 +97,21 @@ export function KycReview() {
           </section>
 
           {/* ── RIGHT: applicant data + decision ─────────────────────────── */}
-          <section className="flex min-h-0 min-w-0 flex-col bg-panel" aria-label="Applicant">
+          <section className="card flex min-h-0 min-w-0 flex-col overflow-hidden" aria-label="Applicant">
             {!sel ? <div className="p-4"><Skeleton className="h-40" /></div> : (
               <>
-                <header className="flex h-9 shrink-0 items-center justify-between border-b border-line bg-panel2/70 px-3">
+                <header className="flex h-12 shrink-0 items-center justify-between border-b border-line/60 px-4">
                   <span className="panel-title">Applicant</span>
                   <div className="flex items-center gap-1">
                     <span className="num mr-1 font-mono text-2xs text-subtle">{idx + 1} / {list.length}</span>
-                    <button onClick={() => step(-1)} disabled={idx <= 0} aria-label="Previous submission" className="grid h-6 w-6 place-items-center border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => step(1)} disabled={idx >= list.length - 1} aria-label="Next submission" className="grid h-6 w-6 place-items-center border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => step(-1)} disabled={idx <= 0} aria-label="Previous submission" className="grid h-8 w-8 place-items-center rounded-full border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => step(1)} disabled={idx >= list.length - 1} aria-label="Next submission" className="grid h-8 w-8 place-items-center rounded-full border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
                   </div>
                 </header>
 
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  <div className="flex items-center gap-3 border-b border-line px-4 py-4">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center border border-line2 bg-panel2 font-mono text-sm font-semibold text-accent">{initials}</span>
+                  <div className="flex items-center gap-3 border-b border-line/60 px-5 py-5">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-line/70 bg-gradient-to-br from-accent/20 to-accent/[0.04] text-sm font-semibold text-accent">{initials}</span>
                     <div className="min-w-0">
                       <p className="truncate text-md font-semibold">{sel.full_name || sel.email}</p>
                       {sel.full_name && <p className="truncate text-xs text-muted">{sel.email}</p>}
@@ -119,7 +119,7 @@ export function KycReview() {
                     <span className="ml-auto"><StatusBadge status={sel.kyc_status} /></span>
                   </div>
 
-                  <div className="px-4 py-3">
+                  <div className="px-5 py-4">
                     <p className="label mb-1">Identity</p>
                     <dl>
                       <DataRow k="Full name" v={sel.full_name || '—'} />
@@ -127,7 +127,7 @@ export function KycReview() {
                       <DataRow k="Country" v={sel.country || '—'} />
                     </dl>
                   </div>
-                  <div className="border-t border-line px-4 py-3">
+                  <div className="border-t border-line/60 px-5 py-4">
                     <p className="label mb-1">Record</p>
                     <dl>
                       <DataRow k="User ID" v={sel.id.slice(0, 8)} mono />
@@ -136,12 +136,12 @@ export function KycReview() {
                       <DataRow k="Document" v={url ? 'Available' : 'No link'} tone={url ? 'up' : 'warn'} />
                     </dl>
                   </div>
-                  <div className="border-t border-line px-4 py-3">
-                    <p className="flex items-start gap-2 text-2xs leading-relaxed text-subtle"><ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-accent" />Check that the name matches the account, the document is unexpired, all corners are visible and the photo is genuine.</p>
+                  <div className="mx-5 mb-5 rounded-2xl border border-line/60 bg-panel2/50 px-4 py-3.5">
+                    <p className="flex items-start gap-2 text-xs leading-relaxed text-muted"><ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-accent" />Check that the name matches the account, the document is unexpired, all corners are visible and the photo is genuine.</p>
                   </div>
                 </div>
 
-                <div className="shrink-0 space-y-3 border-t border-line2 bg-panel2/60 p-4">
+                <div className="shrink-0 space-y-3 border-t border-line/60 bg-panel2/40 p-5">
                   {!rejecting ? (
                     <div className="grid grid-cols-2 gap-2">
                       <Button size="lg" variant="danger" onClick={() => setRejecting(true)} disabled={!!busy}>Reject…</Button>
@@ -157,7 +157,7 @@ export function KycReview() {
                       </div>
                     </div>
                   )}
-                  <p className="text-2xs leading-relaxed text-subtle">Approving unlocks payouts for this user. After a decision the next submission opens automatically.</p>
+                  <p className="text-xs leading-relaxed text-subtle">Approving unlocks payouts for this user. After a decision the next submission opens automatically.</p>
                 </div>
               </>
             )}
@@ -170,12 +170,12 @@ export function KycReview() {
         <div className="border-b border-line p-3">
           <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or email" aria-label="Filter queue" className="pl-8" /></div>
         </div>
-        <ul className="divide-y divide-line">
+        <ul className="space-y-1 p-2">
           {isLoading && !data && Array.from({ length: 6 }).map((_, i) => <li key={i} className="p-3"><Skeleton className="h-10" /></li>)}
           {data && list.length === 0 && <li><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={q ? 'No matches' : 'Queue is clear'} description={q ? 'Nothing in the queue matches your filter.' : 'No KYC submissions are waiting for review.'} /></li>}
           {list.map((u) => (
             <li key={u.id}>
-              <button onClick={() => { setSelId(u.id); setQueueOpen(false); }} aria-current={u.id === selId} className={cn('block w-full px-4 py-2.5 text-left transition-colors hover:bg-fg/[0.04]', u.id === selId && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}>
+              <button onClick={() => { setSelId(u.id); setQueueOpen(false); }} aria-current={u.id === selId} className={cn('block w-full rounded-xl px-3.5 py-3 text-left transition-colors hover:bg-fg/[0.05]', u.id === selId && 'bg-accent/[0.1] ring-1 ring-accent/30')}>
                 <span className="block truncate text-sm font-medium">{u.full_name || u.email}</span>
                 {u.full_name && <span className="block truncate text-xs text-muted">{u.email}</span>}
                 <span className="mt-0.5 block text-2xs text-subtle">Joined {relTime(u.created_at)}</span>

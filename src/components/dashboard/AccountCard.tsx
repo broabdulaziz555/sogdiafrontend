@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, CandlestickChart } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CandlestickChart, Layers } from 'lucide-react';
 import { StatusBadge, Badge } from '@/components/ui/Primitives';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SiteLink } from '@/components/ui/SiteLink';
@@ -27,21 +27,19 @@ function drawdown(a: Account) {
   };
 }
 
-/** Segmented gauge: 20 hairline cells that fill left→right. Colour escalates lime → amber → red with usage. */
+/** Drawdown gauge: a smooth rounded bar that fills with usage. Colour escalates lime → amber → red. */
 function Gauge({ label, limitPct, used, floor }: { label: string; limitPct: number; used: number; floor: number }) {
-  const cells = 20;
-  const filled = Math.round(used * cells);
-  const tone = used >= 0.8 ? 'bg-down' : used >= 0.5 ? 'bg-warn' : 'bg-accent';
+  const tone = used >= 0.8 ? 'from-down/80 to-down' : used >= 0.5 ? 'from-warn/80 to-warn' : 'from-accent/70 to-accent';
   return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between">
-        <span className="label">{label} <span className="text-subtle/80">· {limitPct}%</span></span>
-        <span className={cn('num font-mono text-2xs', used >= 0.8 ? 'text-down' : 'text-muted')}>{(used * 100).toFixed(0)}% used</span>
+    <div className="rounded-2xl bg-panel2/60 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium text-muted">{label} <span className="text-subtle">· {limitPct}%</span></span>
+        <span className={cn('num text-xs font-semibold', used >= 0.8 ? 'text-down' : 'text-fg')}>{(used * 100).toFixed(0)}%</span>
       </div>
-      <div className="flex gap-px" role="meter" aria-label={`${label} used`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used * 100)}>
-        {Array.from({ length: cells }).map((_, i) => <span key={i} className={cn('h-1.5 flex-1', i < filled ? tone : 'bg-fg/[0.08]')} />)}
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-fg/[0.08]" role="meter" aria-label={`${label} used`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(used * 100)}>
+        <div className={cn('h-full rounded-full bg-gradient-to-r transition-[width] duration-500', tone)} style={{ width: `${Math.max(used * 100, used > 0 ? 3 : 0)}%` }} />
       </div>
-      <p className="num mt-1 font-mono text-2xs text-subtle">Floor {fmtUsd(floor)}</p>
+      <p className="num mt-1.5 text-2xs text-subtle">Floor {fmtUsd(floor)}</p>
     </div>
   );
 }
@@ -61,97 +59,97 @@ export function AccountCard({ account: a }: { account: Account }) {
 
   return (
     <article
-      className={cn(
-        'group relative flex flex-col overflow-hidden border border-line bg-panel transition-colors',
-        'hover:border-line2 focus-within:border-line2',
-        // a 2px status edge on the left reads like a ticker row in a terminal
-        'shadow-[inset_2px_0_0_var(--edge)]',
-        !tradable && 'opacity-90',
-      )}
-      style={{ ['--edge' as string]: tradable ? 'rgb(var(--accent))' : a.status === 'passed' ? 'rgb(var(--up))' : 'rgb(var(--line2))' }}
+      className={cn('card group relative flex flex-col overflow-hidden rounded-3xl transition duration-200', 'hover:-translate-y-0.5 hover:border-line2 focus-within:border-line2', !tradable && 'opacity-90')}
+      style={{ ['--edge' as string]: tradable ? 'rgb(var(--accent) / 0.8)' : a.status === 'passed' ? 'rgb(var(--up) / 0.8)' : 'rgb(var(--line2))' }}
     >
-      {/* instrument header strip */}
-      <header className="flex h-8 items-center justify-between gap-2 border-b border-line bg-panel2/70 pl-4 pr-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Badge tone={a.type === 'one_step' ? 'info' : 'accent'}>{a.type === 'one_step' ? 'One-Step' : 'Instant'}</Badge>
-          {a.is_gifted && <Badge>Gifted</Badge>}
-          <span className="num truncate font-mono text-2xs text-subtle">#{shortId(a.id)}</span>
-        </div>
-        <StatusBadge status={a.status} />
-      </header>
+      {/* status light across the top edge */}
+      <span aria-hidden className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[var(--edge)] to-transparent" />
 
-      <div className="px-4 pt-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold tracking-tight text-muted">{accountLabel(a)}</h3>
-            <p className="num mt-1 font-mono text-[26px] font-semibold leading-none tracking-tight">{fmtUsd(a.balance)}</p>
+      <div className="p-5 pb-0">
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-line/70 bg-gradient-to-br from-accent/20 to-accent/[0.04] text-accent"><Layers className="h-5 w-5" strokeWidth={1.75} /></span>
+            <div className="min-w-0">
+              <h3 className="truncate text-md font-semibold tracking-tight">{accountLabel(a)}</h3>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-subtle">
+                <span className="num">#{shortId(a.id)}</span>
+                {a.is_gifted && <Badge className="!py-0">Gifted</Badge>}
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className={cn('num font-mono text-sm font-semibold', pnlClass(pnl))}>{fmtSigned(pnl)}</p>
-            <p className={cn('num font-mono text-2xs', up ? 'text-up/80' : 'text-down/80')}>{fmtPct(pnlPct, 2, true)}</p>
+          <StatusBadge status={a.status} />
+        </header>
+
+        <div className="mt-5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-muted">Balance</p>
+            <span className={cn('num inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold', up ? 'bg-up/12 text-up' : 'bg-down/12 text-down')}>
+              {up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+              {fmtSigned(pnl)} <span className="opacity-75">({fmtPct(pnlPct, 2, true)})</span>
+            </span>
           </div>
+          <p className="num mt-1.5 text-[34px] font-semibold leading-none tracking-tight">{fmtUsd(a.balance)}</p>
         </div>
       </div>
 
-      {/* equity curve — full bleed */}
-      <div className="mt-3 h-14 border-y border-line/70 bg-bg/40">
-        {isLoading && !data ? <Skeleton className="h-full rounded-none" /> : <Sparkline values={values} baseline={a.size} height={56} className="h-14" />}
+      {/* equity curve */}
+      <div className="mx-5 mt-4 h-16 overflow-hidden rounded-2xl border border-line/50 bg-bg/40">
+        {isLoading && !data ? <Skeleton className="h-full rounded-none" /> : <Sparkline values={values} baseline={a.size} height={64} className="h-16" />}
       </div>
 
-      {/* instrument readouts */}
-      <dl className="grid grid-cols-4 divide-x divide-line border-b border-line text-center">
+      {/* readouts */}
+      <dl className="mx-5 mt-3 grid grid-cols-4 gap-2 text-center">
         {[
-          ['Equity', fmtUsd(a.equity).replace(/\.00$/, '')],
+          ['Equity', fmtUsd(a.equity).replace(/\.\d+$/, '')],
           ['Daily DD', `${a.daily_dd_pct}%`],
           ['Max DD', `${a.max_dd_pct}%`],
-          ['Lev', `${a.max_leverage}×`],
+          ['Leverage', `1:${a.max_leverage}`],
         ].map(([k, v]) => (
-          <div key={k} className="px-1 py-2">
-            <dt className="text-3xs font-medium uppercase tracking-[0.1em] text-subtle">{k}</dt>
-            <dd className="num mt-0.5 truncate font-mono text-xs font-medium">{v}</dd>
+          <div key={k} className="min-w-0 rounded-xl bg-panel2/60 px-1 py-2.5">
+            <dt className="text-2xs font-medium text-subtle">{k}</dt>
+            <dd className="num mt-0.5 truncate text-[13px] font-semibold">{v}</dd>
           </div>
         ))}
       </dl>
 
-      <div className="space-y-3 px-4 py-3">
+      <div className="space-y-3 px-5 pt-4">
         {progress != null && (
           <div>
-            <div className="mb-1 flex items-baseline justify-between">
-              <span className="label">Profit target · {targetPct}%</span>
-              <span className={cn('num font-mono text-2xs', progress >= 100 ? 'text-up' : 'text-muted')}>{progress.toFixed(0)}%</span>
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="text-xs font-medium text-muted">Profit target <span className="text-subtle">· {targetPct}%</span></span>
+              <span className={cn('num text-xs font-semibold', progress >= 100 ? 'text-up' : 'text-fg')}>{progress.toFixed(0)}%</span>
             </div>
-            <div className="relative h-1.5 bg-fg/[0.08]">
-              <div className={cn('h-full transition-[width] duration-500', a.status === 'passed' || progress >= 100 ? 'bg-up' : 'bg-accent')} style={{ width: `${progress}%` }} />
-              {[25, 50, 75].map((t) => <span key={t} className="absolute top-0 h-full w-px bg-bg/80" style={{ left: `${t}%` }} aria-hidden />)}
+            <div className="h-2.5 overflow-hidden rounded-full bg-fg/[0.08]">
+              <div className={cn('h-full rounded-full bg-gradient-to-r transition-[width] duration-500', a.status === 'passed' || progress >= 100 ? 'from-up/70 to-up' : 'from-accent/60 to-accent')} style={{ width: `${Math.max(progress, progress > 0 ? 3 : 0)}%` }} />
             </div>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2.5">
           <Gauge label="Daily DD" limitPct={a.daily_dd_pct} used={dd.daily.used} floor={dd.daily.floor} />
           <Gauge label="Max DD" limitPct={a.max_dd_pct} used={dd.max.used} floor={dd.max.floor} />
         </div>
         {a.next_payout_at && (
-          <p className="flex items-center justify-between border-t border-line/70 pt-2.5 text-2xs">
-            <span className="label">Next payout window</span>
-            <span className="num font-mono text-muted">{dateShort(a.next_payout_at)}</span>
+          <p className="flex items-center justify-between text-xs">
+            <span className="text-muted">Next payout window</span>
+            <span className="num font-medium">{dateShort(a.next_payout_at)}</span>
           </p>
         )}
       </div>
 
-      <footer className="mt-auto grid grid-cols-[1fr_auto] border-t border-line">
+      <footer className="mt-auto grid grid-cols-[1fr_auto] gap-2.5 p-5">
         {tradable ? (
-          <SiteLink site="trade" path={`/?account=${a.id}`} className="relative z-10 inline-flex h-9 items-center justify-center gap-2 bg-accent text-xs font-semibold uppercase tracking-[0.08em] text-accent-fg transition-colors hover:bg-accent/90">
+          <SiteLink site="trade" path={`/?account=${a.id}`} className="relative z-10 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] text-sm font-semibold text-accent-fg shadow-btn transition hover:brightness-105 active:scale-[0.985]">
             <CandlestickChart className="h-4 w-4" /> Open terminal
           </SiteLink>
         ) : (
-          <span className="inline-flex h-9 cursor-not-allowed items-center justify-center text-xs uppercase tracking-[0.08em] text-subtle">Not tradable</span>
+          <span className="inline-flex h-11 cursor-not-allowed items-center justify-center rounded-xl bg-fg/[0.05] text-sm text-subtle">Not tradable</span>
         )}
         <Link
           href={`/accounts/${a.id}`}
           aria-label={`Details for ${accountLabel(a)}`}
-          className="inline-flex h-9 items-center gap-1 border-l border-line px-3.5 text-xs font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:bg-fg/[0.05] hover:text-fg after:absolute after:inset-0 after:z-0 after:content-['']"
+          className="inline-flex h-11 items-center gap-1 rounded-xl border border-line px-4 text-sm font-medium text-muted transition-colors hover:border-line2 hover:bg-fg/[0.05] hover:text-fg after:absolute after:inset-0 after:z-0 after:content-['']"
         >
-          Details <ArrowUpRight className="h-3.5 w-3.5" />
+          Details <ArrowUpRight className="h-4 w-4" />
         </Link>
       </footer>
     </article>
@@ -160,13 +158,13 @@ export function AccountCard({ account: a }: { account: Account }) {
 
 export function AccountCardSkeleton() {
   return (
-    <div className="border border-line bg-panel" role="status" aria-label="Loading account">
-      <div className="flex h-8 items-center justify-between border-b border-line bg-panel2/70 px-4"><Skeleton className="h-3 w-24" /><Skeleton className="h-3 w-14" /></div>
-      <div className="space-y-2 p-4"><Skeleton className="h-3 w-24" /><Skeleton className="h-7 w-40" /></div>
-      <Skeleton className="h-14 rounded-none" />
-      <div className="grid grid-cols-4 gap-px p-px">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10" />)}</div>
-      <div className="space-y-3 p-4"><Skeleton className="h-3" /><Skeleton className="h-8" /></div>
-      <Skeleton className="h-9 rounded-none" />
+    <div className="card rounded-3xl p-5" role="status" aria-label="Loading account">
+      <div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-2xl" /><div className="space-y-2"><Skeleton className="h-3.5 w-32" /><Skeleton className="h-3 w-16" /></div></div>
+      <Skeleton className="mt-5 h-8 w-44" />
+      <Skeleton className="mt-4 h-16 rounded-2xl" />
+      <div className="mt-3 grid grid-cols-4 gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>
+      <div className="mt-4 space-y-3"><Skeleton className="h-3" /><Skeleton className="h-16 rounded-2xl" /></div>
+      <Skeleton className="mt-5 h-11 rounded-xl" />
     </div>
   );
 }

@@ -55,7 +55,7 @@ function UserDrawer({ user, onClose, onChanged }: { user: Row | null; onClose: (
     <>
       <Drawer open={!!user} onClose={onClose} title={user.full_name || user.email} subtitle={<span className="flex items-center gap-2"><Badge tone={user.role === 'trader' ? 'neutral' : user.role === 'xdepartment' ? 'warn' : 'accent'}>{user.role}</Badge><span className="truncate">{user.email}</span></span>} width="max-w-lg">
         <div className="space-y-5 p-5">
-          <dl className="divide-y divide-line rounded-xl border border-line bg-panel px-4">
+          <dl className="divide-y divide-line rounded-xl card px-4">
             <KV k="User ID" v={<span className="inline-flex items-center gap-1.5">{user.id.slice(0, 8)}…<CopyButton value={user.id} /></span>} mono />
             <KV k="KYC" v={<StatusBadge status={user.kyc_status} />} />
             {user.kyc_note && <KV k="KYC note" v={user.kyc_note} />}

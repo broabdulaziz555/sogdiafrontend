@@ -102,7 +102,7 @@ function Inner() {
 
   if (has === false) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-line bg-panel p-8 text-center">
+      <div className="mx-auto max-w-md rounded-2xl card p-8 text-center">
         <Lock className="mx-auto mb-4 h-8 w-8 text-accent" />
         <h2 className="text-xl font-semibold">{t('signInFirst')}</h2>
         <p className="mt-2 text-sm text-muted">{t('signInBody')}</p>
@@ -118,7 +118,7 @@ function Inner() {
     <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
       {/* Left: details */}
       <div className="space-y-6">
-        <section className="rounded-2xl border border-line bg-panel p-6">
+        <section className="rounded-2xl card p-6">
           <p className="label mb-4">{t('plan')}</p>
           {plan ? (
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -136,7 +136,7 @@ function Inner() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-panel p-6">
+        <section className="rounded-2xl card p-6">
           <Field label={t('promoLabel')} error={promoErr} hint={appliedCode ? undefined : t('bestOnly')} htmlFor="promo">
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -164,7 +164,7 @@ function Inner() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-line bg-panel p-6">
+        <section className="rounded-2xl card p-6">
           <Field label={t('payCurrency')} htmlFor="cur">
             <Select id="cur" value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
@@ -175,7 +175,7 @@ function Inner() {
 
       {/* Right: summary */}
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-panel">
+        <div className="overflow-hidden rounded-2xl card shadow-panel">
           <div className="border-b border-line bg-panel2 px-6 py-4"><h2 className="text-md font-semibold">{t('title')}</h2></div>
           <div className="space-y-3 p-6 text-sm">
             {error && !preview ? (

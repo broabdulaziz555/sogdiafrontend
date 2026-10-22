@@ -22,7 +22,7 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-16', className)}>
-      <div className="grid h-10 w-10 place-items-center border border-line2 bg-panel2 text-subtle">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-line/70 bg-panel2 text-subtle">
         {icon ?? <Inbox className="h-5 w-5" strokeWidth={1.5} />}
       </div>
       <div className="space-y-1">
@@ -50,7 +50,7 @@ export function ErrorState({
   const offline = error instanceof ApiError && error.code === 'NETWORK_ERROR';
   return (
     <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-14', className)} role="alert">
-      <div className="grid h-10 w-10 place-items-center border border-down/40 bg-down/10 text-down">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-down/30 bg-down/10 text-down">
         {offline ? <WifiOff className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
       </div>
       <div className="space-y-1">

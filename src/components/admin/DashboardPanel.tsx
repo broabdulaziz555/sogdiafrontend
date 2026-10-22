@@ -79,7 +79,7 @@ export function DashboardPanel() {
       <PageHead title="Dashboard" subtitle="Platform health at a glance. Figures refresh every 30 seconds." />
 
       {stats.error && !s ? (
-        <div className="border border-line bg-panel"><ErrorState error={stats.error} onRetry={() => stats.mutate()} /></div>
+        <div className="card"><ErrorState error={stats.error} onRetry={() => stats.mutate()} /></div>
       ) : (
         <StatStrip>
           {!s ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[84px] rounded-none" />) : (
@@ -115,12 +115,12 @@ export function DashboardPanel() {
           <div className="space-y-3 p-4">
             {!s ? <Skeleton className="h-40 w-full" /> : totalAccounts === 0 ? <EmptyState compact title="No accounts yet" /> : (
               <>
-                <div className="flex h-2 gap-px overflow-hidden bg-fg/[0.08]" role="img" aria-label="Account status distribution">
+                <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-fg/[0.08]" role="img" aria-label="Account status distribution">
                   {Object.entries(s.accounts).filter(([, n]) => n > 0).map(([k, n]) => <span key={k} className={STATUS_TONE[k] ?? 'bg-muted'} style={{ width: `${(n / totalAccounts) * 100}%` }} title={`${k}: ${n}`} />)}
                 </div>
                 <ul className="space-y-2">
                   {Object.entries(s.accounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-                    <li key={k} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 capitalize"><span className={`h-2 w-2 ${STATUS_TONE[k] ?? 'bg-muted'}`} />{k}</span><span className="num font-mono">{n.toLocaleString()} <span className="text-xs text-subtle">({((n / totalAccounts) * 100).toFixed(1)}%)</span></span></li>
+                    <li key={k} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 capitalize"><span className={`h-2.5 w-2.5 rounded-full ${STATUS_TONE[k] ?? 'bg-muted'}`} />{k}</span><span className="num">{n.toLocaleString()} <span className="text-xs text-subtle">({((n / totalAccounts) * 100).toFixed(1)}%)</span></span></li>
                   ))}
                 </ul>
               </>

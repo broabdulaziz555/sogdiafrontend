@@ -33,7 +33,7 @@ export function Reveal({ children, delay = 0, className }: { children: React.Rea
 export function SectionHead({ eyebrow, title, subtitle, className }: { eyebrow: string; title: string; subtitle?: string; className?: string }) {
   return (
     <div className={cn('max-w-2xl', className)}>
-      <p className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.22em] text-accent">
+      <p className="mb-3 flex items-center gap-2 font-mono text-xs text-accent">
         <span className="h-px w-6 bg-accent" aria-hidden />
         {eyebrow}
       </p>

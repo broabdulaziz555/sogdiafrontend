@@ -20,7 +20,7 @@ type Filter = 'all' | 'win' | 'loss';
 type Sort = 'new' | 'old' | 'best' | 'worst';
 
 function Stat({ k, children }: { k: string; children: React.ReactNode }) {
-  return <div className="min-w-0 rounded-lg border border-line bg-panel px-2.5 py-2"><dt className="truncate text-2xs uppercase tracking-wider text-subtle">{k}</dt><dd className="num truncate font-mono text-md font-semibold">{children}</dd></div>;
+  return <div className="min-w-0 rounded-lg card px-2.5 py-2"><dt className="truncate text-2xs text-subtle">{k}</dt><dd className="num truncate font-mono text-md font-semibold">{children}</dd></div>;
 }
 
 function MobileHistoryInner() {
@@ -67,12 +67,12 @@ function MobileHistoryInner() {
       <div className="space-y-2 px-2 pb-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search symbol, ticket, reason" aria-label="Search trade history" className="h-11 w-full rounded-lg border border-line bg-panel pl-9 pr-9 text-base placeholder:text-subtle focus:border-accent focus:outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search symbol, ticket, reason" aria-label="Search trade history" className="h-11 w-full rounded-lg card pl-9 pr-9 text-base placeholder:text-subtle focus:border-accent focus:outline-none" />
           {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-subtle"><X className="h-4 w-4" /></button>}
         </div>
         <div className="flex items-center gap-2">
           <Segmented<Filter> size="sm" ariaLabel="Result filter" value={filter} onChange={setFilter} options={[{ value: 'all', label: 'All' }, { value: 'win', label: 'Wins' }, { value: 'loss', label: 'Losses' }]} />
-          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort trades" className="ml-auto h-9 rounded-lg border border-line bg-panel px-2 text-sm focus:border-accent focus:outline-none">
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort trades" className="ml-auto h-9 rounded-lg card px-2 text-sm focus:border-accent focus:outline-none">
             <option value="new">Newest</option><option value="old">Oldest</option><option value="best">Best profit</option><option value="worst">Worst profit</option>
           </select>
         </div>
@@ -87,21 +87,21 @@ function MobileHistoryInner() {
           ) : (
             <ul className="space-y-2">
               {rows.map((o: HistoryOrder) => (
-                <li key={o.id} className="rounded-xl border border-line bg-panel p-3">
+                <li key={o.id} className="rounded-xl card p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-md font-semibold">{sym(o.symbol)}</span><TypeTag side={o.side} /><span className="num text-2xs text-subtle">{o.leverage}×</span>
-                        {o.close_reason && o.close_reason !== 'manual' && <span className={cn('rounded border px-1.5 py-px text-2xs font-medium uppercase', o.close_reason === 'liquidation' ? 'border-down/30 bg-down/10 text-down' : o.close_reason === 'take_profit' ? 'border-up/30 bg-up/10 text-up' : 'border-warn/30 bg-warn/10 text-warn')}>{REASON[o.close_reason] ?? o.close_reason}</span>}
+                        {o.close_reason && o.close_reason !== 'manual' && <span className={cn('rounded border px-1.5 py-px text-2xs font-medium ', o.close_reason === 'liquidation' ? 'border-down/30 bg-down/10 text-down' : o.close_reason === 'take_profit' ? 'border-up/30 bg-up/10 text-up' : 'border-warn/30 bg-warn/10 text-warn')}>{REASON[o.close_reason] ?? o.close_reason}</span>}
                       </div>
                       <p className="mt-0.5 text-2xs text-subtle">#{shortId(o.id)} · {dateTime(o.closed_at)}</p>
                     </div>
                     <p className={cn('num font-mono text-lg font-semibold leading-tight', pnlClass(o.pnl))}>{fmtSigned(o.pnl)}</p>
                   </div>
                   <dl className="mt-2 grid grid-cols-3 gap-x-2 text-sm">
-                    <div><dt className="text-2xs uppercase tracking-wider text-subtle">Volume</dt><dd className="num font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</dd></div>
-                    <div><dt className="text-2xs uppercase tracking-wider text-subtle">Price</dt><dd className="num font-mono">{fmtPrice(o.entry_price)}</dd></div>
-                    <div><dt className="text-2xs uppercase tracking-wider text-subtle">Close</dt><dd className="num font-mono">{fmtPrice(o.close_price)}</dd></div>
+                    <div><dt className="text-2xs text-subtle">Volume</dt><dd className="num font-mono">{o.entry_price ? fmtNum(o.position_size / o.entry_price, qtyDecimals(o.entry_price) + 1) : '—'}</dd></div>
+                    <div><dt className="text-2xs text-subtle">Price</dt><dd className="num font-mono">{fmtPrice(o.entry_price)}</dd></div>
+                    <div><dt className="text-2xs text-subtle">Close</dt><dd className="num font-mono">{fmtPrice(o.close_price)}</dd></div>
                   </dl>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-2xs text-subtle">Opened {dateTime(o.created_at)}</p>

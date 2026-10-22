@@ -30,7 +30,7 @@ import { Watchlist } from './Watchlist';
 const LAST_ACCOUNT = 'sg-terminal-account';
 
 const Panel = ({ children, label, className }: { children: React.ReactNode; label: string; className?: string }) => (
-  <div className={cn('min-h-0 min-w-0 bg-panel', className)}><ErrorBoundary label={label} compact>{children}</ErrorBoundary></div>
+  <div className={cn('card min-h-0 min-w-0 overflow-hidden rounded-2xl', className)}><ErrorBoundary label={label} compact>{children}</ErrorBoundary></div>
 );
 
 function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList: Account[]; onAccountChange: (id: string) => void; onInactive: () => void }) {
@@ -56,13 +56,13 @@ function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList
   else {
     // Match-Trader style: [Market Watch / Order book] · [instrument bar / chart / positions ledger] · [order ticket / account]
     body = (
-      <div className="flex min-h-0 flex-1 flex-col bg-line pb-safe">
-        <div className="grid min-h-0 flex-1 grid-cols-[216px_minmax(0,1fr)_272px] gap-px xl:grid-cols-[232px_minmax(0,1fr)_288px] 2xl:grid-cols-[264px_minmax(0,1fr)_312px]">
-          <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)] gap-px bg-line">
+      <div className="flex min-h-0 flex-1 flex-col p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="grid min-h-0 flex-1 grid-cols-[232px_minmax(0,1fr)_288px] gap-2 xl:grid-cols-[248px_minmax(0,1fr)_304px] 2xl:grid-cols-[272px_minmax(0,1fr)_328px]">
+          <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)] gap-2">
             <Panel label="Market Watch"><Watchlist /></Panel>
             <Panel label="Order book"><OrderBook /></Panel>
           </div>
-          <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(176px,32%)] gap-px bg-line">
+          <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(176px,32%)] gap-2">
             <PairBar />
             <Panel label="Chart"><PriceChart positions={positions} /></Panel>
             <Panel label="Terminal"><PositionsPanel className="h-full" /></Panel>

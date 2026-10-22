@@ -148,14 +148,14 @@ export function SettingsEditor() {
       <PageHead title="Platform settings" subtitle={<>Referral commission, discounts and promo codes live in one document. Prices are <b>not</b> editable here. <XTag className="ml-1" /></>}
         actions={data && <span className="flex items-center gap-2 text-xs text-muted"><Badge tone="neutral">v{data.version}</Badge>Updated {dateTime(data.updated_at)}</span>} />
 
-      {error && !data ? <div className="rounded-xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div>
+      {error && !data ? <div className="rounded-xl card"><ErrorState error={error} onRetry={() => mutate()} /></div>
         : isLoading && !data ? <Skeleton className="h-[560px] rounded-xl" />
         : (
           <div className="space-y-6">
             {p && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                 {([['Referral commission', `${p.referral_commission_pct ?? '—'}%`], ['Referral discount', `${p.referral_discount_pct ?? '—'}%`], ['Site-wide discount', `${p.default_discount_pct ?? '—'}%`], ['Invoice floor', `$${p.min_invoice_usd ?? '—'}`], ['Promo codes', String(p.promos?.length ?? 0)]] as const).map(([k, v]) => (
-                  <div key={k} className="rounded-xl border border-line bg-panel px-4 py-3"><p className="label">{k}</p><p className="num mt-1 text-lg font-bold">{v}</p></div>
+                  <div key={k} className="rounded-xl card px-4 py-3"><p className="label">{k}</p><p className="num mt-1 text-lg font-bold">{v}</p></div>
                 ))}
               </div>
             )}

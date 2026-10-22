@@ -37,7 +37,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname() || '/';
   const nav = useNav();
   return (
-    <nav aria-label="Dashboard" className="space-y-px">
+    <nav aria-label="Dashboard" className="space-y-1">
       {nav.map((n) => {
         const active = n.exact ? pathname === n.href || pathname.startsWith('/accounts') : pathname.startsWith(n.href);
         return (
@@ -47,12 +47,11 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'group relative flex h-8 items-center gap-3 px-3 text-sm font-medium transition-colors',
-              active ? 'bg-accent/10 text-accent' : 'text-muted hover:bg-fg/[0.05] hover:text-fg',
+              'group relative flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-medium transition-all',
+              active ? 'bg-accent/[0.12] text-accent shadow-[inset_0_0_0_1px_rgb(var(--accent)/0.18)]' : 'text-muted hover:bg-fg/[0.05] hover:text-fg',
             )}
           >
-            {active && <span className="absolute inset-y-0 left-0 w-[2px] bg-accent" aria-hidden />}
-            <n.icon className="h-4 w-4 shrink-0" />
+            <n.icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.25 : 1.75} />
             {n.label}
           </Link>
         );
@@ -82,13 +81,13 @@ function UserMenu() {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className="flex h-8 items-center gap-2 border border-line bg-panel2 pl-1 pr-2 transition-colors hover:border-line2">
-        <span className="grid h-6 w-6 place-items-center bg-accent text-2xs font-bold text-accent-fg">{initials}</span>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className="flex h-10 items-center gap-2 rounded-full border border-line bg-panel2/80 py-1 pl-1 pr-3 transition-colors hover:border-line2">
+        <span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold text-accent-fg bg-gradient-to-b from-accent to-[rgb(154_226_84)] shadow-btn`}>{initials}</span>
         <ChevronDown className="h-3 w-3 text-muted" />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-50 mt-2 w-64 animate-scale-in overflow-hidden border border-line2 bg-panel shadow-pop">
-          <div className="border-b border-line px-4 py-3">
+        <div role="menu" className="absolute right-0 z-50 mt-2 w-72 animate-scale-in overflow-hidden rounded-2xl border border-line2/70 bg-panel shadow-pop">
+          <div className="border-b border-line/60 px-4 py-3.5">
             <p className="truncate text-sm font-medium">{user.full_name || user.email}</p>
             {user.full_name && <p className="truncate text-xs text-muted">{user.email}</p>}
             <div className="mt-2 flex items-center gap-1.5">
@@ -97,17 +96,17 @@ function UserMenu() {
             </div>
           </div>
           <div className="p-1.5">
-            <Link role="menuitem" href="/settings" onClick={() => setOpen(false)} className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg"><Settings className="h-4 w-4" />{t('settings')}</Link>
+            <Link role="menuitem" href="/settings" onClick={() => setOpen(false)} className="flex h-10 items-center gap-2.5 rounded-xl px-3 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg"><Settings className="h-4 w-4" />{t('settings')}</Link>
             {staff && (
-              <SiteLink site="xdepartment" role="menuitem" className="flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg">
+              <SiteLink site="xdepartment" role="menuitem" className="flex h-10 items-center gap-2.5 rounded-xl px-3 text-sm text-muted hover:bg-fg/[0.06] hover:text-fg">
                 <ShieldAlert className="h-4 w-4" />{t('adminPanel')}
               </SiteLink>
             )}
-            <InstallApp className="h-8 rounded-md px-2.5 text-muted hover:text-fg" onDone={() => setOpen(false)} />
+            <InstallApp className="h-10 rounded-xl px-3 text-muted hover:text-fg" onDone={() => setOpen(false)} />
             <button
               role="menuitem"
               onClick={() => { clearSession(); window.location.href = siteHref('www', '/'); }}
-              className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-down hover:bg-down/10"
+              className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-sm text-down hover:bg-down/10"
             >
               <LogOut className="h-4 w-4" />{c('signOut')}
             </button>
@@ -129,44 +128,44 @@ export function DashShell({ children }: { children: React.ReactNode }) {
     <div className="space-y-2">
       <SiteLink
         site="trade"
-        className="group flex h-9 items-center justify-center gap-2 border border-accent bg-accent text-xs font-semibold uppercase tracking-[0.08em] text-accent-fg transition-colors hover:bg-accent/90"
+        className="group flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] shadow-btn text-sm font-semibold text-accent-fg transition hover:brightness-105 active:scale-[0.985]"
       >
         <CandlestickChart className="h-4 w-4" />{t('openTerminal')}
       </SiteLink>
-      <SiteLink site="www" path="/#pricing" className="flex h-8 items-center justify-center gap-2 border border-line text-xs font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:border-accent/60 hover:text-accent">
+      <SiteLink site="www" path="/#pricing" className="flex h-10 items-center justify-center gap-2 rounded-xl border border-line text-sm font-medium text-muted transition-colors hover:border-accent/60 hover:text-accent">
         <Plus className="h-4 w-4" />{t('buyAccount')}
       </SiteLink>
     </div>
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[232px_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[248px_1fr]">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-panel2 px-0 py-4 lg:flex">
-        <Link href="/" className="mb-5 px-4"><Logo /></Link>
-        <div className="flex-1 overflow-y-auto px-2"><NavList /></div>
-        <div className="mt-4 border-t border-line px-3 pt-4">{sidebarFooter}</div>
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line/60 bg-panel/50 px-0 py-5 backdrop-blur-xl lg:flex">
+        <Link href="/" className="mb-6 px-5"><Logo /></Link>
+        <div className="flex-1 overflow-y-auto px-3"><NavList /></div>
+        <div className="mx-3 mt-4 rounded-2xl border border-line/60 bg-panel2/50 p-3">{sidebarFooter}</div>
       </aside>
 
       {/* Mobile sheet */}
       {open && (
         <div className="fixed inset-0 z-[80] lg:hidden" role="dialog" aria-modal="true" aria-label={t('menu')}>
-          <div className="absolute inset-0 animate-fade-in bg-black/70" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 animate-fade-in flex-col border-r border-line2 bg-panel px-0 pb-safe pl-safe pt-[max(1rem,env(safe-area-inset-top))]">
+          <div className="absolute inset-0 animate-fade-in bg-[#04060C]/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 flex w-72 animate-fade-in flex-col rounded-r-3xl border-r border-line2/70 bg-panel px-0 pb-safe pl-safe pt-[max(1rem,env(safe-area-inset-top))]">
             <div className="mb-5 flex items-center justify-between px-4">
               <Logo />
-              <button onClick={() => setOpen(false)} aria-label="Close menu" className="grid h-8 w-8 place-items-center text-muted hover:bg-fg/10"><X className="h-4 w-4" /></button>
+              <button onClick={() => setOpen(false)} aria-label="Close menu" className="grid h-9 w-9 place-items-center rounded-full bg-fg/[0.06] text-muted hover:bg-fg/10"><X className="h-4 w-4" /></button>
             </div>
-            <div className="flex-1 overflow-y-auto px-2"><NavList onNavigate={() => setOpen(false)} /></div>
-            <div className="mt-4 border-t border-line px-3 pt-4">{sidebarFooter}</div>
+            <div className="flex-1 overflow-y-auto px-3"><NavList onNavigate={() => setOpen(false)} /></div>
+            <div className="mx-3 mb-3 mt-4 rounded-2xl border border-line/60 bg-panel2/50 p-3">{sidebarFooter}</div>
           </aside>
         </div>
       )}
 
       <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-[calc(2.75rem+env(safe-area-inset-top))] items-center justify-between gap-3 border-b border-line bg-bg/95 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-safe sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+        <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center justify-between gap-3 border-b border-line/50 bg-bg/70 backdrop-blur-xl pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-safe sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
           <div className="flex items-center gap-3">
-            <button onClick={() => setOpen(true)} aria-label={t('menu')} className="grid h-8 w-8 place-items-center border border-line bg-panel2 text-muted lg:hidden"><Menu className="h-4 w-4" /></button>
+            <button onClick={() => setOpen(true)} aria-label={t('menu')} className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel2/80 text-muted lg:hidden"><Menu className="h-4 w-4" /></button>
             <Link href="/" className="lg:hidden"><Logo /></Link>
             <p className="hidden items-center gap-1.5 text-xs text-subtle lg:flex"><ShieldCheck className="h-3.5 w-3.5 text-up" />Secure session</p>
           </div>
@@ -177,7 +176,7 @@ export function DashShell({ children }: { children: React.ReactNode }) {
             <UserMenu />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1360px] flex-1 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:py-6 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+        <main className="mx-auto w-full max-w-[1360px] flex-1 py-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:py-6 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
           <ErrorBoundary label="This page">{children}</ErrorBoundary>
         </main>
       </div>

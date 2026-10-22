@@ -17,8 +17,8 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone; children: React.ReactNode; className?: string; dot?: boolean }) {
   return (
-    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap border px-1.5 py-px text-2xs font-semibold uppercase tracking-[0.08em]', tones[tone], className)}>
-      {dot && <span className="h-1.5 w-1.5 bg-current" />}
+    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize', tones[tone], className)}>
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
       {children}
     </span>
   );
@@ -66,7 +66,7 @@ export function Segmented<T extends string | number>({ value, onChange, options,
   value: T; onChange: (v: T) => void; options: { value: T; label: React.ReactNode }[]; size?: 'sm' | 'md'; className?: string; ariaLabel?: string;
 }) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className={cn('inline-flex border border-line bg-panel2 p-px', className)}>
+    <div role="tablist" aria-label={ariaLabel} className={cn('inline-flex gap-0.5 rounded-xl border border-line/70 bg-panel2/80 p-1', className)}>
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -74,9 +74,9 @@ export function Segmented<T extends string | number>({ value, onChange, options,
           aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'font-medium transition-colors',
-            size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm',
-            o.value === value ? 'bg-accent/10 text-accent shadow-[inset_0_-1px_0_rgb(var(--accent))]' : 'text-muted hover:bg-fg/[0.04] hover:text-fg',
+            'rounded-lg font-medium transition-all',
+            size === 'sm' ? 'px-3 py-1 text-xs' : 'px-4 py-1.5 text-sm',
+            o.value === value ? 'bg-accent text-accent-fg shadow-[0_4px_14px_-6px_rgb(var(--accent)/0.7)]' : 'text-muted hover:bg-fg/[0.06] hover:text-fg',
           )}
         >
           {o.label}
@@ -104,7 +104,7 @@ export function Tabs<T extends string>({ value, onChange, tabs, className }: {
           )}
         >
           {t.label}
-          {t.count != null && <span className={cn('num px-1 text-2xs', t.value === value ? 'bg-accent/15 text-accent' : 'bg-fg/[0.07] text-muted')}>{t.count}</span>}
+          {t.count != null && <span className={cn('num rounded-full px-1.5 text-2xs', t.value === value ? 'bg-accent/15 text-accent' : 'bg-fg/[0.07] text-muted')}>{t.count}</span>}
         </button>
       ))}
     </div>
@@ -119,9 +119,9 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={cn('relative h-5 w-9 shrink-0 border transition-colors', checked ? 'border-accent bg-accent' : 'border-line2 bg-panel2')}
+      className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-accent' : 'bg-line2')}
     >
-      <span className={cn('absolute top-0.5 h-3.5 w-3.5 transition-all', checked ? 'left-[18px] bg-accent-fg' : 'left-0.5 bg-subtle')} />
+      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full shadow transition-all', checked ? 'left-[22px] bg-accent-fg' : 'left-0.5 bg-fg')} />
     </button>
   );
 }
@@ -137,7 +137,7 @@ export function CopyButton({ value, className, label = 'Copy' }: { value: string
         e.stopPropagation();
         try { await navigator.clipboard.writeText(value); setOk(true); setTimeout(() => setOk(false), 1400); } catch { /* clipboard blocked */ }
       }}
-      className={cn('grid h-6 w-6 place-items-center text-subtle transition-colors hover:bg-fg/10 hover:text-fg', className)}
+      className={cn('grid h-7 w-7 place-items-center rounded-lg text-subtle transition-colors hover:bg-fg/10 hover:text-fg', className)}
     >
       {ok ? <Check className="h-3.5 w-3.5 text-up" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
@@ -152,7 +152,7 @@ export function Tip({ text, children, side = 'top' }: { text: string; children: 
       <span
         role="tooltip"
         className={cn(
-          'pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 whitespace-nowrap border border-line2 bg-panel px-2 py-1 text-xs text-fg opacity-0 transition-opacity delay-100 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100',
+          'pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line2/70 bg-panel2 px-2.5 py-1.5 text-xs text-fg shadow-pop opacity-0 transition-opacity delay-100 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100',
           side === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
         )}
       >
@@ -167,8 +167,8 @@ export function Meter({ value, max = 100, tone = 'accent', className }: { value:
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   const bar = { accent: 'bg-accent', up: 'bg-up', down: 'bg-down', warn: 'bg-warn' }[tone];
   return (
-    <div role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} className={cn('h-1 w-full overflow-hidden bg-fg/[0.08]', className)}>
-      <div className={cn('h-full transition-[width] duration-500', bar)} style={{ width: `${pct}%` }} />
+    <div role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} className={cn('h-1.5 w-full overflow-hidden rounded-full bg-fg/[0.08]', className)}>
+      <div className={cn('h-full rounded-full transition-[width] duration-500', bar)} style={{ width: `${pct}%` }} />
     </div>
   );
 }

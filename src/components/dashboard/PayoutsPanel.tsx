@@ -70,10 +70,10 @@ function WalletCard({ user }: { user: User }) {
   };
 
   return (
-    <section className="border border-line bg-panel p-4" aria-labelledby="wallet-h">
+    <section className="card p-4" aria-labelledby="wallet-h">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center border border-line2 bg-panel2 text-accent"><Wallet className="h-4 w-4" /></div>
+          <div className="grid h-10 w-10 place-items-center rounded-xl border border-line/70 bg-panel2 text-accent"><Wallet className="h-4 w-4" /></div>
           <div>
             <h2 id="wallet-h" className="text-sm font-semibold">Payout wallet</h2>
             <p className="text-xs text-muted">USDT is sent to this address on the network you choose.</p>
@@ -84,7 +84,7 @@ function WalletCard({ user }: { user: User }) {
 
       {editing ? (
         <div className="mt-4 space-y-3">
-          <WalletFields idPrefix="w" network={network} address={address} onNetwork={(n) => { setNetwork(n); setErrs((e) => ({ ...e, network: undefined })); }} onAddress={(a) => { setAddress(a); setErrs((e) => ({ ...e, address: undefined })); }} errors={errs} />
+          <WalletFields idPrefix="w" className="grid gap-4" network={network} address={address} onNetwork={(n) => { setNetwork(n); setErrs((e) => ({ ...e, network: undefined })); }} onAddress={(a) => { setAddress(a); setErrs((e) => ({ ...e, address: undefined })); }} errors={errs} />
           {apiErr && <p role="alert" className="text-xs text-down">{apiErr}</p>}
           <p className="text-xs text-subtle">Double-check the address and network. Transfers cannot be reversed.</p>
           <div className="flex justify-end gap-2">
@@ -94,8 +94,8 @@ function WalletCard({ user }: { user: User }) {
         </div>
       ) : (
         <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-2 border border-line bg-panel2 px-3 py-2.5">
-            <span className={`shrink-0 border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.08em] ${parsed.tagged ? 'border-accent/30 bg-accent/10 text-accent' : 'border-warn/30 bg-warn/10 text-warn'}`}>{parsed.tagged ? parsed.network : 'No network'}</span>
+          <div className="flex items-center gap-2 rounded-xl border border-line/70 bg-panel2/70 px-3.5 py-3">
+            <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-2xs font-semibold ${parsed.tagged ? 'border-accent/30 bg-accent/10 text-accent' : 'border-warn/30 bg-warn/10 text-warn'}`}>{parsed.tagged ? parsed.network : 'No network'}</span>
             <code className="num min-w-0 flex-1 break-all font-mono text-sm">{parsed.address}</code>
             <CopyButton value={parsed.address} label="Copy address" />
           </div>
@@ -114,7 +114,7 @@ function EligibilityRow({ account, onRequest }: { account: Account; onRequest: (
   const cycleElapsed = e ? Math.max(0, Math.min(100, ((cycleDays - e.days_remaining) / cycleDays) * 100)) : 0;
 
   return (
-    <li className="border border-line bg-panel p-4">
+    <li className="card p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link href={`/accounts/${account.id}`} className="font-semibold hover:text-accent">{accountLabel(account)}</Link>
@@ -192,7 +192,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
   };
 
   const SplitBar = () => (
-    <div className="border border-line bg-panel2/40 p-3">
+    <div className="rounded-2xl border border-line/70 bg-panel2/50 p-3.5">
       <div className="mb-2 flex h-2 overflow-hidden bg-line" aria-hidden>
         <div className="bg-accent transition-[width]" style={{ width: `${elig.split_pct}%` }} />
       </div>
@@ -227,8 +227,8 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
         {!done && <WizardSteps steps={PAYOUT_STEPS} current={step} />}
 
         {done ? (
-          <div className="border border-line bg-panel2/40 p-4">
-            <div className="mb-3 flex items-center gap-2 text-up"><CheckCircle2 className="h-5 w-5" /><span className="text-sm font-semibold uppercase tracking-[0.08em]">Receipt</span></div>
+          <div className="rounded-2xl border border-line/70 bg-panel2/50 p-4">
+            <div className="mb-3 flex items-center gap-2 text-up"><CheckCircle2 className="h-5 w-5" /><span className="text-sm font-semibold ">Receipt</span></div>
             <dl>
               <Row k="Reference" v={<span className="font-mono">#{shortId(done.id)}</span>} />
               <Row k="Requested" v={dateTime(done.created_at)} />
@@ -248,7 +248,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
                 <Button size="md" variant="outline" className="h-10" onClick={() => setAmount(String(elig.profit))}>Max</Button>
               </div>
             </Field>
-            <div className="grid grid-cols-4 gap-px border border-line bg-line">
+            <div className="grid grid-cols-4 gap-2">
               {[25, 50, 75, 100].map((p) => (
                 <button key={p} type="button" onClick={() => setAmount(String(Math.floor(elig.profit * p) / 100))} className="num bg-panel py-1.5 font-mono text-xs text-muted transition-colors hover:bg-fg/[0.05] hover:text-accent">{p}%</button>
               ))}
@@ -257,10 +257,10 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
           </>
         ) : step === 1 ? (
           <>
-            <div className="border border-line bg-panel2/40 p-3">
+            <div className="rounded-2xl border border-line/70 bg-panel2/50 p-3.5">
               <p className="label mb-2">Payout wallet</p>
               <div className="flex items-center gap-2">
-                <span className={`shrink-0 border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.08em] ${walletTagged ? 'border-accent/40 bg-accent/10 text-accent' : 'border-warn/40 bg-warn/10 text-warn'}`}>{walletTagged ? parseWallet(wallet).network : 'No network'}</span>
+                <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-2xs font-semibold ${walletTagged ? 'border-accent/40 bg-accent/10 text-accent' : 'border-warn/40 bg-warn/10 text-warn'}`}>{walletTagged ? parseWallet(wallet).network : 'No network'}</span>
                 <code className="num min-w-0 flex-1 break-all font-mono text-xs">{wallet ? parseWallet(wallet).address : 'No wallet set'}</code>
               </div>
             </div>
@@ -270,7 +270,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
           </>
         ) : (
           <>
-            <dl className="border border-line bg-panel2/40 px-3">
+            <dl className="rounded-xl border border-line/70 bg-panel2/50 px-3.5">
               <Row k="Account" v={accountLabel(account)} />
               <Row k="Gross profit" v={fmtUsd(gross)} mono />
               <Row k={`SOGDIA (${100 - elig.split_pct}%)`} v={`−${fmtUsd(fee)}`} mono />
@@ -338,7 +338,7 @@ export function PayoutsPanel() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="order-2 space-y-4 xl:order-1">
-          <section className="border border-line bg-panel">
+          <section className="card">
             <div className="panel-head"><h2 className="panel-title">Payout history</h2></div>
             <DataTable
               columns={cols}
@@ -361,7 +361,7 @@ export function PayoutsPanel() {
           <section aria-labelledby="elig-h">
             <h2 id="elig-h" className="mb-3 px-1 text-md font-semibold">Eligible accounts</h2>
             {accError && !accounts ? (
-              <div className="rounded-2xl border border-line bg-panel"><ErrorState error={accError} onRetry={() => accMutate()} /></div>
+              <div className="rounded-2xl card"><ErrorState error={accError} onRetry={() => accMutate()} /></div>
             ) : accLoading && !accounts ? (
               <div className="space-y-3">{[0, 1].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}</div>
             ) : payable.length === 0 ? (

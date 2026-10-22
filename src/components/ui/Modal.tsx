@@ -73,7 +73,7 @@ export function Modal({
 
   return createPortal(
     <div className="fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
-      <div className="absolute inset-0 animate-fade-in bg-black/75" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#04060C]/70 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div
         ref={ref}
         role="dialog"
@@ -81,28 +81,28 @@ export function Modal({
         aria-label={typeof title === 'string' ? title : undefined}
         tabIndex={-1}
         className={cn(
-          'relative flex max-h-[92dvh] w-full animate-slide-up flex-col overflow-hidden border border-line2 bg-panel shadow-pop sm:animate-scale-in',
+          'relative flex max-h-[92dvh] w-full animate-slide-up flex-col overflow-hidden rounded-t-3xl border border-line2/70 bg-panel shadow-pop sm:animate-scale-in sm:rounded-3xl',
           widths[size],
           className,
         )}
       >
         {(title || description) && (
-          <div className="flex items-start justify-between gap-4 border-b border-line bg-panel2/70 px-4 py-3">
+          <div className="flex items-start justify-between gap-4 px-5 pb-3 pt-5">
             <div className="min-w-0">
-              {title && <h2 className="text-sm font-semibold uppercase tracking-[0.08em]">{title}</h2>}
-              {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+              {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
+              {description && <p className="mt-1 text-sm text-muted">{description}</p>}
             </div>
             <button
               onClick={onClose}
               aria-label="Close dialog"
-              className="-mr-1 grid h-7 w-7 shrink-0 place-items-center text-muted transition-colors hover:bg-fg/10 hover:text-fg"
+              className="-mr-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-fg/[0.06] text-muted transition-colors hover:bg-fg/10 hover:text-fg"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-        {footer && <div className="flex items-center justify-end gap-2 border-t border-line bg-panel2/60 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">{footer}</div>}
+        {footer && <div className="flex items-center justify-end gap-2.5 border-t border-line/60 bg-panel2/40 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-4">{footer}</div>}
       </div>
     </div>,
     document.body,
@@ -132,25 +132,25 @@ export function Drawer({
 
   return createPortal(
     <div className="fixed inset-0 z-[90]" role="presentation">
-      <div className="absolute inset-0 animate-fade-in bg-black/65" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 animate-fade-in bg-[#04060C]/65 backdrop-blur-sm" onClick={onClose} aria-hidden />
       <aside
         ref={ref}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
-        className={cn('absolute inset-y-0 right-0 flex w-full animate-slide-left flex-col border-l border-line2 bg-panel pb-safe pt-safe shadow-pop', width)}
+        className={cn('absolute inset-y-0 right-0 flex w-full animate-slide-left flex-col border-l border-line2/70 bg-panel pb-safe pt-safe shadow-pop sm:inset-y-3 sm:right-3 sm:w-[calc(100%-1.5rem)] sm:rounded-3xl sm:border', width)}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-line bg-panel2/70 px-4 py-3">
+        <div className="flex items-start justify-between gap-4 border-b border-line/60 px-5 py-4">
           <div className="min-w-0">
-            {title && <h2 className="truncate text-sm font-semibold uppercase tracking-[0.08em]">{title}</h2>}
-            {subtitle && <div className="mt-0.5 text-xs text-muted">{subtitle}</div>}
+            {title && <h2 className="truncate text-lg font-semibold tracking-tight">{title}</h2>}
+            {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}
           </div>
-          <button onClick={onClose} aria-label="Close panel" className="-mr-1 grid h-7 w-7 shrink-0 place-items-center text-muted hover:bg-fg/10 hover:text-fg">
+          <button onClick={onClose} aria-label="Close panel" className="-mr-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-fg/[0.06] text-muted hover:bg-fg/10 hover:text-fg">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-        {footer && <div className="border-t border-line bg-panel2/60 px-5 py-3">{footer}</div>}
+        {footer && <div className="border-t border-line/60 bg-panel2/40 px-5 py-4">{footer}</div>}
       </aside>
     </div>,
     document.body,

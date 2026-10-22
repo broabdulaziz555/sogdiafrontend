@@ -34,7 +34,7 @@ function PlanCard({ type, plans, size, loading }: { type: 'one_step' | 'instant'
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden border border-line bg-panel p-6 transition-colors sm:p-8',
+        'group relative flex flex-col overflow-hidden card p-6 transition-colors sm:p-8',
         'hover:border-accent/60 focus-within:border-accent/60',
       )}
     >

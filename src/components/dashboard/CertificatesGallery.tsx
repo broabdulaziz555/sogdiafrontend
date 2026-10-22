@@ -37,8 +37,8 @@ function CertImage({ c, className, eager }: { c: Certificate; className?: string
           <div className="space-y-2">
             <p className="text-xs text-muted">Preview unavailable</p>
             <div className="flex items-center justify-center gap-2">
-              <button onClick={(e) => { e.stopPropagation(); setState('loading'); setAttempt((n) => n + 1); }} className="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-panel px-2 text-xs hover:border-accent/60"><RefreshCw className="h-3 w-3" />Retry</button>
-              <a href={src} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex h-7 items-center gap-1 rounded-md border border-line bg-panel px-2 text-xs hover:border-accent/60"><ExternalLink className="h-3 w-3" />Open</a>
+              <button onClick={(e) => { e.stopPropagation(); setState('loading'); setAttempt((n) => n + 1); }} className="inline-flex h-7 items-center gap-1 rounded-md card px-2 text-xs hover:border-accent/60"><RefreshCw className="h-3 w-3" />Retry</button>
+              <a href={src} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="inline-flex h-7 items-center gap-1 rounded-md card px-2 text-xs hover:border-accent/60"><ExternalLink className="h-3 w-3" />Open</a>
             </div>
           </div>
         </div>
@@ -149,9 +149,9 @@ export function CertificatesGallery() {
       </div>
 
       {error && !all ? (
-        <div className="rounded-2xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} title="Could not load certificates" /></div>
+        <div className="rounded-2xl card"><ErrorState error={error} onRetry={() => mutate()} title="Could not load certificates" /></div>
       ) : isLoading && !all ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="overflow-hidden rounded-2xl border border-line bg-panel"><Skeleton className="aspect-[1200/850] rounded-none" /><div className="space-y-2 p-4"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-3 w-1/3" /></div></div>)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="overflow-hidden rounded-2xl card"><Skeleton className="aspect-[1200/850] rounded-none" /><div className="space-y-2 p-4"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-3 w-1/3" /></div></div>)}</div>
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line bg-panel/50">
           <EmptyState
@@ -165,7 +165,7 @@ export function CertificatesGallery() {
           {items.map((c, i) => {
             const acct = accountMap.get(c.account_id);
             return (
-              <li key={c.id} className="group overflow-hidden rounded-2xl border border-line bg-panel transition-colors hover:border-accent/50">
+              <li key={c.id} className="group overflow-hidden rounded-2xl card transition-colors hover:border-accent/50">
                 <button onClick={() => setOpen(i)} className="relative block w-full text-left" aria-label={`Open certificate ${c.code}`}>
                   <CertImage c={c} className="aspect-[1200/850] w-full" />
                   <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:opacity-100"><ZoomIn className="h-7 w-7 text-white" /></span>

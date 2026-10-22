@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { localeDir } from '@/i18n/config';
@@ -8,7 +8,6 @@ import { RegisterSW } from '@/components/pwa/RegisterSW';
 import './globals.css';
 
 const sans = Inter({ subsets: ['latin', 'cyrillic', 'latin-ext'], variable: '--font-sans', display: 'swap' });
-const mono = JetBrains_Mono({ subsets: ['latin', 'cyrillic'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(`https://www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'sogdia.site'}`),
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#080C12',
+  themeColor: '#090C16',
   colorScheme: 'dark light',
   width: 'device-width',
   initialScale: 1,
@@ -41,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang={locale} dir={localeDir(locale)} suppressHydrationWarning className={sans.variable}>
       <head>
         {/* Chrome fires beforeinstallprompt once, often before React has hydrated — catch it immediately so the Install button can use it */}
         <script dangerouslySetInnerHTML={{ __html: "window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__sgBip=e;window.dispatchEvent(new Event('sg:bip'))});window.addEventListener('appinstalled',function(){window.__sgBip=null});" }} />

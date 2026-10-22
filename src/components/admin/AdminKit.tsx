@@ -17,7 +17,7 @@ export function useIsX() {
 
 /** Small marker shown on controls only the xdepartment tier may use. */
 export function XTag({ className }: { className?: string }) {
-  return <span title="X-Department only" className={cn('inline-flex items-center gap-1 border border-warn/40 bg-warn/10 px-1 py-px text-2xs font-semibold uppercase tracking-[0.08em] text-warn', className)}><ShieldAlert className="h-3 w-3" />X</span>;
+  return <span title="X-Department only" className={cn('inline-flex items-center gap-1 rounded-full border border-warn/30 bg-warn/10 px-2 py-0.5 text-2xs font-semibold text-warn', className)}><ShieldAlert className="h-3 w-3" />X</span>;
 }
 
 /** Runs an async admin action with a busy flag and success/error toasts. */
@@ -96,7 +96,7 @@ export function KV({ k, v, mono }: { k: string; v: React.ReactNode; mono?: boole
 
 export function Section({ title, actions, children, className }: { title: string; actions?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn('border border-line bg-panel', className)}>
+    <section className={cn('card', className)}>
       <div className="panel-head"><h2 className="panel-title">{title}</h2>{actions}</div>
       {children}
     </section>

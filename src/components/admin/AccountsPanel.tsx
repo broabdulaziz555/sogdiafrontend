@@ -166,7 +166,7 @@ function AccountDrawer({ account, onClose, onChanged }: { account: Account | nul
         title={`${a.type === 'instant' ? 'Instant' : 'One-Step'} ${fmtUsd(a.size).replace(/\.00$/, '')}`}
         subtitle={<span className="flex items-center gap-2"><StatusBadge status={a.status} />{a.is_gifted && <Badge tone="info">gifted</Badge>}<span className="truncate">{a.user_email}</span></span>}>
         <div className="space-y-5 p-5">
-          <dl className="divide-y divide-line rounded-xl border border-line bg-panel px-4">
+          <dl className="divide-y divide-line rounded-xl card px-4">
             <KV k="Account ID" v={<span className="inline-flex items-center gap-1.5">{a.id.slice(0, 8)}…<CopyButton value={a.id} /></span>} mono />
             <KV k="Plan" v={a.plan_key} mono />
             <KV k="Balance" v={fmtUsd(a.balance)} mono />

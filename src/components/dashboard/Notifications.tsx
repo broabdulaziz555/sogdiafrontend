@@ -51,7 +51,7 @@ export function Notifications() {
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
         aria-expanded={open}
-        className="relative grid h-8 w-8 place-items-center rounded-md border border-line bg-panel2 text-muted transition-colors hover:text-fg"
+        className="relative grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel2/80 text-muted transition-colors hover:text-fg"
       >
         <Bell className="h-4 w-4" />
         {unread > 0 && (
@@ -59,7 +59,7 @@ export function Notifications() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] animate-scale-in overflow-hidden rounded-xl border border-line bg-panel shadow-pop">
+        <div className="absolute right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] animate-scale-in overflow-hidden rounded-xl card shadow-pop">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <p className="text-sm font-semibold">Notifications</p>
             <button onClick={markAll} disabled={!unread} className="flex items-center gap-1 text-xs text-muted hover:text-fg disabled:opacity-40">

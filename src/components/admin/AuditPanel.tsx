@@ -37,7 +37,7 @@ export function AuditPanel() {
   const cols: Column<AuditLog>[] = useMemo(() => [
     { key: 'when', header: 'When', sortValue: (l) => Date.parse(l.created_at), cell: (l) => <span className="num whitespace-nowrap text-xs text-muted">{dateTime(l.created_at)}</span> },
     { key: 'action', header: 'Action', sortValue: (l) => l.action, searchText: (l) => `${l.action} ${l.actor_email} ${l.target_id} ${l.target_type}`, cell: (l) => <Badge tone={tone(l.action)}>{l.action}</Badge> },
-    { key: 'actor', header: 'Actor', sortValue: (l) => l.actor_email, cell: (l) => <span className="block min-w-0"><span className="block truncate text-sm">{l.actor_email}</span><span className="text-2xs uppercase tracking-wider text-subtle">{l.actor_role}</span></span> },
+    { key: 'actor', header: 'Actor', sortValue: (l) => l.actor_email, cell: (l) => <span className="block min-w-0"><span className="block truncate text-sm">{l.actor_email}</span><span className="text-2xs text-subtle">{l.actor_role}</span></span> },
     { key: 'target', header: 'Target', hideBelow: 'md', cell: (l) => <span className="font-mono text-xs"><span className="text-subtle">{l.target_type} </span>{l.target_id?.slice(0, 8)}</span> },
     { key: 'ip', header: 'IP', hideBelow: 'lg', cell: (l) => <span className="font-mono text-xs text-muted">{l.ip ?? '—'}</span> },
   ], []);

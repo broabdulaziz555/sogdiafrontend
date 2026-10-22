@@ -75,7 +75,7 @@ export function SettingsPanel() {
     <>
       <PageHead title="Settings" subtitle="Your profile, payout wallet and display preferences." />
       <div className="grid max-w-5xl gap-4 lg:grid-cols-[1fr_320px]">
-        <form onSubmit={save} className="rounded-2xl border border-line bg-panel p-5" noValidate>
+        <form onSubmit={save} className="rounded-2xl card p-5" noValidate>
           <h2 className="text-md font-semibold">Profile</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label="Email" htmlFor="s-email" hint="Email cannot be changed here."><Input id="s-email" value={user.email} readOnly disabled /></Field>
@@ -105,14 +105,14 @@ export function SettingsPanel() {
         </form>
 
         <div className="space-y-4">
-          <section className="rounded-2xl border border-line bg-panel p-5">
+          <section className="rounded-2xl card p-5">
             <h2 className="text-md font-semibold">Preferences</h2>
             <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">Language</span><LocaleSwitcher /></div>
               <div className="flex items-center justify-between gap-3"><span className="text-sm text-muted">Theme</span><ThemeToggle /></div>
             </div>
           </section>
-          <section className="rounded-2xl border border-line bg-panel p-5">
+          <section className="rounded-2xl card p-5">
             <h2 className="text-md font-semibold">Session</h2>
             <p className="mt-1 text-sm text-muted">Signing out ends your session on every SOGDIA site.</p>
             <Button className="mt-4" variant="danger" icon={<LogOut className="h-4 w-4" />} onClick={() => { logout(); window.location.assign(siteHref('www', '/login')); }}>Sign out</Button>

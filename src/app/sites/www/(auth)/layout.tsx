@@ -13,7 +13,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative flex h-full flex-col justify-between p-12">
           <Link href="/"><Logo /></Link>
           <div className="max-w-md space-y-5">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-accent">Institutional crypto prop trading</p>
+            <p className="font-mono text-xs text-accent">Institutional crypto prop trading</p>
             <h2 className="text-balance text-5xl font-extrabold leading-[1.02] tracking-[-0.03em]">
               Trade Crypto 24/7.
               <span className="block text-accent">Keep More of What You Earn.</span>

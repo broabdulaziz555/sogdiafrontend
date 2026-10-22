@@ -21,7 +21,7 @@ import { useTerminal, type PendingOrder } from '../store';
 type Sub = 'open' | 'pending';
 
 function Cell({ k, children, className }: { k: string; children: React.ReactNode; className?: string }) {
-  return <div className={cn('min-w-0', className)}><dt className="text-2xs uppercase tracking-wider text-subtle">{k}</dt><dd className="num truncate font-mono text-sm">{children}</dd></div>;
+  return <div className={cn('min-w-0', className)}><dt className="text-2xs text-subtle">{k}</dt><dd className="num truncate font-mono text-sm">{children}</dd></div>;
 }
 
 function MobilePositionsInner() {
@@ -107,7 +107,7 @@ function MobilePositionsInner() {
                   {positions.map((p) => {
                     const key = `${p.id}:100`;
                     return (
-                      <li key={p.id} className="rounded-xl border border-line bg-panel p-3">
+                      <li key={p.id} className="rounded-xl card p-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -172,9 +172,9 @@ function MobilePositionsInner() {
                 {pending.map((o: PendingOrder) => {
                   const px = prices[o.symbol];
                   return (
-                    <li key={o.id} className="rounded-xl border border-line bg-panel p-3">
+                    <li key={o.id} className="rounded-xl card p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5"><span className="text-md font-semibold">{sym(o.symbol)}</span><SideTag side={o.side} /><span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-2xs font-medium uppercase text-info">{o.status === 'working' ? o.kind : o.status}</span></div>
+                        <div className="flex items-center gap-1.5"><span className="text-md font-semibold">{sym(o.symbol)}</span><SideTag side={o.side} /><span className="rounded border border-info/30 bg-info/10 px-1.5 py-0.5 text-2xs font-medium text-info">{o.status === 'working' ? o.kind : o.status}</span></div>
                         <Button size="md" variant="ghost" className="h-9" icon={<X className="h-3.5 w-3.5" />} disabled={o.status === 'filling'} onClick={() => removePending(o.id)}>Cancel</Button>
                       </div>
                       <dl className="mt-2 grid grid-cols-3 gap-x-2 gap-y-2">

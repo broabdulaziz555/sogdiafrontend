@@ -25,7 +25,7 @@ export function BootScreen({ label = 'Authenticating' }: { label?: string }) {
           <span className="absolute inset-0 animate-ping rounded-lg bg-accent/20" />
           <LogoMark className="relative h-10 w-10" />
         </div>
-        <p className="text-xs uppercase tracking-[0.2em] text-subtle">{label}</p>
+        <p className="text-xs text-subtle">{label}</p>
       </div>
     </div>
   );

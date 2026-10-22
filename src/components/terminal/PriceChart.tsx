@@ -159,13 +159,13 @@ function IndicatorsMenu() {
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div role="menu" aria-label="Chart indicators and levels" className="absolute right-0 top-full z-40 mt-1 max-h-[70dvh] w-[270px] overflow-y-auto rounded-lg border border-line bg-panel py-1 shadow-2xl">
-          <p className="px-3 pb-1 pt-1.5 text-2xs font-semibold uppercase tracking-wider text-subtle">Indicators</p>
+        <div role="menu" aria-label="Chart indicators and levels" className="absolute right-0 top-full z-40 mt-1 max-h-[70dvh] w-[270px] overflow-y-auto rounded-lg card py-1 shadow-2xl">
+          <p className="px-3 pb-1 pt-1.5 text-2xs font-semibold text-subtle">Indicators</p>
           <MenuRow label="Volume" hint="Turn off to remove the bars" checked={showVol} onToggle={() => set({ showVol: !showVol })} />
           <MenuRow label="Moving averages" hint="MA 7 · 25 · 99" checked={showMA} onToggle={() => set({ showMA: !showMA })} />
           <MenuRow label="Exponential averages" hint="EMA 20 · 50" checked={showEMA} onToggle={() => set({ showEMA: !showEMA })} />
           <MenuRow label="Bollinger Bands" hint="Period 20 · deviation 2" checked={showBB} onToggle={() => set({ showBB: !showBB })} />
-          <p className="border-t border-line px-3 pb-1 pt-2.5 text-2xs font-semibold uppercase tracking-wider text-subtle">On the chart</p>
+          <p className="border-t border-line px-3 pb-1 pt-2.5 text-2xs font-semibold text-subtle">On the chart</p>
           <MenuRow label="Positions" hint="Entry, take-profit, stop-loss, liquidation, entry arrow" checked={showLevels} onToggle={() => set({ showLevels: !showLevels })} />
           <MenuRow label="Pending orders" hint="Limit and stop trigger prices" checked={showOrders} onToggle={() => set({ showOrders: !showOrders })} />
           <MenuRow label="Bid / Ask lines" hint="Prices your orders fill at" checked={showQuotes} onToggle={() => set({ showQuotes: !showQuotes })} />

@@ -35,16 +35,16 @@ export function ReferralsPanel() {
       <PageHead title="Referrals" subtitle="Earn commission on every account your referrals purchase. It never touches a trading account." />
 
       {error && !data ? (
-        <div className="rounded-2xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} title="Could not load referral data" /></div>
+        <div className="rounded-2xl card"><ErrorState error={error} onRetry={() => mutate()} title="Could not load referral data" /></div>
       ) : (
         <>
-          <section className="mb-6 overflow-hidden rounded-2xl border border-line bg-panel">
+          <section className="mb-6 overflow-hidden rounded-2xl card">
             <div className="grid gap-px bg-line md:grid-cols-2">
               <div className="bg-panel p-5">
                 <p className="label">Your referral code</p>
                 {isLoading && !data ? <Skeleton className="mt-3 h-10 w-48" /> : (
                   <div className="mt-2 flex items-center gap-3">
-                    <code className="num rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-xl font-bold tracking-widest text-accent">{data?.referral_code}</code>
+                    <code className="num rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 font-mono text-xl font-bold text-accent">{data?.referral_code}</code>
                     <CopyButton value={data?.referral_code ?? ''} label="Copy code" />
                   </div>
                 )}
@@ -67,7 +67,7 @@ export function ReferralsPanel() {
           </section>
 
           <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {isLoading && !data ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl border border-line bg-panel p-4"><Skeleton className="h-3 w-16" /><Skeleton className="mt-3 h-7 w-24" /></div>) : (
+            {isLoading && !data ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl card p-4"><Skeleton className="h-3 w-16" /><Skeleton className="mt-3 h-7 w-24" /></div>) : (
               <>
                 <Stat label="Sign-ups" value={data?.signups ?? 0} sub={<span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />Referred traders</span>} />
                 <Stat label="Total earned" value={fmtUsd(data?.earned_total)} tone={(data?.earned_total ?? 0) > 0 ? 'up' : undefined} />
@@ -77,7 +77,7 @@ export function ReferralsPanel() {
             )}
           </div>
 
-          <section className="rounded-2xl border border-line bg-panel">
+          <section className="rounded-2xl card">
             <div className="border-b border-line px-5 py-4"><h2 className="text-md font-semibold">Commission history</h2></div>
             <DataTable
               columns={cols}

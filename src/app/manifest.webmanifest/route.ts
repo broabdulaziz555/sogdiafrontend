@@ -24,7 +24,7 @@ const DEFS: Record<string, Def> = {
 };
 
 /** Surface colour of the installed app's window chrome / splash screen. Matches --bg in globals.css. */
-const THEME = '#080C12';
+const THEME = '#090C16';
 
 function siteOf(req: NextRequest): string {
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase();

@@ -17,7 +17,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div role="radiogroup" aria-label="Theme" className={cn('inline-flex rounded-md border border-line bg-panel2 p-0.5', className)}>
+    <div role="radiogroup" aria-label="Theme" className={cn('inline-flex rounded-xl border border-line bg-panel2/80 p-1', className)}>
       {OPTS.map(({ v, icon: Icon, label }) => (
         <button
           key={v}
@@ -27,7 +27,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           title={label}
           onClick={() => setTheme(v)}
           className={cn(
-            'grid h-6 w-6 place-items-center rounded transition-colors',
+            'grid h-7 w-7 place-items-center rounded-lg transition-colors',
             mounted && theme === v ? 'bg-panel text-accent ring-1 ring-line' : 'text-subtle hover:text-fg',
           )}
         >

@@ -72,7 +72,7 @@ export function Rules() {
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:py-28">
         <Reveal><SectionHead eyebrow={t('eyebrow')} title={t('title')} subtitle={t('subtitle')} /></Reveal>
 
-        <Reveal className="mt-12 overflow-hidden rounded-2xl border border-line bg-panel">
+        <Reveal className="mt-12 overflow-hidden rounded-2xl card">
           <div role="table" aria-label={t('title')} className="text-sm">
             <div role="row" className="grid grid-cols-[1.3fr_1fr_1fr] border-b border-line bg-panel2 px-4 py-3 sm:px-6">
               <span role="columnheader" className="label">{t('colRule')}</span>
@@ -122,7 +122,7 @@ export function Platform() {
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((f, i) => (
             <Reveal key={f.title} delay={(i % 3) * 80}>
-              <div className="group relative h-full overflow-hidden rounded-xl border border-line bg-panel p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-glow">
+              <div className="group relative h-full overflow-hidden rounded-xl card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-glow">
                 <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-accent/0 blur-2xl transition-colors duration-500 group-hover:bg-accent/15" aria-hidden />
                 <f.icon className="mb-5 h-5 w-5 text-accent" />
                 <h3 className="text-md font-semibold">{f.title}</h3>

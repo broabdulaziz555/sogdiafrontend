@@ -40,7 +40,7 @@ export function TradesLookup() {
   const submit = (e: React.FormEvent) => { e.preventDefault(); const v = input.trim(); if (UUID.test(v)) { setId(v); setPage(0); } };
 
   const histCols: Column<HistoryOrder>[] = useMemo(() => [
-    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold uppercase', o.side === 'long' ? 'text-up' : 'text-down')}>{o.side}</span> <span className="num text-2xs text-subtle">{o.leverage}×</span></span> },
+    { key: 'symbol', header: 'Symbol', sortValue: (o) => o.symbol, searchText: (o) => `${o.symbol} ${o.side} ${o.close_reason ?? ''}`, cell: (o) => <span className="font-medium">{o.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold ', o.side === 'long' ? 'text-up' : 'text-down')}>{o.side}</span> <span className="num text-2xs text-subtle">{o.leverage}×</span></span> },
     { key: 'size', header: 'Size', align: 'right', hideBelow: 'md', sortValue: (o) => o.position_size, cell: (o) => <span className="num font-mono">{fmtNum(o.position_size)}</span> },
     { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', sortValue: (o) => o.entry_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.entry_price)}</span> },
     { key: 'exit', header: 'Exit', align: 'right', hideBelow: 'sm', sortValue: (o) => o.close_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span> },
@@ -68,7 +68,7 @@ export function TradesLookup() {
             <>
               {hist.data?.stats && (
                 <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                  {([['Trades', String(hist.data.stats.trades)], ['Win rate', `${fmtNum(hist.data.stats.win_rate)}%`], ['W / L', `${hist.data.stats.wins} / ${hist.data.stats.losses}`], ['Net PnL', fmtSigned(hist.data.stats.net_pnl)]] as const).map(([k, v]) => <div key={k} className="rounded-xl border border-line bg-panel px-4 py-3"><p className="label">{k}</p><p className="num mt-1 text-lg font-bold">{v}</p></div>)}
+                  {([['Trades', String(hist.data.stats.trades)], ['Win rate', `${fmtNum(hist.data.stats.win_rate)}%`], ['W / L', `${hist.data.stats.wins} / ${hist.data.stats.losses}`], ['Net PnL', fmtSigned(hist.data.stats.net_pnl)]] as const).map(([k, v]) => <div key={k} className="rounded-xl card px-4 py-3"><p className="label">{k}</p><p className="num mt-1 text-lg font-bold">{v}</p></div>)}
                 </div>
               )}
               <DataTable<HistoryOrder> columns={histCols} rows={hist.data?.orders} rowKey={(o) => o.id} loading={hist.isLoading && !hist.data} error={hist.error && !hist.data ? hist.error : undefined} onRetry={() => void hist.mutate()}
@@ -76,7 +76,7 @@ export function TradesLookup() {
                 server={{ total: hist.data?.total ?? 0, page, pageSize: size, onPageChange: setPage, onPageSizeChange: (n) => { setSize(n); setPage(0); }, query: q, onQueryChange: setQ, clientSearch: true }}
                 empty={{ title: 'No closed trades', description: 'This account has not closed any trades yet.' }} />
             </>
-          ) : open.error && !open.data ? <div className="rounded-xl border border-line bg-panel"><ErrorState error={open.error} onRetry={() => open.mutate()} /></div> : (
+          ) : open.error && !open.data ? <div className="rounded-xl card"><ErrorState error={open.error} onRetry={() => open.mutate()} /></div> : (
             <Section title={open.data ? `${fmtUsd(open.data.metrics.equity)} equity · ${open.data.account.status}` : 'Open positions'} actions={open.data && <StatusBadge status={open.data.account.status} />}>
               <DataTable<PositionRow> bare columns={openCols} rows={open.data?.positions} rowKey={(p) => p.id} loading={open.isLoading && !open.data} pageSize={25} searchPlaceholder="Search positions" empty={{ title: 'No open positions' }} />
             </Section>
@@ -89,7 +89,7 @@ export function TradesLookup() {
 
 type PositionRow = PositionsResponse['positions'][number];
 const openCols: Column<PositionRow>[] = [
-  { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => p.symbol, cell: (p) => <span className="font-medium">{p.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold uppercase', p.side === 'long' ? 'text-up' : 'text-down')}>{p.side}</span> <span className="num text-2xs text-subtle">{p.leverage}×</span></span> },
+  { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => p.symbol, cell: (p) => <span className="font-medium">{p.symbol.replace('USDT', '/USDT')} <span className={cn('ml-1 text-2xs font-semibold ', p.side === 'long' ? 'text-up' : 'text-down')}>{p.side}</span> <span className="num text-2xs text-subtle">{p.leverage}×</span></span> },
   { key: 'size', header: 'Size', align: 'right', sortValue: (p) => p.position_size, cell: (p) => <span className="num font-mono">{fmtNum(p.position_size)}</span> },
   { key: 'entry', header: 'Entry', align: 'right', hideBelow: 'sm', cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
   { key: 'mark', header: 'Mark', align: 'right', hideBelow: 'sm', cell: (p) => <span className="num font-mono">{fmtPrice(p.mark_price)}</span> },

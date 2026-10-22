@@ -123,7 +123,7 @@ export function Hero() {
 
       <div className="mx-auto grid max-w-7xl items-center gap-14 px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:grid-cols-[1.02fr_1fr] lg:pb-24 lg:pt-24">
         <div>
-          <p className="mb-6 inline-flex animate-fade-up items-center gap-2 rounded-full border border-line bg-panel/70 px-3 py-1.5 font-mono text-2xs uppercase tracking-[0.2em] text-muted backdrop-blur">
+          <p className="mb-6 inline-flex animate-fade-up items-center gap-2 rounded-full border border-line bg-panel/70 px-3 py-1.5 font-mono text-2xs text-muted backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse-dot" />
             {t('eyebrow')}
           </p>
@@ -170,7 +170,7 @@ export function Hero() {
               <TerminalPreview />
             </div>
           </div>
-          <p className="mt-3 text-center font-mono text-2xs uppercase tracking-widest text-subtle">
+          <p className="mt-3 text-center font-mono text-2xs text-subtle">
             {t('previewLabel')} · {t('previewNote')}
           </p>
         </div>

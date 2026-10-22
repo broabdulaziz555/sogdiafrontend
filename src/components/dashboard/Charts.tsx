@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtUsd } from '@/lib/format';
 
-/** Inline equity sparkline: hairline stroke, soft fill, dashed baseline (account size), square end marker. */
+/** Inline equity sparkline: smooth rounded stroke, soft gradient fill, dashed baseline (account size). */
 export function Sparkline({ values, baseline, className, height = 40 }: { values: number[]; baseline?: number; className?: string; height?: number }) {
   const gid = useId();
   const W = 160;
@@ -17,7 +17,15 @@ export function Sparkline({ values, baseline, className, height = 40 }: { values
     const span = max - min || 1;
     const x = (i: number) => (i / (values.length - 1)) * W;
     const y = (v: number) => H - 3 - ((v - min) / span) * (H - 6);
-    const line = values.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+    // smooth path (Catmull-Rom → cubic Bézier) so the curve reads organic instead of jagged
+    const pts = values.map((v, i) => [x(i), y(v)] as const);
+    let line = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      line += ` C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
     return { line, area: `${line} L${W} ${H} L0 ${H} Z`, by: baseline != null ? y(baseline) : null, last: { x: x(values.length - 1), y: y(values[values.length - 1]) } };
   }, [values, baseline, H]);
 
@@ -36,15 +44,13 @@ export function Sparkline({ values, baseline, className, height = 40 }: { values
     <svg viewBox={`0 0 ${W} ${H}`} className={cn('h-10 w-full overflow-visible', className)} preserveAspectRatio="none" role="img" aria-label="Equity curve">
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={col} stopOpacity="0.20" />
+          <stop offset="0" stopColor={col} stopOpacity="0.28" />
           <stop offset="1" stopColor={col} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {[0.25, 0.5, 0.75].map((f) => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="rgb(var(--line))" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
-      {geo.by != null && <line x1="0" x2={W} y1={geo.by} y2={geo.by} stroke="rgb(var(--subtle))" strokeOpacity="0.6" strokeDasharray="2 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+      {geo.by != null && <line x1="0" x2={W} y1={geo.by} y2={geo.by} stroke="rgb(var(--subtle))" strokeOpacity="0.45" strokeDasharray="3 4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
       <path d={geo.area} fill={`url(#${gid})`} />
-      <path d={geo.line} fill="none" stroke={col} strokeWidth="1.25" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
-      <rect x={geo.last.x - 1.6} y={geo.last.y - 1.6} width="3.2" height="3.2" fill={col} />
+      <path d={geo.line} fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -127,17 +133,17 @@ export function EquityChart({ points, size, dailyFloor, maxFloor, target, height
         <Line v={maxFloor} label="Max drawdown" color="rgb(var(--down))" dash="2 4" />
         <Line v={dailyFloor} label="Daily drawdown" color="rgb(var(--warn))" dash="2 4" />
         <path d={`${geo.line} L${geo.x(points.length - 1)} ${H - PAD.b} L${geo.x(0)} ${H - PAD.b} Z`} fill={`url(#${gid})`} />
-        <path d={geo.line} fill="none" stroke={col} strokeWidth="1.5" strokeLinejoin="miter" />
+        <path d={geo.line} fill="none" stroke={col} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         {hover != null && hp && (
           <g>
             <line x1={geo.x(hover)} x2={geo.x(hover)} y1={PAD.t} y2={H - PAD.b} stroke="rgb(var(--fg))" strokeOpacity="0.25" />
-            <rect x={geo.x(hover) - 3} y={geo.y(hp.equity) - 3} width="6" height="6" fill={col} stroke="rgb(var(--panel))" strokeWidth="1.5" />
+            <circle cx={geo.x(hover)} cy={geo.y(hp.equity)} r="4.5" fill={col} stroke="rgb(var(--panel))" strokeWidth="2" />
           </g>
         )}
       </svg>
       {hp && hover != null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 border border-line2 bg-panel px-3 py-2 text-xs"
+          className="pointer-events-none absolute top-2 z-10 rounded-xl border border-line2/70 bg-panel2 px-3.5 py-2.5 text-xs shadow-pop"
           style={{ left: `${(geo.x(hover) / W) * 100}%`, transform: hover > points.length / 2 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }}
         >
           <p className="num font-mono text-sm font-semibold">{fmtUsd(hp.equity)}</p>

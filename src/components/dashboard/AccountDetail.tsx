@@ -45,7 +45,7 @@ export function AccountDetail({ id }: { id: string }) {
     <Link href="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"><ArrowLeft className="h-4 w-4" />All accounts</Link>
   );
 
-  if (error && !data) return <>{back}<div className="rounded-2xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} title="Could not load this account" /></div></>;
+  if (error && !data) return <>{back}<div className="rounded-2xl card"><ErrorState error={error} onRetry={() => mutate()} title="Could not load this account" /></div></>;
   if (isLoading && !data) {
     return (
       <>
@@ -121,7 +121,7 @@ export function AccountDetail({ id }: { id: string }) {
       </div>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_340px]">
-        <section className="rounded-2xl border border-line bg-panel p-5">
+        <section className="rounded-2xl card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-md font-semibold">Equity curve</h2>
             <span className="text-xs text-subtle">{points.length} snapshots</span>
@@ -139,7 +139,7 @@ export function AccountDetail({ id }: { id: string }) {
           )}
         </section>
 
-        <section className="space-y-6 rounded-2xl border border-line bg-panel p-5">
+        <section className="space-y-6 rounded-2xl card p-5">
           <h2 className="text-md font-semibold">Drawdown</h2>
           <DdMeter label="Daily" used={m.daily_dd_used_pct} limitPct={a.daily_dd_pct} remaining={m.daily_dd_remaining} />
           <DdMeter label="Maximum" used={m.max_dd_used_pct} limitPct={a.max_dd_pct} remaining={m.max_dd_remaining} />

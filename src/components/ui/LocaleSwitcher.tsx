@@ -41,13 +41,13 @@ export function LocaleSwitcher({ className, align = 'right' }: { className?: str
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Change language"
-        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line bg-panel2 px-2 text-xs font-medium uppercase text-muted transition-colors hover:border-subtle/60 hover:text-fg"
+        className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line bg-panel2/80 px-3 text-xs font-medium uppercase text-muted transition-colors hover:border-subtle/60 hover:text-fg"
       >
         <Globe className="h-3.5 w-3.5" />
         {locale}
       </button>
       {open && (
-        <div className={cn('absolute z-50 mt-2 w-56 animate-scale-in overflow-hidden rounded-lg border border-line bg-panel shadow-pop', align === 'right' ? 'right-0' : 'left-0')}>
+        <div className={cn('absolute z-50 mt-2 w-56 animate-scale-in overflow-hidden rounded-lg card shadow-pop', align === 'right' ? 'right-0' : 'left-0')}>
           <div className="border-b border-line p-2">
             <input
               autoFocus

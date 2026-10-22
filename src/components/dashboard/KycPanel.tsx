@@ -58,17 +58,17 @@ function StatusPanel({ status, note }: { status: KycStatus; note: string | null 
     rejected: { icon: <ShieldAlert className="h-5 w-5" />, tone: 'text-down', title: 'Verification rejected', body: 'We could not accept your document. Review the note below and upload a new one.' },
   }[status];
   return (
-    <Panel className="p-4">
+    <Panel className="p-5">
       <div className="flex items-start gap-4">
-        <div className={cn('grid h-10 w-10 shrink-0 place-items-center border border-line2 bg-panel2', cfg.tone)}>{cfg.icon}</div>
+        <div className={cn('grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-line/70 bg-panel2', cfg.tone)}>{cfg.icon}</div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold">{cfg.title}</h2>
+            <h2 className="text-md font-semibold tracking-tight">{cfg.title}</h2>
             <StatusBadge status={status} />
           </div>
           <p className="mt-1 text-sm text-muted">{cfg.body}</p>
           {status === 'rejected' && note && (
-            <div className="mt-3 border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
+            <div className="mt-3 rounded-xl border border-down/30 bg-down/10 px-3.5 py-2.5 text-sm text-down">
               <span className="font-medium">Reviewer note: </span>{note}
             </div>
           )}
@@ -152,15 +152,15 @@ export function KycPanel() {
       <PageHead title="Verification" subtitle="Identity verification (KYC) is required before your first payout." />
 
       {error && !data ? (
-        <div className="border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} title="Could not load verification status" /></div>
+        <div className="card"><ErrorState error={error} onRetry={() => mutate()} title="Could not load verification status" /></div>
       ) : isLoading && !data ? (
         <div className="space-y-3"><Skeleton className="h-24" /><Skeleton className="h-80" /></div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-4">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-5">
             <StatusPanel status={status} note={data?.note ?? null} />
             {status === 'pending' && (sent || data?.document_url) && (
-              <div role="status" className="flex items-start gap-3 border border-warn/40 bg-warn/10 px-4 py-3 text-sm">
+              <div role="status" className="flex items-start gap-3 rounded-2xl border border-warn/30 bg-warn/10 px-4 py-3.5 text-sm">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-warn" />
                 <p><span className="font-medium">Document received</span>{sent ? <> — {sent.name}, sent {new Date(sent.at).toLocaleString()}</> : null}. It is waiting for review; nothing more is needed from you.</p>
               </div>
@@ -169,14 +169,14 @@ export function KycPanel() {
             {canUpload ? (
               <Panel aria-labelledby="kyc-upload">
                 <PanelHeader title={status === 'rejected' ? 'Resubmit your document' : 'Identity document'} meta={`Step ${step + 1} of ${STEPS.length}`} />
-                <div className="border-b border-line px-4 py-4"><WizardSteps steps={STEPS} current={step} /></div>
+                <div className="border-b border-line/60 px-5 py-4"><WizardSteps steps={STEPS} current={step} /></div>
 
-                <div className="p-4 sm:p-5" id="kyc-upload">
+                <div className="p-5 sm:p-6" id="kyc-upload">
                   {step === 0 && (
                     <div className="space-y-3">
                       <div>
-                        <h3 className="text-sm font-semibold">Which document will you upload?</h3>
-                        <p className="mt-0.5 text-xs text-muted">Choose the government-issued photo ID you have to hand.</p>
+                        <h3 className="text-md font-semibold tracking-tight">Which document will you upload?</h3>
+                        <p className="mt-1 text-sm text-muted">Choose the government-issued photo ID you have to hand.</p>
                       </div>
                       <ChoiceGrid value={docType} onChange={setDocType} options={DOC_TYPES.map((d) => ({ ...d }))} />
                     </div>
@@ -185,8 +185,8 @@ export function KycPanel() {
                   {step === 1 && (
                     <div className="space-y-3">
                       <div>
-                        <h3 className="text-sm font-semibold">Upload your {docLabel.toLowerCase()}</h3>
-                        <p className="mt-0.5 text-xs text-muted">All four corners visible, no glare, text sharp and readable.</p>
+                        <h3 className="text-md font-semibold tracking-tight">Upload your {docLabel.toLowerCase()}</h3>
+                        <p className="mt-1 text-sm text-muted">All four corners visible, no glare, text sharp and readable.</p>
                       </div>
                       <Dropzone
                         file={file}
@@ -204,16 +204,16 @@ export function KycPanel() {
                   {step === 2 && file && (
                     <div className="space-y-4">
                       <div>
-                        <h3 className="text-sm font-semibold">Review and submit</h3>
-                        <p className="mt-0.5 text-xs text-muted">Once submitted, your verification moves to “under review”.</p>
+                        <h3 className="text-md font-semibold tracking-tight">Review and submit</h3>
+                        <p className="mt-1 text-sm text-muted">Once submitted, your verification moves to “under review”.</p>
                       </div>
                       <Dropzone file={file} preview={preview} progress={progress} accept="" hint="" onFile={() => {}} onClear={clear} />
-                      <dl className="border border-line bg-panel2/40 px-3">
+                      <dl className="rounded-xl border border-line/70 bg-panel2/50 px-3.5">
                         <DataRow k="Document type" v={docLabel} />
                         <DataRow k="File" v={file.name} />
                         <DataRow k="Size" v={fmtBytes(file.size)} mono />
                       </dl>
-                      {uploadError && <p role="alert" className="border border-down/40 bg-down/10 px-3 py-2 text-sm text-down"><span className="font-medium">Upload failed: </span>{uploadError}</p>}
+                      {uploadError && <p role="alert" className="rounded-xl border border-down/30 bg-down/10 px-3.5 py-2.5 text-sm text-down"><span className="font-medium">Upload failed: </span>{uploadError}</p>}
                     </div>
                   )}
                 </div>
@@ -226,13 +226,13 @@ export function KycPanel() {
                 </WizardFooter>
               </Panel>
             ) : (
-              <div className="border border-dashed border-line2 bg-panel/50 px-5 py-6 text-sm text-muted">
+              <div className="rounded-2xl border-2 border-dashed border-line2 bg-panel/50 px-5 py-6 text-sm text-muted">
                 {status === 'pending' ? 'You will be notified as soon as the review is complete. You can still trade in the meantime.' : 'Your identity is verified. Nothing else to do here.'}
               </div>
             )}
           </div>
 
-          <aside className="space-y-4">
+          <aside className="space-y-5">
             <Panel>
               <PanelHeader title="Accepted documents" icon={<ShieldCheck />} />
               <ul className="space-y-3 p-4 text-sm text-muted">

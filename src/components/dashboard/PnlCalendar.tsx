@@ -107,7 +107,7 @@ export function PnlCalendar() {
         subtitle="Realised profit and loss by trading day. Days roll over at 00:00 UTC, matching the risk engine."
         actions={
           accounts?.length ? (
-            <Select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value)} aria-label="Account" className="h-8 w-auto min-w-[200px]">
+            <Select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value)} aria-label="Account" className="w-auto min-w-[220px]">
               {accounts.map((a) => <option key={a.id} value={a.id}>{accountLabel(a)} · #{a.id.slice(0, 6)}</option>)}
             </Select>
           ) : undefined
@@ -115,13 +115,13 @@ export function PnlCalendar() {
       />
 
       {accErr && !accounts ? (
-        <div className="border border-line bg-panel"><ErrorState error={accErr} onRetry={() => accMutate()} /></div>
+        <div className="card"><ErrorState error={accErr} onRetry={() => accMutate()} /></div>
       ) : accounts && accounts.length === 0 ? (
-        <div className="border border-dashed border-line2"><EmptyState icon={<CalendarX2 className="h-5 w-5" />} title="No accounts yet" description="Your PnL calendar appears once you have an account with closed trades." /></div>
+        <div className="rounded-2xl border-2 border-dashed border-line2"><EmptyState icon={<CalendarX2 className="h-5 w-5" />} title="No accounts yet" description="Your PnL calendar appears once you have an account with closed trades." /></div>
       ) : (
         <>
           <StatStrip cols={6} className="mb-4">
-            {loading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-panel p-4"><Skeleton className="h-3 w-14" /><Skeleton className="mt-3 h-6 w-20" /></div>) : (
+            {loading ? Array.from({ length: 6 }).map((_, i) => <div key={i} className="card p-4"><Skeleton className="h-3 w-14" /><Skeleton className="mt-3 h-6 w-20" /></div>) : (
               <>
                 <Stat label="Month PnL" value={fmtSigned(month.net)} tone={month.net > 0 ? 'up' : month.net < 0 ? 'down' : undefined} className="col-span-2 lg:col-span-1" />
                 <Stat label="Trading days" value={month.tradingDays} sub={`${month.winDays}W · ${month.lossDays}L`} />
@@ -133,17 +133,17 @@ export function PnlCalendar() {
             )}
           </StatStrip>
 
-          <section className="border border-line bg-panel">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel2/70 px-3 py-2">
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="secondary" aria-label="Previous month" onClick={() => shift(-1)} icon={<ChevronLeft className="h-4 w-4" />} className="w-7 px-0" />
-                <h2 className="num min-w-[148px] text-center text-sm font-semibold uppercase tracking-[0.08em]">{title}</h2>
-                <Button size="sm" variant="secondary" aria-label="Next month" onClick={() => shift(1)} icon={<ChevronRight className="h-4 w-4" />} className="w-7 px-0" />
+          <section className="card overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" aria-label="Previous month" onClick={() => shift(-1)} icon={<ChevronLeft className="h-4 w-4" />} className="!rounded-full w-8 px-0" />
+                <h2 className="num min-w-[160px] text-center text-md font-semibold tracking-tight">{title}</h2>
+                <Button size="sm" variant="secondary" aria-label="Next month" onClick={() => shift(1)} icon={<ChevronRight className="h-4 w-4" />} className="!rounded-full w-8 px-0" />
               </div>
               <div className="flex items-center gap-3">
-                <span className="hidden items-center gap-3 text-2xs uppercase tracking-[0.08em] text-subtle sm:flex">
-                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-up/50" />Profit</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 bg-down/50" />Loss</span>
+                <span className="hidden items-center gap-3 text-2xs text-subtle sm:flex">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-up/60" />Profit</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-down/60" />Loss</span>
                 </span>
                 {!isThisMonth && <Button size="sm" variant="outline" onClick={() => setCursor({ y: now.getUTCFullYear(), m: now.getUTCMonth() })}>Today</Button>}
               </div>
@@ -152,18 +152,18 @@ export function PnlCalendar() {
             {error && !data ? (
               <ErrorState error={error} onRetry={() => mutate()} />
             ) : (
-              <div className="p-3 sm:p-4">
-                {/* 1px-gap grid on a hairline background gives crisp ledger borders without per-cell borders */}
-                <div className="grid grid-cols-7 gap-px border border-line bg-line md:grid-cols-[repeat(7,minmax(0,1fr))_minmax(96px,0.8fr)]">
-                  {DOW.map((d) => <div key={d} className="bg-panel2 py-1.5 text-center text-2xs font-semibold uppercase tracking-[0.1em] text-subtle">{d}</div>)}
-                  <div className="hidden bg-panel2 py-1.5 text-center text-2xs font-semibold uppercase tracking-[0.1em] text-subtle md:block">Week</div>
+              <div className="p-3 sm:p-5">
+                {/* separate rounded day tiles; winning days glow green, losing days red, intensity follows the size of the day */}
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2 md:grid-cols-[repeat(7,minmax(0,1fr))_minmax(124px,0.9fr)]">
+                  {DOW.map((d) => <div key={d} className="pb-1 text-center text-xs font-medium text-subtle">{d}</div>)}
+                  <div className="hidden pb-1 text-center text-xs font-medium text-subtle md:block">Week</div>
 
                   {loading
-                    ? Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-[60px] rounded-none md:h-[92px]" />)
+                    ? Array.from({ length: 35 }).map((_, i) => <Skeleton key={i} className="h-[60px] rounded-xl md:h-[92px]" />)
                     : month.cells.flatMap((c, i) => {
                         const col = i % 7;
                         const out: React.ReactNode[] = [];
-                        if (!c) out.push(<div key={`e${i}`} className="h-[60px] bg-bg/60 md:h-[92px]" aria-hidden />);
+                        if (!c) out.push(<div key={`e${i}`} className="h-[60px] rounded-xl bg-fg/[0.015] md:h-[92px]" aria-hidden />);
                         else {
                           const d = c.data;
                           const k = key(cursor.y, cursor.m, c.d);
@@ -176,13 +176,13 @@ export function PnlCalendar() {
                               key={k}
                               tabIndex={d ? 0 : -1}
                               aria-label={d ? `${k}: ${fmtSigned(d.pnl)} USD from ${d.trades} trade${d.trades === 1 ? '' : 's'}` : `${k}: no trades`}
-                              style={d && (win || loss) ? { backgroundColor: `rgb(var(${win ? '--up' : '--down'}) / ${intensity})` } : undefined}
+                              style={d && (win || loss) ? { backgroundColor: `rgb(var(${win ? '--up' : '--down'}) / ${intensity})`, borderColor: `rgb(var(${win ? '--up' : '--down'}) / ${intensity + 0.15})` } : undefined}
                               className={cn(
-                                'group relative h-[60px] p-1.5 outline-none transition-[filter] md:h-[92px] md:p-2',
-                                !d && 'bg-panel',
+                                'group relative h-[60px] rounded-xl border border-line/50 p-1.5 outline-none transition md:h-[92px] md:rounded-2xl md:p-2.5',
+                                !d && 'bg-panel2/40',
                                 d && !win && !loss && 'bg-fg/[0.05]',
-                                d && 'cursor-default hover:z-20 hover:brightness-125 focus-visible:z-20 focus-visible:brightness-125',
-                                isToday && 'shadow-[inset_0_0_0_1px_rgb(var(--accent))]',
+                                d && 'cursor-default hover:z-20 hover:-translate-y-px hover:brightness-125 focus-visible:z-20 focus-visible:brightness-125',
+                                isToday && 'ring-2 ring-accent/70',
                               )}
                             >
                               <span className={cn('num font-mono text-2xs md:text-xs', isToday ? 'font-semibold text-accent' : d ? 'text-fg/70' : 'text-subtle')}>{c.d}</span>
@@ -200,13 +200,13 @@ export function PnlCalendar() {
                                 <div
                                   role="tooltip"
                                   className={cn(
-                                    'pointer-events-none invisible absolute bottom-[calc(100%+6px)] z-30 w-52 border border-line2 bg-panel p-3 text-left opacity-0 shadow-pop transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100',
+                                    'pointer-events-none invisible absolute bottom-[calc(100%+8px)] z-30 w-56 rounded-2xl border border-line2/70 bg-panel2 p-3.5 text-left opacity-0 shadow-pop transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100',
                                     col <= 1 ? 'left-0' : col >= 5 ? 'right-0' : 'left-1/2 -translate-x-1/2',
                                   )}
                                 >
-                                  <p className="text-2xs uppercase tracking-[0.1em] text-subtle">{new Date(`${k}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })}</p>
+                                  <p className="text-2xs text-subtle">{new Date(`${k}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })}</p>
                                   <p className={cn('num mt-1 font-mono text-lg font-bold', pnlClass(d.pnl))}>{fmtSigned(d.pnl)} <span className="text-xs font-medium text-subtle">USD</span></p>
-                                  <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-line pt-2 text-xs">
+                                  <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-line/60 pt-2.5 text-xs">
                                     <dt className="text-subtle">Trades</dt><dd className="num text-right font-mono">{d.trades}</dd>
                                     <dt className="text-subtle">Wins / losses</dt><dd className="num text-right font-mono">{d.wins} / {d.losses}</dd>
                                     <dt className="text-subtle">Best trade</dt><dd className="num text-right font-mono text-up">{fmtSigned(d.best)}</dd>
@@ -221,8 +221,8 @@ export function PnlCalendar() {
                           const wi = Math.floor(i / 7);
                           const w = month.weeks[wi];
                           out.push(
-                            <div key={`w${i}`} className="hidden h-[92px] flex-col justify-center gap-0.5 bg-panel2 p-2 md:flex">
-                              <p className="text-2xs font-semibold uppercase tracking-[0.1em] text-subtle">Week {wi + 1}</p>
+                            <div key={`w${i}`} className="hidden h-[92px] flex-col justify-center gap-0.5 rounded-2xl border border-line/50 bg-panel2/50 p-3 md:flex">
+                              <p className="text-xs font-medium text-muted">Week {wi + 1}</p>
                               <p className={cn('num font-mono text-sm font-bold', w.trades ? pnlClass(w.pnl) : 'text-subtle')}>{w.trades ? fmtSigned(w.pnl) : '—'}</p>
                               <p className="text-2xs text-subtle">{w.days} day{w.days === 1 ? '' : 's'} · {w.trades} trade{w.trades === 1 ? '' : 's'}</p>
                             </div>,
@@ -233,13 +233,13 @@ export function PnlCalendar() {
                 </div>
 
                 {!loading && month.trades === 0 && (
-                  <p className="mt-3 flex items-center justify-center gap-2 border border-dashed border-line2 py-3 text-sm text-muted"><CalendarX2 className="h-4 w-4" />No closed trades in {title}.</p>
+                  <p className="mt-4 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line2 py-4 text-sm text-muted"><CalendarX2 className="h-4 w-4" />No closed trades in {title}.</p>
                 )}
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-panel2/70 px-3 py-2 text-xs text-muted">
-              <span className="text-2xs uppercase tracking-[0.1em] text-subtle">All times UTC</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 px-4 py-3 text-xs text-muted">
+              <span className="text-2xs text-subtle">All times UTC</span>
               {data?.truncated ? (
                 <span className="flex items-center gap-1.5 text-warn"><Info className="h-3.5 w-3.5" />Showing the most recent 3,000 trades</span>
               ) : (

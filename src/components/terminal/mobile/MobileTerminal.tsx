@@ -28,7 +28,7 @@ function EquityStrip() {
   const ml = metrics && metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
   const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
   const Item = ({ k, v, cls }: { k: string; v: string; cls?: string }) => (
-    <div className="min-w-0"><div className="truncate text-2xs uppercase tracking-wider text-subtle">{k}</div><div className={cn('num truncate font-mono text-xs font-semibold', cls)}>{v}</div></div>
+    <div className="min-w-0"><div className="truncate text-2xs text-subtle">{k}</div><div className={cn('num truncate font-mono text-xs font-semibold', cls)}>{v}</div></div>
   );
   return (
     <div className="grid shrink-0 grid-cols-4 gap-2 border-b border-line bg-panel px-3 py-1.5" aria-label="Account summary">
@@ -93,11 +93,11 @@ function MobileTerminalInner() {
       {tab === 'chart' && (
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-line bg-panel p-2">
           <button onClick={() => setSheet('short')} className="flex h-12 flex-col items-center justify-center rounded-lg bg-down text-white active:brightness-90">
-            <span className="text-sm font-bold uppercase leading-none">Sell</span>
+            <span className="text-sm font-bold leading-none">Sell</span>
             <span className="num mt-0.5 font-mono text-2xs opacity-90">{px ? fmtPrice(px.bid) : '—'}</span>
           </button>
           <button onClick={() => setSheet('long')} className="flex h-12 flex-col items-center justify-center rounded-lg bg-up text-black active:brightness-90">
-            <span className="text-sm font-bold uppercase leading-none">Buy</span>
+            <span className="text-sm font-bold leading-none">Buy</span>
             <span className="num mt-0.5 font-mono text-2xs opacity-80">{px ? fmtPrice(px.ask) : '—'}</span>
           </button>
         </div>

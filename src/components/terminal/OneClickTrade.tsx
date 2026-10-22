@@ -65,11 +65,11 @@ function OneClickTradeInner({ className }: { className?: string }) {
     <>
       <div className={cn('inline-flex items-stretch overflow-hidden rounded-md border border-line bg-panel/95 shadow-lg backdrop-blur', className)} role="group" aria-label="One-click trading">
         <button onClick={() => request('short')} disabled={busy !== null || !px} className="flex min-w-[92px] flex-col items-start justify-center bg-down px-3 py-1 text-white transition-[filter] hover:brightness-110 disabled:opacity-50" title="Sell at bid (market)">
-          <span className="text-2xs font-semibold uppercase tracking-wider opacity-90">Sell</span>
+          <span className="text-2xs font-semibold opacity-90">Sell</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.bid) : '—'}</span>
         </button>
         <label className="flex w-[104px] flex-col justify-center border-x border-line px-2 py-0.5">
-          <span className="text-2xs uppercase tracking-wider text-subtle">Margin · {leverage}×</span>
+          <span className="text-2xs text-subtle">Margin · {leverage}×</span>
           <input
             inputMode="decimal" autoComplete="off" spellCheck={false} value={margin} aria-label="One-click margin in USDT"
             onChange={(e) => { const v = e.target.value.replace(',', '.'); if (/^\d*\.?\d*$/.test(v)) set({ quickMargin: v }); }}
@@ -77,7 +77,7 @@ function OneClickTradeInner({ className }: { className?: string }) {
           />
         </label>
         <button onClick={() => request('long')} disabled={busy !== null || !px} className="flex min-w-[92px] flex-col items-end justify-center bg-up px-3 py-1 text-black transition-[filter] hover:brightness-110 disabled:opacity-50" title="Buy at ask (market)">
-          <span className="text-2xs font-semibold uppercase tracking-wider opacity-80">Buy</span>
+          <span className="text-2xs font-semibold opacity-80">Buy</span>
           <span className="num font-mono text-sm font-semibold leading-tight">{px ? fmtPrice(px.ask) : '—'}</span>
         </button>
       </div>

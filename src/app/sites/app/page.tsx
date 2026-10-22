@@ -47,7 +47,7 @@ export default function OverviewPage() {
         title={t('overview')}
         subtitle="Live balances, equity curves and drawdown headroom for every account you own."
         actions={
-          <SiteLink site="www" path="/#pricing" className="inline-flex h-8 items-center gap-2 border border-accent bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent/90">
+          <SiteLink site="www" path="/#pricing" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] shadow-btn px-4 text-sm font-semibold text-accent-fg transition hover:brightness-105 active:scale-[0.985]">
             <Plus className="h-4 w-4" />{t('buyAccount')}
           </SiteLink>
         }
@@ -82,17 +82,17 @@ export default function OverviewPage() {
       </div>
 
       {error && !accounts ? (
-        <div className="border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div>
+        <div className="card"><ErrorState error={error} onRetry={() => mutate()} /></div>
       ) : loading ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <AccountCardSkeleton key={i} />)}</div>
       ) : shown.length === 0 ? (
-        <div className="border border-dashed border-line2 bg-panel/50">
+        <div className="rounded-3xl border-2 border-dashed border-line2 bg-panel/50">
           <EmptyState
             icon={<Wallet className="h-5 w-5" />}
             title={accounts?.length ? 'No accounts match this filter' : 'No accounts yet'}
             description={accounts?.length ? 'Try another filter to see the rest of your accounts.' : 'Purchase a One-Step or Instant account and it will appear here the moment your payment confirms.'}
             action={!accounts?.length ? (
-              <SiteLink site="www" path="/#pricing" className="inline-flex h-8 items-center gap-2 border border-accent bg-accent px-3.5 text-sm font-semibold text-accent-fg hover:bg-accent/90">
+              <SiteLink site="www" path="/#pricing" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] shadow-btn px-4 text-sm font-semibold text-accent-fg transition hover:brightness-105">
                 <Plus className="h-4 w-4" />Choose an account
               </SiteLink>
             ) : undefined}

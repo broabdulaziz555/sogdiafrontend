@@ -22,20 +22,20 @@
 }
 
 .dark {
-  --bg: 8 12 18;        /* #080C12 deep space */
-  --panel: 17 26 37;    /* #111A25 slate panel */
-  --panel2: 12 19 28;   /* recessed strips / table headers */
-  --line: 30 43 58;     /* 1px hairline */
-  --line2: 44 61 81;    /* hover / emphasised hairline */
-  --fg: 230 236 244;
-  --muted: 130 146 166;
-  --subtle: 92 108 128;
-  --accent: 183 243 107; /* #B7F36B neon lime */
-  --accent-fg: 8 12 18;
-  --up: 14 203 129;     /* #0ECB81 */
-  --down: 246 70 93;    /* #F6465D */
-  --warn: 240 185 11;
-  --info: 96 165 250;
+  --bg: 9 12 22;        /* #090C16 navy ink */
+  --panel: 17 23 39;    /* #111727 card */
+  --panel2: 23 31 52;   /* #171F34 raised tile / input / table head */
+  --line: 36 46 71;     /* #242E47 soft divider */
+  --line2: 54 68 100;   /* hover / emphasised border */
+  --fg: 237 241 249;
+  --muted: 150 162 187;
+  --subtle: 106 120 150;
+  --accent: 183 243 107; /* #B7F36B lime — primary actions only */
+  --accent-fg: 9 12 22;
+  --up: 38 214 148;     /* #26D694 */
+  --down: 248 91 112;   /* #F85B70 */
+  --warn: 251 191 36;
+  --info: 99 162 255;   /* #63A2FF neutral data blue */
   color-scheme: dark;
 }
 
@@ -47,16 +47,21 @@
     background: rgb(var(--bg));
   }
   body {
-    @apply bg-bg font-sans text-base text-fg antialiased;
+    @apply font-sans text-base text-fg antialiased;
+    /* soft ambient light behind the cards (lime top-left, blue top-right) */
+    background:
+      radial-gradient(1100px 520px at 8% -10%, rgb(var(--accent) / 0.065), transparent 62%),
+      radial-gradient(900px 520px at 100% -6%, rgb(var(--info) / 0.07), transparent 58%),
+      rgb(var(--bg));
+    background-attachment: fixed;
     font-feature-settings: 'cv11', 'ss01', 'tnum';
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
   }
   ::selection { background: rgb(var(--accent) / 0.28); }
   :focus-visible {
-    outline: 1px solid rgb(var(--accent));
-    outline-offset: 1px;
-    border-radius: 0;
+    outline: 2px solid rgb(var(--accent) / 0.8);
+    outline-offset: 2px;
   }
   input, textarea, select { font-feature-settings: 'tnum'; }
   button { @apply select-none; touch-action: manipulation; }
@@ -66,25 +71,29 @@
 @layer components {
   .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum', 'zero'; }
 
-  /* Surfaces */
-  .card { @apply rounded border border-line bg-panel; }
+  /* Surfaces: rounded, softly lit from above */
+  .card {
+    @apply rounded-2xl border border-line/80 bg-panel shadow-card;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.028), transparent 46%);
+  }
+  .tile { @apply rounded-xl border border-line/70 bg-panel2/70; }
   .hairline { @apply border-line; }
-  .panel-head { @apply flex h-9 items-center justify-between gap-3 border-b border-line bg-panel2/70 px-3; }
-  .panel-title { @apply text-2xs font-semibold uppercase tracking-[0.1em] text-muted; }
+  .panel-head { @apply flex h-11 items-center justify-between gap-3 border-b border-line/60 px-4; }
+  .panel-title { @apply whitespace-nowrap text-sm font-semibold text-fg; }
 
-  /* Micro typography */
-  .label { @apply text-2xs font-medium uppercase tracking-[0.1em] text-subtle; }
+  /* Micro typography (sentence case — no shouting labels) */
+  .label { @apply text-xs font-medium text-muted; }
   .kbd {
-    @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-sm border border-line bg-panel2 px-1 font-mono text-2xs text-muted;
+    @apply inline-flex h-[20px] min-w-[20px] items-center justify-center rounded-md border border-line bg-panel2 px-1.5 text-2xs font-medium text-muted;
   }
 
-  /* Inputs: 32px, recessed, 1px accent edge on focus (no halo) */
+  /* Inputs: 40px, raised, soft focus ring */
   .field {
-    @apply h-8 w-full rounded border border-line bg-panel2 px-2.5 text-base text-fg placeholder:text-subtle transition-colors;
-    @apply hover:border-line2 focus:border-accent focus:outline-none focus:shadow-[0_0_0_1px_rgb(var(--accent))];
+    @apply h-10 w-full rounded-xl border border-line bg-panel2/80 px-3.5 text-base text-fg placeholder:text-subtle transition;
+    @apply hover:border-line2 focus:border-accent/70 focus:outline-none focus:ring-4 focus:ring-accent/10;
   }
 
-  .skeleton { @apply relative overflow-hidden rounded-sm bg-fg/[0.06]; }
+  .skeleton { @apply relative overflow-hidden rounded-lg bg-fg/[0.06]; }
   .skeleton::after {
     content: '';
     @apply absolute inset-0 -translate-x-full animate-shimmer;
@@ -92,14 +101,14 @@
   }
   .grid-bg {
     background-image:
-      linear-gradient(rgb(var(--line) / 0.55) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(var(--line) / 0.55) 1px, transparent 1px);
-    background-size: 56px 56px;
+      linear-gradient(rgb(var(--line) / 0.32) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line) / 0.32) 1px, transparent 1px);
+    background-size: 64px 64px;
     mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
   }
 }
 
-/* ───────────── Scrollbars (square, thin) ───────────── */
+/* ───────────── Scrollbars (thin, rounded) ───────────── */
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--subtle) / 0.45) transparent; }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
@@ -107,6 +116,7 @@
   background: rgb(var(--subtle) / 0.35);
   border: 2px solid transparent;
   background-clip: content-box;
+  border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover { background: rgb(var(--subtle) / 0.65); background-clip: content-box; border: 2px solid transparent; }
 .scroll-none { scrollbar-width: none; }
