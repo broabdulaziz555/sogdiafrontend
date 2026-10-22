@@ -6,6 +6,10 @@ import { binanceGet, FeedSocket, mapMini, mapRest24 } from '@/lib/binance';
 import { get } from '@/lib/api';
 import type { MarketPricesResponse, MarketSymbol } from '@/lib/types';
 import { useTerminal } from './store';
+import { SPREAD } from './optimistic';
+
+/** When the browser last got prices straight from Binance's stream. While that is fresh the 1.5 s backend poll only confirms the feed is up. */
+let streamPriceAt = 0;
 
 /** Contract prices (the exact bid/ask the engine fills at) — polled every 1.5 s. */
 export function usePricesFeed() {
@@ -18,7 +22,10 @@ export function usePricesFeed() {
       dedupingInterval: 1000,
       revalidateOnFocus: true,
       keepPreviousData: true,
-      onSuccess: (d) => setPrices(d.prices),
+      onSuccess: (d) => {
+        if (Date.now() - streamPriceAt < 3000) { useTerminal.setState({ pricesOk: true }); return; } // live stream is fresher
+        setPrices(d.prices);
+      },
       onError: () => useTerminal.setState({ pricesOk: false }),
       shouldRetryOnError: true,
       errorRetryInterval: 3000,
@@ -58,7 +65,13 @@ export function useTickersFeed(symbols: MarketSymbol[]) {
     let buf: any[] | null = null;
     const flush = setInterval(() => {
       if (buf) {
-        merge(buf.filter((t) => wanted.has(t.s)).map(mapMini));
+        const rows = buf.filter((t) => wanted.has(t.s)).map(mapMini);
+        merge(rows);
+        // Quotes follow Binance's stream (about once a second), with the engine's house spread applied the same way the backend does.
+        if (wsLive && rows.length) {
+          streamPriceAt = Date.now();
+          useTerminal.getState().setPrices(rows.filter((r) => r.last > 0).map((r) => ({ symbol: r.symbol, price: r.last, bid: r.last * (1 - SPREAD), ask: r.last * (1 + SPREAD) })));
+        }
         buf = null;
       }
     }, 1000);
