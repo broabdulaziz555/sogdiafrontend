@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Wallet } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { cn } from '@/lib/cn';
@@ -32,13 +32,22 @@ const Panel = ({ children, label, className }: { children: React.ReactNode; labe
   <div className={cn('min-h-0 min-w-0 bg-panel', className)}><ErrorBoundary label={label} compact>{children}</ErrorBoundary></div>
 );
 
-function Workspace({ accountsList, onAccountChange }: { accountsList: Account[]; onAccountChange: (id: string) => void }) {
-  const { accountId, positions, refresh } = useTerminalData();
+function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList: Account[]; onAccountChange: (id: string) => void; onInactive: () => void }) {
+  const { accountId, account, positions, refresh } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const layout = useTerminalLayout();
 
   useEffect(() => { useTerminal.setState({ accountId }); }, [accountId]);
   usePendingEngine(accountId, refresh);
+  // the engine failed / passed this account: re-read the account list so the terminal moves off it instead of showing a dead account
+  const notified = useRef('');
+  useEffect(() => {
+    if (!account || account.status === 'active') return;
+    const key = `${accountId}:${account.status}`;
+    if (notified.current === key) return; // once per change, never in a loop
+    notified.current = key;
+    onInactive();
+  }, [accountId, account, onInactive]);
 
   let body: React.ReactNode;
   if (layout === null) body = <div className="grid flex-1 place-items-center"><BootScreen label="Loading terminal" /></div>;
@@ -138,7 +147,7 @@ export function TerminalApp() {
   return (
     <TerminalDataProvider accountId={chosen}>
       <Feeds />
-      <Workspace accountsList={tradable} onAccountChange={change} />
+      <Workspace accountsList={tradable} onAccountChange={change} onInactive={() => void mutate()} />
     </TerminalDataProvider>
   );
 }

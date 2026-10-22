@@ -42,7 +42,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     ['terminal-positions', accountId],
     () => get<PositionsResponse>('/trade/positions', { account_id: accountId }),
     // the server runs its risk sweep on every call, so poll fast only while something is actually open
-    { refreshInterval: (d) => (d?.positions?.length ? 3000 : 10_000), dedupingInterval: 1500, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
+    { refreshInterval: (d) => (d?.positions?.length ? 4000 : 15_000), dedupingInterval: 2000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
   );
 
   const data = swr.data;

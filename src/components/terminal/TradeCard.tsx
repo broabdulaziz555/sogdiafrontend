@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import { assetUrl } from '@/lib/api';
 import { renderTradeCard, DEFAULT_CARD_OPTS, type CardOpts } from '@/lib/tradeCardCanvas';
@@ -24,10 +24,15 @@ export function TradeCardModal() {
   const [busy, setBusy] = useState<'dl' | 'share' | null>(null);
 
   const [local, setLocal] = useState<string | null>(null);
+  const lastUrl = useRef<string | null>(null);
   const user = useUser();
-  const opts: CardOpts = { ...DEFAULT_CARD_OPTS, ...(useTerminal((s) => s.cardOpts) ?? {}) };
+  const stored = useTerminal((s) => s.cardOpts);
+  // must be memoised: a fresh object every render would restart the drawing effect forever (and the image would flicker / fail)
+  const opts: CardOpts = useMemo(() => ({ ...DEFAULT_CARD_OPTS, ...(stored ?? {}) }), [stored]);
   const refQ = useApi<Referrals>(card?.data && opts.referral ? '/referrals' : null);
-  const ref = refQ.data ? { code: refQ.data.referral_code, discount: refQ.data.friend_discount_pct } : null;
+  const refCode = refQ.data?.referral_code;
+  const refDiscount = refQ.data?.friend_discount_pct;
+  const ref = useMemo(() => (refCode ? { code: refCode, discount: refDiscount ?? 0 } : null), [refCode, refDiscount]);
   const username = (user.full_name || user.email?.split('@')[0] || '').trim(); // full name
   useEffect(() => { setState('loading'); setAttempt(0); }, [card?.id]);
 
@@ -35,14 +40,18 @@ export function TradeCardModal() {
   const data = card?.data;
   useEffect(() => {
     if (!data || !card) { setLocal(null); return; }
-    let url: string | null = null;
     let dead = false;
     renderTradeCard(data, card.live, opts, username, ref).then((b) => {
       if (dead) return;
-      url = URL.createObjectURL(b); setLocal(url); setState('ok');
+      const url = URL.createObjectURL(b);
+      const prev = lastUrl.current;
+      lastUrl.current = url;
+      setLocal(url); setState('ok');
+      if (prev) setTimeout(() => URL.revokeObjectURL(prev), 3000); // never pull the image out from under the <img>
     }).catch(() => { if (!dead) setState('error'); });
-    return () => { dead = true; if (url) URL.revokeObjectURL(url); };
-  }, [data, card, attempt, opts, username, ref?.code, ref?.discount]);
+    return () => { dead = true; };
+  }, [data, card?.live, attempt, opts, username, ref]);
+  useEffect(() => () => { if (lastUrl.current) URL.revokeObjectURL(lastUrl.current); }, []);
 
   if (!card) return null;
   const url = assetUrl(`/api/og/trade/${card.id}`);

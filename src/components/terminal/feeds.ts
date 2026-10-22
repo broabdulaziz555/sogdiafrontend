@@ -14,8 +14,8 @@ export function usePricesFeed() {
     ['terminal-prices'],
     () => get<MarketPricesResponse>('/market/prices'),
     {
-      refreshInterval: 2000,
-      dedupingInterval: 1000,
+      refreshInterval: 3000,
+      dedupingInterval: 2000,
       revalidateOnFocus: true,
       keepPreviousData: true,
       onSuccess: (d) => setPrices(d.prices),
