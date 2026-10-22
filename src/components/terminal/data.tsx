@@ -83,11 +83,9 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const addOptimistic = useCallback((p: Position) => setPinned((l) => [{ pos: p, at: Date.now() }, ...l]), []);
 
   const applyOpened = useCallback((r: { order: Position; account?: Account; metrics?: AccountMetrics }, tmpId?: string) => {
-    void mutate((cur) => {
-      if (!cur) return cur;
-      const rest = cur.positions.filter((p) => p.id !== r.order.id);
-      return { ...cur, positions: [r.order, ...rest], account: r.account ?? cur.account, metrics: r.metrics ?? cur.metrics };
-    }, { revalidate: false });
+    // Only the account figures go into the shared list. The position itself stays pinned until a poll that really lists it
+    // arrives: writing it into the list here let an older, still-in-flight poll (started before the order existed) wipe it.
+    void mutate((cur) => (cur ? { ...cur, account: r.account ?? cur.account, metrics: r.metrics ?? cur.metrics } : cur), { revalidate: false });
     setPinned((l) => [{ pos: r.order, at: Date.now() }, ...l.filter((x) => x.pos.id !== tmpId && x.pos.id !== r.order.id)]);
     setTimeout(() => { void mutate(); }, 1500);
   }, [mutate]);
