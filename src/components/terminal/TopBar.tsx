@@ -16,6 +16,7 @@ import { useUser } from '@/components/ui/AuthGate';
 import { InstallApp } from '@/components/pwa/InstallApp';
 import { useTerminalData } from './data';
 import { useTerminal } from './store';
+import { useTerminalLayout } from './useLayout';
 
 function Metric({ k, v, tone }: { k: string; v: React.ReactNode; tone?: 'up' | 'down' | 'warn' }) {
   return (
@@ -82,6 +83,7 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
   const { accountId, account, metrics } = useTerminalData();
   const soundOn = useTerminal((s) => s.soundOn);
   const set = useTerminal((s) => s.set);
+  const mob = useTerminalLayout() === 'mobile';
   const ml = metrics && metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
   const upl = metrics?.unrealized_pnl ?? 0;
 
@@ -95,22 +97,22 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
         {accounts.map((a) => <option key={a.id} value={a.id}>{a.type === 'instant' ? 'Instant' : 'One-Step'} · {fmtUsd(a.size).replace(/\.00$/, '')} · {a.id.slice(0, 6)}</option>)}
       </select>
 
-      <div className="hidden min-w-0 flex-1 items-center gap-6 overflow-x-auto scroll-none md:flex" aria-label="Account summary">
+      <div className={cn('hidden min-w-0 flex-1 items-center gap-6 overflow-x-auto scroll-none', !mob && 'md:flex')} aria-label="Account summary">
         <Metric k="Equity" v={metrics ? fmtUsd(metrics.equity) : '—'} />
         <Metric k="Unrealized" v={metrics ? fmtSigned(upl) : '—'} tone={upl > 0 ? 'up' : upl < 0 ? 'down' : undefined} />
         <Metric k="Free margin" v={metrics ? fmtUsd(metrics.free_margin) : '—'} />
         <Metric k="Margin level" v={ml == null ? '—' : `${fmtNum(ml, 0)}%`} tone={ml != null && ml < 120 ? 'down' : ml != null && ml < 200 ? 'warn' : undefined} />
         {account && <Metric k="Leverage cap" v={`${account.max_leverage}×`} />}
       </div>
-      <div className="hidden flex-1 sm:block md:hidden" />
+      <div className={cn('hidden flex-1', !mob && 'sm:block md:hidden')} />
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <FeedStatus />
-        <Clock />
-        <button onClick={() => set({ soundOn: !soundOn })} aria-pressed={soundOn} aria-label={soundOn ? 'Mute fill sounds' : 'Enable fill sounds'} className="hidden h-8 w-8 place-items-center rounded-md sm:grid text-muted hover:bg-fg/[0.06] hover:text-fg">{soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
-        <button onClick={() => set({ hotkeysOpen: true })} aria-label="Keyboard shortcuts" className="hidden h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/[0.06] hover:text-fg sm:grid"><Keyboard className="h-4 w-4" /></button>
-        <ThemeToggle className="max-sm:hidden" />
-        <LocaleSwitcher className="max-sm:hidden" />
+        {!mob && <Clock />}
+        <button onClick={() => set({ soundOn: !soundOn })} aria-pressed={soundOn} aria-label={soundOn ? 'Mute fill sounds' : 'Enable fill sounds'} className={cn('hidden h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/[0.06] hover:text-fg', !mob && 'sm:grid')}>{soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
+        <button onClick={() => set({ hotkeysOpen: true })} aria-label="Keyboard shortcuts" className={cn('hidden h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/[0.06] hover:text-fg', !mob && 'sm:grid')}><Keyboard className="h-4 w-4" /></button>
+        {!mob && <ThemeToggle className="max-sm:hidden" />}
+        {!mob && <LocaleSwitcher className="max-sm:hidden" />}
         <UserMenu />
       </div>
     </header>

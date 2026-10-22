@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Share2, SlidersHorizontal, X } from 'lucide-react';
+import { MoreHorizontal, Plus, Share2, SlidersHorizontal, X } from 'lucide-react';
 import { errMsg, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, qtyDecimals, shortId } from '@/lib/format';
@@ -22,24 +22,6 @@ type Sub = 'open' | 'pending';
 
 function Cell({ k, children, className }: { k: string; children: React.ReactNode; className?: string }) {
   return <div className={cn('min-w-0', className)}><dt className="text-2xs uppercase tracking-wider text-subtle">{k}</dt><dd className="num truncate font-mono text-sm">{children}</dd></div>;
-}
-
-/** Balance / equity / margin block, MetaTrader mobile style. */
-function Summary() {
-  const { account, metrics, positions } = useTerminalData();
-  if (!account || !metrics) return <div className="grid grid-cols-3 gap-3 p-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9" />)}</div>;
-  const ml = metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
-  const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
-  return (
-    <dl className="grid grid-cols-3 gap-x-3 gap-y-2.5 border-b border-line bg-panel p-3">
-      <Cell k="Balance">{fmtUsd(account.balance)}</Cell>
-      <Cell k="Equity">{fmtUsd(metrics.equity)}</Cell>
-      <Cell k="Profit"><span className={pnlClass(total)}>{fmtSigned(total)}</span></Cell>
-      <Cell k="Margin">{fmtUsd(metrics.used_margin)}</Cell>
-      <Cell k="Free margin">{fmtUsd(metrics.free_margin)}</Cell>
-      <Cell k="Margin level"><span className={ml != null && ml < 120 ? 'text-down' : ml != null && ml < 200 ? 'text-warn' : undefined}>{ml == null ? '—' : `${fmtNum(ml, 0)}%`}</span></Cell>
-    </dl>
-  );
 }
 
 function MobilePositionsInner() {
@@ -101,8 +83,6 @@ function MobilePositionsInner() {
 
   return (
     <div className="pb-4">
-      <Summary />
-
       <Tabs<Sub> className="bg-panel px-3 pt-2" value={sub} onChange={setSub}
         tabs={[{ value: 'open', label: 'Open positions', count: positions.length }, { value: 'pending', label: 'Pending orders', count: pending.length }]} />
 
@@ -152,20 +132,24 @@ function MobilePositionsInner() {
                         </dl>
 
                         <div className="mt-3 flex items-center gap-2">
-                          <Button size="md" variant="secondary" className="h-10 px-3" icon={<SlidersHorizontal className="h-4 w-4" />} onClick={() => setEditing(p)} aria-label="Edit stop-loss and take-profit">S/L · T/P</Button>
-                          <Button size="md" variant="secondary" className="h-10 w-10 px-0" onClick={() => share(p)} aria-label="Share trade"><Share2 className="h-4 w-4" /></Button>
-                          <Button size="md" variant={partialFor === p.id ? 'outline' : 'secondary'} className="h-10 px-3" onClick={() => setPartialFor(partialFor === p.id ? null : p.id)} aria-expanded={partialFor === p.id}>Partial</Button>
-                          <Button size="md" variant="danger" className="h-10 flex-1" loading={busy === p.id} onClick={() => arm(key, () => void close(p, 100))}>
-                            {armed === key ? 'Tap to confirm' : 'Close'}
+                          <Button size="md" variant="danger" className="h-11 flex-1 text-base" loading={busy === p.id} onClick={() => arm(key, () => void close(p, 100))}>
+                            {armed === key ? 'Tap again to close' : 'Close position'}
                           </Button>
+                          <Button size="md" variant={partialFor === p.id ? 'outline' : 'secondary'} className="h-11 w-11 px-0" onClick={() => setPartialFor(partialFor === p.id ? null : p.id)} aria-expanded={partialFor === p.id} aria-label="More actions"><MoreHorizontal className="h-5 w-5" /></Button>
                         </div>
 
                         {partialFor === p.id && (
-                          <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Partial close">
-                            {[25, 50, 75].map((n) => {
-                              const k = `${p.id}:${n}`;
-                              return <Button key={n} size="md" variant={armed === k ? 'danger' : 'secondary'} className="h-10" disabled={busy === p.id} onClick={() => arm(k, () => void close(p, n))}>{armed === k ? 'Confirm' : `Close ${n}%`}</Button>;
-                            })}
+                          <div className="mt-2 space-y-2 rounded-lg border border-line bg-panel2 p-2" role="group" aria-label="More actions">
+                            <div className="grid grid-cols-3 gap-2">
+                              {[25, 50, 75].map((n) => {
+                                const k = `${p.id}:${n}`;
+                                return <Button key={n} size="md" variant={armed === k ? 'danger' : 'secondary'} className="h-10" disabled={busy === p.id} onClick={() => arm(k, () => void close(p, n))}>{armed === k ? 'Confirm' : `Close ${n}%`}</Button>;
+                              })}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button size="md" variant="secondary" className="h-10" icon={<SlidersHorizontal className="h-4 w-4" />} onClick={() => setEditing(p)}>Stop-loss / Take-profit</Button>
+                              <Button size="md" variant="secondary" className="h-10" icon={<Share2 className="h-4 w-4" />} onClick={() => share(p)}>Trade card</Button>
+                            </div>
                           </div>
                         )}
                       </li>

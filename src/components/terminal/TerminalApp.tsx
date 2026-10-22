@@ -61,8 +61,21 @@ function Workspace({ accountsList, onAccountChange }: { accountsList: Account[];
     );
   }
 
+  // Chrome's "Desktop site" mode gives phones a ~1000px layout viewport and shrinks everything. Scale it back up so the mobile layout is readable.
+  const [zoom, setZoom] = useState(1);
+  useEffect(() => {
+    const calc = () => {
+      const sw = Math.min(window.screen.width, window.screen.height);
+      const z = sw < 600 && window.innerWidth > sw * 1.25 ? Math.min(3, window.innerWidth / Math.max(sw, 360)) : 1;
+      setZoom(+z.toFixed(3));
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, []);
+
   return (
-    <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg" data-symbol={symbol}>
+    <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined} data-symbol={symbol}>
       <TopBar accounts={accountsList} onAccountChange={onAccountChange} />
       {body}
       <Hotkeys />
