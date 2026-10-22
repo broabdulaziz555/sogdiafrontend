@@ -41,6 +41,8 @@ export const useTerminalData = () => {
   return c;
 };
 
+const PIN_MAX_MS = 5 * 60_000;
+
 const REASON: Record<string, string> = { liquidation: 'Liquidated', stop_loss: 'Stop-loss hit', take_profit: 'Take-profit hit' };
 
 /** Single shared poll of /trade/positions (3 s with open trades, 10 s when flat). */
@@ -87,7 +89,6 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   // Reconciliation layer. The server's list is eventually consistent (a poll can land before the new row is visible),
   // so a row we know about — provisional or just confirmed by /trade/open — is pinned until the server list has it.
   // Likewise a position we just closed stays hidden until the server list stops returning it.
-  const PIN_MAX_MS = 5 * 60_000;
   const [pinned, setPinned] = useState<{ pos: Position; at: number }[]>([]);
   const [closedIds, setClosedIds] = useState<Record<string, number>>({});
 
