@@ -10,6 +10,8 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
+import { SiteLink } from '@/components/ui/SiteLink';
+import { EXECUTION_PATH, EXECUTION_SHORT } from '@/lib/legal';
 import { useTerminalData } from './data';
 import { beep } from './sound';
 import { useTerminal } from './store';
@@ -334,6 +336,8 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           {side === 'long' ? 'Buy' : 'Sell'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
         </Button>
       </div>
+
+      <p className="text-2xs leading-relaxed text-subtle">{EXECUTION_SHORT} <SiteLink site="www" path={EXECUTION_PATH} target="_blank" rel="noopener noreferrer" className="underline hover:text-fg">Execution Disclosure</SiteLink>.</p>
 
       <div className="flex items-center justify-between text-xs text-muted">
         <label className="flex items-center gap-2"><Switch checked={confirmOrders} onChange={(v) => set({ confirmOrders: v })} label="Confirm orders" />Confirm orders</label>
