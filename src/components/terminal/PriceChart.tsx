@@ -395,6 +395,9 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     exhausted.current = false;
     dataRef.current = [];
     pendingTicks.current = [];
+    // wipe every series so nothing from the previous symbol / timeframe stays on the time scale
+    candleRef.current?.setData([]); volRef.current?.setData([]);
+    maRefs.current.forEach((r) => r.setData([])); emaRefs.current.forEach((r) => r.setData([])); bbRefs.current.forEach((r) => r.setData([]));
     try {
       const rows = await binanceGet<(string | number)[][]>('/api/v3/klines', { symbol, interval: timeframe, limit: 500 });
       if (id !== reqId.current) return;
@@ -472,14 +475,15 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
 
   useEffect(() => {
     let wsLive = false;
+    let alive = true; // a tick from the previous timeframe's socket must never reach this timeframe's data
     const sock = new FeedSocket(
       [`${symbol.toLowerCase()}@kline_${timeframe}`],
-      (_s, d) => { if (d?.k) applyTick({ time: Math.floor(d.k.t / 1000), open: +d.k.o, high: +d.k.h, low: +d.k.l, close: +d.k.c, volume: +d.k.v }); },
+      (_s, d) => { if (alive && d?.k) applyTick({ time: Math.floor(d.k.t / 1000), open: +d.k.o, high: +d.k.h, low: +d.k.l, close: +d.k.c, volume: +d.k.v }); },
       (st) => { wsLive = st === 'live'; },
     );
     // when the socket is down, keep the forming candle alive from the trade tape
     const unsub = useTerminal.subscribe((s, prev) => {
-      if (wsLive || s.last == null || s.last === prev.last) return;
+      if (!alive || wsLive || s.last == null || s.last === prev.last) return;
       const last = dataRef.current[dataRef.current.length - 1];
       if (!last) return;
       const t = tfRef.current;
@@ -487,7 +491,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       if (now < candleClose(last.time, t.key, t.seconds)) applyTick({ ...last, close: s.last, high: Math.max(last.high, s.last), low: Math.min(last.low, s.last) });
       else if (t.seconds <= 86400) { const bucket = Math.floor(now / t.seconds) * t.seconds; applyTick({ time: bucket, open: s.last, high: s.last, low: s.last, close: s.last, volume: 0 }); }
     });
-    return () => { sock.close(); unsub(); };
+    return () => { alive = false; sock.close(); unsub(); };
   }, [symbol, timeframe, applyTick]);
 
   /* ── trade levels: positions, pending orders, bid / ask ──────────────────── */
