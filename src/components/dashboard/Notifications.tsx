@@ -5,6 +5,7 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { post } from '@/lib/api';
 import { relTime } from '@/lib/format';
+import { revalidatePath } from '@/lib/mutate';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/States';
 import { cn } from '@/lib/cn';
@@ -27,7 +28,7 @@ const isRead = (n: Notif) => !!(n.read ?? n.is_read ?? n.read_at);
 export function Notifications() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const { data, error, isLoading, mutate } = useApi<Resp>('/notifications', { limit: 20 }, { refreshInterval: 60_000 });
+  const { data, error, isLoading, mutate } = useApi<Resp>('/notifications', { limit: 20 }, { refreshInterval: 15_000 });
 
   useEffect(() => {
     if (!open) return;
@@ -45,8 +46,17 @@ export function Notifications() {
 
   const unread = data?.unread ?? 0;
 
+  // A new notification usually means something changed on an account (gift, payout, status): refresh the lists now
+  // instead of waiting for their own poll.
+  const lastUnread = useRef<number | null>(null);
+  useEffect(() => {
+    if (!data) return;
+    if (lastUnread.current !== null && data.unread > lastUnread.current) void revalidatePath('/accounts');
+    lastUnread.current = data.unread;
+  }, [data]);
+
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative max-sm:static">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
@@ -59,7 +69,7 @@ export function Notifications() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] animate-scale-in overflow-hidden rounded-xl card shadow-pop">
+        <div className="absolute right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] animate-scale-in overflow-hidden rounded-xl card shadow-pop max-sm:inset-x-4 max-sm:top-full max-sm:w-auto">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <p className="text-sm font-semibold">Notifications</p>
             <button onClick={markAll} disabled={!unread} className="flex items-center gap-1 text-xs text-muted hover:text-fg disabled:opacity-40">

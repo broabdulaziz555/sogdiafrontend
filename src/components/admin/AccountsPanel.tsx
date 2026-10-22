@@ -223,7 +223,7 @@ export function AccountsPanel() {
   const [st, setSt] = useState('');
   const [sel, setSel] = useState<Account | null>(null);
   const [gift, setGift] = useState(false);
-  const { data, error, isLoading, mutate } = useApi<Res>('/admin/accounts', { status: st || undefined, limit: size, offset: page * size });
+  const { data, error, isLoading, mutate } = useApi<Res>('/admin/accounts', { status: st || undefined, limit: size, offset: page * size }, { dedupingInterval: 0, revalidateOnFocus: true });
 
   const cols: Column<Account>[] = useMemo(() => [
     { key: 'user', header: 'Trader', sortValue: (a) => a.user_email, searchText: (a) => `${a.user_email ?? ''} ${a.id} ${a.plan_key}`, cell: (a) => <span className="block min-w-0"><span className="block truncate font-medium">{a.user_email ?? '—'}</span><span className="block font-mono text-2xs text-subtle">{a.id.slice(0, 8)}</span></span> },
@@ -245,8 +245,8 @@ export function AccountsPanel() {
         toolbar={<Segmented value={st} onChange={(v) => { setSt(v); setPage(0); }} options={STATUS_FILTERS} size="sm" ariaLabel="Status filter" />}
         empty={{ title: 'No accounts', description: 'Nothing matches this filter.' }}
       />
-      <AccountDrawer account={sel} onClose={() => setSel(null)} onChanged={() => { void mutate(); void revalidatePath('/admin/stats'); setSel(null); }} />
-      <GiftModal open={gift} onClose={() => { setGift(false); void mutate(); }} />
+      <AccountDrawer account={sel} onClose={() => setSel(null)} onChanged={() => { void revalidatePath('/admin/accounts'); void revalidatePath('/admin/stats'); setSel(null); }} />
+      <GiftModal open={gift} onClose={() => { setGift(false); void revalidatePath('/admin/accounts'); }} />
     </>
   );
 }

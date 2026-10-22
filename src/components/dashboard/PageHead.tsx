@@ -18,7 +18,7 @@ export function Stat({ label, value, sub, tone, className }: { label: string; va
     <div className={cn('card min-w-0 overflow-hidden px-4 py-3.5 sm:px-5 sm:py-4', className)}>
       <p className="label truncate">{label}</p>
       <p className={cn('num mt-2 whitespace-nowrap text-[clamp(1.125rem,4.6vw,1.625rem)] font-semibold leading-tight tracking-tight', tone === 'up' && 'text-up', tone === 'down' && 'text-down')}>{value}</p>
-      {sub && <p className="mt-1.5 truncate text-xs leading-snug text-muted">{sub}</p>}
+      {sub && <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-muted">{sub}</p>}
     </div>
   );
 }

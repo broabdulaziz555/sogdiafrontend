@@ -8,7 +8,7 @@ import type { Account, HistoryOrder, HistoryResponse } from '@/lib/types';
 export function useAccounts(status?: string) {
   // Always revalidate: never trust a previously cached (possibly empty) list.
   const r = useApi<{ accounts: Account[] } | Account[]>('/accounts', status ? { status } : undefined, {
-    refreshInterval: 30_000,
+    refreshInterval: 10_000,
     revalidateOnMount: true,
     revalidateIfStale: true,
     revalidateOnFocus: true,

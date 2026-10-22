@@ -119,7 +119,7 @@ export function UsersPanel() {
   const [kyc, setKyc] = useState('');
   const [sel, setSel] = useState<Row | null>(null);
   const dq = useDebounced(q);
-  const { data, error, isLoading, mutate } = useApi<UsersRes>('/admin/users', { query: dq || undefined, kyc_status: kyc || undefined, limit: size, offset: page * size });
+  const { data, error, isLoading, mutate } = useApi<UsersRes>('/admin/users', { query: dq || undefined, kyc_status: kyc || undefined, limit: size, offset: page * size }, { dedupingInterval: 0, revalidateOnFocus: true });
 
   const cols: Column<Row>[] = useMemo(() => [
     { key: 'email', header: 'User', sortValue: (u) => u.email, cell: (u) => <span className="block min-w-0"><span className="block truncate font-medium">{u.full_name || u.email}</span>{u.full_name && <span className="block truncate text-xs text-muted">{u.email}</span>}</span> },
