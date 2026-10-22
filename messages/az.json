@@ -33,7 +33,6 @@
     "platform": "Platforma",
     "pricing": "Qiymətlər",
     "faq": "Suallar",
-    "legal": "Hüquqi",
     "getFunded": "Kapital əldə et",
     "openMenu": "Menyunu aç",
     "closeMenu": "Menyunu bağla"
@@ -165,13 +164,8 @@
     "tagline": "Gözləməyi qəbul etməyən treyderlər üçün institusional kriptovalyuta prop trading.",
     "product": "Məhsul",
     "company": "Şirkət",
-    "legalCol": "Hüquqi",
-    "terms": "İstifadə Şərtləri",
-    "privacy": "Məxfilik Siyasəti",
-    "risk": "Risk Bəyanatı",
     "contact": "Əlaqə",
-    "rights": "Bütün hüquqlar qorunur.",
-    "disclaimer": "Rəqəmsal aktivlərlə ticarət əhəmiyyətli itki riski daşıyır və hər kəs üçün uyğun deyil. Bu saytdakı heç bir məlumat investisiya, maliyyə, hüquqi və ya vergi məsləhəti deyil. Keçmiş nəticələr gələcək nəticələrin göstəricisi deyil. Hər hansı hesabı almazdan əvvəl bütün bəyanatlarla tanış olun."
+    "rights": "Bütün hüquqlar qorunur."
   },
   "auth": {
     "loginTitle": "Yenidən xoş gəldiniz",
@@ -191,8 +185,7 @@
       "passwordLen": "Parol 8–16 simvoldan ibarət olmalıdır.",
       "passwordMix": "Parolda ən azı bir hərf və bir rəqəm olmalıdır.",
       "required": "Bu sahə məcburidir."
-    },
-    "agree": "Hesab yaratmaqla İstifadə Şərtləri ilə razılaşır və Risk Bəyanatı ilə tanış olduğunuzu təsdiqləyirsiniz."
+    }
   },
   "checkout": {
     "title": "Ödəniş",

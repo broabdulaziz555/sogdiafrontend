@@ -33,7 +33,6 @@
     "platform": "Platformă",
     "pricing": "Prețuri",
     "faq": "Întrebări",
-    "legal": "Juridic",
     "getFunded": "Primește capital",
     "openMenu": "Deschide meniul",
     "closeMenu": "Închide meniul"
@@ -165,13 +164,8 @@
     "tagline": "Prop trading crypto instituțional pentru traderii care refuză să aștepte.",
     "product": "Produs",
     "company": "Companie",
-    "legalCol": "Juridic",
-    "terms": "Termeni de utilizare",
-    "privacy": "Politica de confidențialitate",
-    "risk": "Avertisment privind riscurile",
     "contact": "Contact",
-    "rights": "Toate drepturile rezervate.",
-    "disclaimer": "Tranzacționarea activelor digitale implică un risc semnificativ de pierdere și nu este potrivită pentru toată lumea. Nimic din acest site nu constituie consultanță de investiții, financiară, juridică sau fiscală. Rezultatele din trecut nu garantează rezultatele viitoare. Citește toate informările înainte de a cumpăra un cont."
+    "rights": "Toate drepturile rezervate."
   },
   "auth": {
     "loginTitle": "Bine ai revenit",
@@ -191,8 +185,7 @@
       "passwordLen": "Parola trebuie să aibă între 8 și 16 caractere.",
       "passwordMix": "Parola trebuie să conțină cel puțin o literă și o cifră.",
       "required": "Câmp obligatoriu."
-    },
-    "agree": "Prin crearea unui cont accepți Termenii de utilizare și confirmi că ai citit Avertismentul privind riscurile."
+    }
   },
   "checkout": {
     "title": "Plată",

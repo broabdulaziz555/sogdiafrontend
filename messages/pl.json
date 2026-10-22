@@ -33,7 +33,6 @@
     "platform": "Platforma",
     "pricing": "Cennik",
     "faq": "Pytania",
-    "legal": "Informacje prawne",
     "getFunded": "Zdobądź kapitał",
     "openMenu": "Otwórz menu",
     "closeMenu": "Zamknij menu"
@@ -165,13 +164,8 @@
     "tagline": "Instytucjonalny prop trading kryptowalut dla traderów, którzy nie chcą czekać.",
     "product": "Produkt",
     "company": "Firma",
-    "legalCol": "Informacje prawne",
-    "terms": "Regulamin",
-    "privacy": "Polityka prywatności",
-    "risk": "Ostrzeżenie o ryzyku",
     "contact": "Kontakt",
-    "rights": "Wszelkie prawa zastrzeżone.",
-    "disclaimer": "Handel aktywami cyfrowymi wiąże się z istotnym ryzykiem straty i nie jest odpowiedni dla każdego. Żadne treści w tym serwisie nie stanowią porady inwestycyjnej, finansowej, prawnej ani podatkowej. Wyniki z przeszłości nie gwarantują przyszłych. Przed zakupem konta zapoznaj się ze wszystkimi informacjami."
+    "rights": "Wszelkie prawa zastrzeżone."
   },
   "auth": {
     "loginTitle": "Witaj ponownie",
@@ -191,8 +185,7 @@
       "passwordLen": "Hasło musi mieć od 8 do 16 znaków.",
       "passwordMix": "Hasło musi zawierać co najmniej jedną literę i jedną cyfrę.",
       "required": "Pole wymagane."
-    },
-    "agree": "Zakładając konto, akceptujesz Regulamin i potwierdzasz zapoznanie się z Ostrzeżeniem o ryzyku."
+    }
   },
   "checkout": {
     "title": "Płatność",

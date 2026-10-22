@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtUsd } from '@/lib/format';
 
-/** Tiny inline equity sparkline. Colour follows net direction. */
+/** Inline equity sparkline: hairline stroke, soft fill, dashed baseline (account size), square end marker. */
 export function Sparkline({ values, baseline, className, height = 40 }: { values: number[]; baseline?: number; className?: string; height?: number }) {
   const gid = useId();
   const W = 160;
@@ -24,7 +24,7 @@ export function Sparkline({ values, baseline, className, height = 40 }: { values
   if (!geo) {
     return (
       <svg viewBox={`0 0 ${W} ${H}`} className={cn('h-10 w-full', className)} aria-hidden preserveAspectRatio="none">
-        <line x1="0" x2={W} y1={H / 2} y2={H / 2} stroke="rgb(var(--line))" strokeDasharray="3 4" />
+        <line x1="0" x2={W} y1={H / 2} y2={H / 2} stroke="rgb(var(--line2))" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
       </svg>
     );
   }
@@ -36,14 +36,15 @@ export function Sparkline({ values, baseline, className, height = 40 }: { values
     <svg viewBox={`0 0 ${W} ${H}`} className={cn('h-10 w-full overflow-visible', className)} preserveAspectRatio="none" role="img" aria-label="Equity curve">
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={col} stopOpacity="0.28" />
+          <stop offset="0" stopColor={col} stopOpacity="0.20" />
           <stop offset="1" stopColor={col} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {geo.by != null && <line x1="0" x2={W} y1={geo.by} y2={geo.by} stroke="rgb(var(--subtle))" strokeOpacity="0.4" strokeDasharray="2 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
+      {[0.25, 0.5, 0.75].map((f) => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="rgb(var(--line))" strokeOpacity="0.5" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+      {geo.by != null && <line x1="0" x2={W} y1={geo.by} y2={geo.by} stroke="rgb(var(--subtle))" strokeOpacity="0.6" strokeDasharray="2 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
       <path d={geo.area} fill={`url(#${gid})`} />
-      <path d={geo.line} fill="none" stroke={col} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={geo.last.x} cy={geo.last.y} r="2.4" fill={col} vectorEffect="non-scaling-stroke" />
+      <path d={geo.line} fill="none" stroke={col} strokeWidth="1.25" strokeLinejoin="miter" vectorEffect="non-scaling-stroke" />
+      <rect x={geo.last.x - 1.6} y={geo.last.y - 1.6} width="3.2" height="3.2" fill={col} />
     </svg>
   );
 }
@@ -126,17 +127,17 @@ export function EquityChart({ points, size, dailyFloor, maxFloor, target, height
         <Line v={maxFloor} label="Max drawdown" color="rgb(var(--down))" dash="2 4" />
         <Line v={dailyFloor} label="Daily drawdown" color="rgb(var(--warn))" dash="2 4" />
         <path d={`${geo.line} L${geo.x(points.length - 1)} ${H - PAD.b} L${geo.x(0)} ${H - PAD.b} Z`} fill={`url(#${gid})`} />
-        <path d={geo.line} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={geo.line} fill="none" stroke={col} strokeWidth="1.5" strokeLinejoin="miter" />
         {hover != null && hp && (
           <g>
             <line x1={geo.x(hover)} x2={geo.x(hover)} y1={PAD.t} y2={H - PAD.b} stroke="rgb(var(--fg))" strokeOpacity="0.25" />
-            <circle cx={geo.x(hover)} cy={geo.y(hp.equity)} r="4" fill={col} stroke="rgb(var(--panel))" strokeWidth="2" />
+            <rect x={geo.x(hover) - 3} y={geo.y(hp.equity) - 3} width="6" height="6" fill={col} stroke="rgb(var(--panel))" strokeWidth="1.5" />
           </g>
         )}
       </svg>
       {hp && hover != null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 rounded-lg border border-line bg-panel px-3 py-2 text-xs shadow-pop"
+          className="pointer-events-none absolute top-2 z-10 border border-line2 bg-panel px-3 py-2 text-xs"
           style={{ left: `${(geo.x(hover) / W) * 100}%`, transform: hover > points.length / 2 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }}
         >
           <p className="num font-mono text-sm font-semibold">{fmtUsd(hp.equity)}</p>

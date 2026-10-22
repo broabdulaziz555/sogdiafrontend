@@ -33,7 +33,6 @@
     "platform": "Platform",
     "pricing": "Pricing",
     "faq": "FAQ",
-    "legal": "Legal",
     "getFunded": "Get funded",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
@@ -165,13 +164,8 @@
     "tagline": "Institutional crypto prop trading for traders who refuse to wait.",
     "product": "Product",
     "company": "Company",
-    "legalCol": "Legal",
-    "terms": "Terms of Service",
-    "privacy": "Privacy Policy",
-    "risk": "Risk Disclosure",
     "contact": "Contact",
-    "rights": "All rights reserved.",
-    "disclaimer": "Trading digital assets involves substantial risk of loss and is not suitable for every individual. Nothing on this site is investment, financial, legal or tax advice. Past performance is not indicative of future results. Review the full disclosures before purchasing any account."
+    "rights": "All rights reserved."
   },
   "auth": {
     "loginTitle": "Welcome back",
@@ -191,8 +185,7 @@
       "passwordLen": "Password must be 8–16 characters.",
       "passwordMix": "Password needs at least one letter and one digit.",
       "required": "This field is required."
-    },
-    "agree": "By creating an account you agree to the Terms of Service and acknowledge the Risk Disclosure."
+    }
   },
   "checkout": {
     "title": "Checkout",

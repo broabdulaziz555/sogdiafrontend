@@ -22,12 +22,11 @@ export function EmptyState({
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-16', className)}>
-      <div className="relative grid h-11 w-11 place-items-center rounded-xl border border-line bg-panel2 text-subtle">
-        <span className="absolute inset-0 rounded-xl bg-accent/5 blur-md" aria-hidden />
-        <span className="relative">{icon ?? <Inbox className="h-5 w-5" />}</span>
+      <div className="grid h-10 w-10 place-items-center border border-line2 bg-panel2 text-subtle">
+        {icon ?? <Inbox className="h-5 w-5" strokeWidth={1.5} />}
       </div>
       <div className="space-y-1">
-        <p className="text-md font-medium text-fg">{title}</p>
+        <p className="text-sm font-semibold text-fg">{title}</p>
         {description && <p className="mx-auto max-w-sm text-sm text-muted">{description}</p>}
       </div>
       {action}
@@ -51,7 +50,7 @@ export function ErrorState({
   const offline = error instanceof ApiError && error.code === 'NETWORK_ERROR';
   return (
     <div className={cn('flex flex-col items-center justify-center text-center', compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-14', className)} role="alert">
-      <div className="grid h-11 w-11 place-items-center rounded-xl border border-down/30 bg-down/10 text-down">
+      <div className="grid h-10 w-10 place-items-center border border-down/40 bg-down/10 text-down">
         {offline ? <WifiOff className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
       </div>
       <div className="space-y-1">
@@ -75,7 +74,7 @@ export function Spinner({ className }: { className?: string }) {
     <span
       role="status"
       aria-label="Loading"
-      className={cn('inline-block h-4 w-4 animate-spin rounded-full border-2 border-line border-t-accent', className)}
+      className={cn('inline-block h-4 w-4 animate-spin rounded-full border-2 border-line2 border-t-accent', className)}
     />
   );
 }

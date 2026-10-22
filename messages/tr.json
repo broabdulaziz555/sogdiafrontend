@@ -33,7 +33,6 @@
     "platform": "Platform",
     "pricing": "Fiyatlar",
     "faq": "SSS",
-    "legal": "Yasal",
     "getFunded": "Sermaye al",
     "openMenu": "Menüyü aç",
     "closeMenu": "Menüyü kapat"
@@ -165,13 +164,8 @@
     "tagline": "Beklemeyi reddeden trader'lar için kurumsal kripto prop trading.",
     "product": "Ürün",
     "company": "Şirket",
-    "legalCol": "Yasal",
-    "terms": "Kullanım Koşulları",
-    "privacy": "Gizlilik Politikası",
-    "risk": "Risk Bildirimi",
     "contact": "İletişim",
-    "rights": "Tüm hakları saklıdır.",
-    "disclaimer": "Dijital varlık işlemleri önemli kayıp riski taşır ve herkes için uygun değildir. Bu sitedeki hiçbir içerik yatırım, finans, hukuk veya vergi tavsiyesi değildir. Geçmiş performans gelecekteki sonuçların göstergesi değildir. Hesap satın almadan önce tüm bildirimleri inceleyin."
+    "rights": "Tüm hakları saklıdır."
   },
   "auth": {
     "loginTitle": "Tekrar hoş geldiniz",
@@ -191,8 +185,7 @@
       "passwordLen": "Şifre 8–16 karakter olmalıdır.",
       "passwordMix": "Şifre en az bir harf ve bir rakam içermelidir.",
       "required": "Bu alan zorunludur."
-    },
-    "agree": "Hesap oluşturarak Kullanım Koşulları'nı kabul eder ve Risk Bildirimi'ni okuduğunuzu onaylarsınız."
+    }
   },
   "checkout": {
     "title": "Ödeme",

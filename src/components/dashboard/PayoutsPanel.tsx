@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowUpRight, Banknote, CheckCircle2, Clock, Loader2, Pencil, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, ArrowUpRight, Banknote, CheckCircle2, Clock, Loader2, Pencil, Wallet } from 'lucide-react';
 import { PageHead, Stat } from './PageHead';
 import { accountLabel } from './AccountCard';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
+import { WizardSteps } from '@/components/ui/Wizard';
+import { StatStrip } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { CopyButton, Field, Input, Meter, StatusBadge } from '@/components/ui/Primitives';
 import { EmptyState, ErrorState } from '@/components/ui/States';
@@ -68,12 +70,12 @@ function WalletCard({ user }: { user: User }) {
   };
 
   return (
-    <section className="rounded-2xl border border-line bg-panel p-5" aria-labelledby="wallet-h">
+    <section className="border border-line bg-panel p-4" aria-labelledby="wallet-h">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel2 text-accent"><Wallet className="h-5 w-5" /></div>
+          <div className="grid h-9 w-9 place-items-center border border-line2 bg-panel2 text-accent"><Wallet className="h-4 w-4" /></div>
           <div>
-            <h2 id="wallet-h" className="text-md font-semibold">Payout wallet</h2>
+            <h2 id="wallet-h" className="text-sm font-semibold">Payout wallet</h2>
             <p className="text-xs text-muted">USDT is sent to this address on the network you choose.</p>
           </div>
         </div>
@@ -92,8 +94,8 @@ function WalletCard({ user }: { user: User }) {
         </div>
       ) : (
         <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-2 rounded-lg border border-line bg-panel2 px-3 py-2.5">
-            <span className={`shrink-0 rounded border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider ${parsed.tagged ? 'border-accent/30 bg-accent/10 text-accent' : 'border-warn/30 bg-warn/10 text-warn'}`}>{parsed.tagged ? parsed.network : 'No network'}</span>
+          <div className="flex items-center gap-2 border border-line bg-panel2 px-3 py-2.5">
+            <span className={`shrink-0 border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.08em] ${parsed.tagged ? 'border-accent/30 bg-accent/10 text-accent' : 'border-warn/30 bg-warn/10 text-warn'}`}>{parsed.tagged ? parsed.network : 'No network'}</span>
             <code className="num min-w-0 flex-1 break-all font-mono text-sm">{parsed.address}</code>
             <CopyButton value={parsed.address} label="Copy address" />
           </div>
@@ -112,7 +114,7 @@ function EligibilityRow({ account, onRequest }: { account: Account; onRequest: (
   const cycleElapsed = e ? Math.max(0, Math.min(100, ((cycleDays - e.days_remaining) / cycleDays) * 100)) : 0;
 
   return (
-    <li className="rounded-xl border border-line bg-panel p-4">
+    <li className="border border-line bg-panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link href={`/accounts/${account.id}`} className="font-semibold hover:text-accent">{accountLabel(account)}</Link>
@@ -155,9 +157,16 @@ function EligibilityRow({ account, onRequest }: { account: Account; onRequest: (
   );
 }
 
-/* ── Request modal ───────────────────────────────────────────────────────── */
+/* ── Request wizard ──────────────────────────────────────────────────────── */
+const PAYOUT_STEPS = [
+  { key: 'amount', label: 'Amount' },
+  { key: 'destination', label: 'Destination' },
+  { key: 'review', label: 'Review' },
+];
+
 function PayoutModal({ account, elig, wallet, onClose }: { account: Account; elig: Eligibility; wallet: string | null; onClose: () => void }) {
   const toast = useToast();
+  const [step, setStep] = useState(0);
   const [amount, setAmount] = useState(String(elig.profit));
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<PayoutTx | null>(null);
@@ -182,6 +191,20 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
     } finally { setBusy(false); }
   };
 
+  const SplitBar = () => (
+    <div className="border border-line bg-panel2/40 p-3">
+      <div className="mb-2 flex h-2 overflow-hidden bg-line" aria-hidden>
+        <div className="bg-accent transition-[width]" style={{ width: `${elig.split_pct}%` }} />
+      </div>
+      <dl>
+        <Row k="Gross profit" v={fmtUsd(invalid ? 0 : gross)} mono />
+        <Row k={`SOGDIA (${100 - elig.split_pct}%)`} v={`−${fmtUsd(fee)}`} mono />
+        <div className="my-1.5 border-t border-line" />
+        <Row k={`You (${elig.split_pct}%) · USDT`} v={fmtUsd(net)} mono strong />
+      </dl>
+    </div>
+  );
+
   return (
     <Modal
       open
@@ -191,53 +214,70 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
       description={accountLabel(account)}
       footer={done ? <Button variant="primary" onClick={onClose}>Done</Button> : (
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={busy} disabled={invalid || !walletTagged} onClick={submit}>Confirm request</Button>
+          {step === 0
+            ? <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            : <Button variant="ghost" disabled={busy} icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => { setErr(null); setStep(step - 1); }}>Back</Button>}
+          {step < 2
+            ? <Button variant="primary" disabled={step === 0 ? invalid : !walletTagged} iconRight={<ArrowRight className="h-3.5 w-3.5" />} onClick={() => setStep(step + 1)}>Continue</Button>
+            : <Button variant="primary" loading={busy} disabled={invalid || !walletTagged} onClick={submit}>Confirm request</Button>}
         </>
       )}
     >
-      <div className="space-y-5 p-5">
+      <div className="space-y-4 p-4">
+        {!done && <WizardSteps steps={PAYOUT_STEPS} current={step} />}
+
         {done ? (
-          <div className="rounded-xl border border-line bg-panel2 p-4">
-            <div className="mb-4 flex items-center gap-2 text-up"><CheckCircle2 className="h-5 w-5" /><span className="font-semibold">Receipt</span></div>
-            <dl className="space-y-2.5 text-sm">
+          <div className="border border-line bg-panel2/40 p-4">
+            <div className="mb-3 flex items-center gap-2 text-up"><CheckCircle2 className="h-5 w-5" /><span className="text-sm font-semibold uppercase tracking-[0.08em]">Receipt</span></div>
+            <dl>
               <Row k="Reference" v={<span className="font-mono">#{shortId(done.id)}</span>} />
               <Row k="Requested" v={dateTime(done.created_at)} />
               <Row k="Gross profit" v={fmtUsd(done.amount)} mono />
               <Row k={`SOGDIA share (${100 - elig.split_pct}%)`} v={`−${fmtUsd(done.amount - done.net_amount)}`} mono />
-              <div className="my-1 border-t border-line" />
+              <div className="my-1.5 border-t border-line" />
               <Row k="You receive (USDT)" v={fmtUsd(done.net_amount)} mono strong />
               <Row k="Destination" v={<span className="font-mono">{shortWallet(done.wallet_address)}</span>} />
               <Row k="Status" v={<StatusBadge status={done.status} />} />
             </dl>
           </div>
-        ) : (
+        ) : step === 0 ? (
           <>
             <Field label="Profit to withdraw (USD)" htmlFor="pamount" error={invalid && amount !== '' ? `Enter an amount between 0.01 and ${fmtNum(elig.profit)}.` : err} hint={`Available profit: ${fmtUsd(elig.profit)}`}>
               <div className="flex gap-2">
-                <Input id="pamount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="num font-mono" invalid={invalid && amount !== ''} data-autofocus />
-                <Button size="md" variant="outline" onClick={() => setAmount(String(elig.profit))}>Max</Button>
+                <Input id="pamount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} className="num h-10 font-mono text-md" invalid={invalid && amount !== ''} data-autofocus />
+                <Button size="md" variant="outline" className="h-10" onClick={() => setAmount(String(elig.profit))}>Max</Button>
               </div>
             </Field>
-
-            <div className="rounded-xl border border-line bg-panel2 p-4">
-              <p className="label mb-3">Split</p>
-              <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-line" aria-hidden>
-                <div className="bg-accent transition-[width]" style={{ width: `${elig.split_pct}%` }} />
+            <div className="grid grid-cols-4 gap-px border border-line bg-line">
+              {[25, 50, 75, 100].map((p) => (
+                <button key={p} type="button" onClick={() => setAmount(String(Math.floor(elig.profit * p) / 100))} className="num bg-panel py-1.5 font-mono text-xs text-muted transition-colors hover:bg-fg/[0.05] hover:text-accent">{p}%</button>
+              ))}
+            </div>
+            <SplitBar />
+          </>
+        ) : step === 1 ? (
+          <>
+            <div className="border border-line bg-panel2/40 p-3">
+              <p className="label mb-2">Payout wallet</p>
+              <div className="flex items-center gap-2">
+                <span className={`shrink-0 border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.08em] ${walletTagged ? 'border-accent/40 bg-accent/10 text-accent' : 'border-warn/40 bg-warn/10 text-warn'}`}>{walletTagged ? parseWallet(wallet).network : 'No network'}</span>
+                <code className="num min-w-0 flex-1 break-all font-mono text-xs">{wallet ? parseWallet(wallet).address : 'No wallet set'}</code>
               </div>
-              <dl className="space-y-2.5 text-sm">
-                <Row k="Gross profit" v={fmtUsd(invalid ? 0 : gross)} mono />
-                <Row k={`SOGDIA (${100 - elig.split_pct}%)`} v={`−${fmtUsd(fee)}`} mono />
-                <div className="border-t border-line" />
-                <Row k={`You (${elig.split_pct}%) · USDT`} v={fmtUsd(net)} mono strong />
-              </dl>
             </div>
-
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5 text-sm">
-              <span className="text-muted">Sent to</span>
-              <span className="font-mono text-xs">{wallet ? shortWallet(wallet) : 'No wallet set'}</span>
-            </div>
-            {!walletTagged && <p role="alert" className="flex items-start gap-2 text-sm text-warn"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{wallet ? 'Your wallet has no USDT network. Choose TRC-20, ERC-20 or BEP-20 in the Payout wallet card, then try again.' : 'Add a payout wallet first.'}</p>}
+            {!walletTagged
+              ? <p role="alert" className="flex items-start gap-2 text-sm text-warn"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{wallet ? 'Your wallet has no USDT network. Choose TRC-20, ERC-20 or BEP-20 in the Payout wallet card, then try again.' : 'Add a payout wallet first.'}</p>
+              : <p className="text-xs text-subtle">USDT is sent to this address on the network shown. Transfers cannot be reversed — change the wallet from the Payout wallet card if it is wrong.</p>}
+          </>
+        ) : (
+          <>
+            <dl className="border border-line bg-panel2/40 px-3">
+              <Row k="Account" v={accountLabel(account)} />
+              <Row k="Gross profit" v={fmtUsd(gross)} mono />
+              <Row k={`SOGDIA (${100 - elig.split_pct}%)`} v={`−${fmtUsd(fee)}`} mono />
+              <Row k="Destination" v={<span className="font-mono">{wallet ? shortWallet(wallet) : '—'}</span>} />
+              <div className="my-1.5 border-t border-line" />
+              <Row k="You receive (USDT)" v={fmtUsd(net)} mono strong />
+            </dl>
             {err && <p role="alert" className="flex items-start gap-2 text-sm text-down"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{err}</p>}
           </>
         )}
@@ -248,7 +288,7 @@ function PayoutModal({ account, elig, wallet, onClose }: { account: Account; eli
 
 function Row({ k, v, mono, strong }: { k: string; v: React.ReactNode; mono?: boolean; strong?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4 py-1.5 text-sm">
       <dt className="text-muted">{k}</dt>
       <dd className={`${mono ? 'num font-mono' : ''} ${strong ? 'text-md font-bold text-up' : 'font-medium'}`}>{v}</dd>
     </div>
@@ -289,17 +329,17 @@ export function PayoutsPanel() {
     <>
       <PageHead title="Payouts" subtitle="Request your 80% profit share every 14 days, paid in USDT." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatStrip className="mb-5">
         <Stat label="Total paid" value={fmtUsd(totals.paid)} tone={totals.paid > 0 ? 'up' : undefined} sub="Net, USDT" />
         <Stat label="In review" value={fmtUsd(totals.pending)} sub="Pending & approved" />
         <Stat label="Payouts" value={rows?.length ?? '—'} sub="All time" />
         <Stat label="KYC" value={<StatusBadge status={current.kyc_status} />} sub={current.kyc_status === 'verified' ? 'Cleared for payouts' : <Link href="/kyc" className="inline-flex items-center gap-1 text-accent hover:underline">Verify now<ArrowUpRight className="h-3 w-3" /></Link>} />
-      </div>
+      </StatStrip>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="order-2 space-y-4 xl:order-1">
-          <section className="rounded-2xl border border-line bg-panel">
-            <div className="border-b border-line px-5 py-4"><h2 className="text-md font-semibold">Payout history</h2></div>
+          <section className="border border-line bg-panel">
+            <div className="panel-head"><h2 className="panel-title">Payout history</h2></div>
             <DataTable
               columns={cols}
               rows={rows}

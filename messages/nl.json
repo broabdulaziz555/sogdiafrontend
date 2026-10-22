@@ -33,7 +33,6 @@
     "platform": "Platform",
     "pricing": "Prijzen",
     "faq": "Vragen",
-    "legal": "Juridisch",
     "getFunded": "Krijg kapitaal",
     "openMenu": "Menu openen",
     "closeMenu": "Menu sluiten"
@@ -165,13 +164,8 @@
     "tagline": "Institutionele crypto-prop-trading voor traders die niet willen wachten.",
     "product": "Product",
     "company": "Bedrijf",
-    "legalCol": "Juridisch",
-    "terms": "Gebruiksvoorwaarden",
-    "privacy": "Privacybeleid",
-    "risk": "Risicowaarschuwing",
     "contact": "Contact",
-    "rights": "Alle rechten voorbehouden.",
-    "disclaimer": "Handelen in digitale activa brengt een aanzienlijk risico op verlies met zich mee en is niet voor iedereen geschikt. Niets op deze site vormt beleggings-, financieel, juridisch of fiscaal advies. Resultaten uit het verleden bieden geen garantie voor de toekomst. Lees alle informatie voordat je een account koopt."
+    "rights": "Alle rechten voorbehouden."
   },
   "auth": {
     "loginTitle": "Welkom terug",
@@ -191,8 +185,7 @@
       "passwordLen": "Het wachtwoord moet 8–16 tekens bevatten.",
       "passwordMix": "Het wachtwoord moet minstens één letter en één cijfer bevatten.",
       "required": "Verplicht veld."
-    },
-    "agree": "Door een account aan te maken ga je akkoord met de Gebruiksvoorwaarden en bevestig je de Risicowaarschuwing te hebben gelezen."
+    }
   },
   "checkout": {
     "title": "Afrekenen",

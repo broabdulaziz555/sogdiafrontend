@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Wallet } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageHead, Stat } from '@/components/dashboard/PageHead';
+import { StatStrip } from '@/components/ui/Panel';
 import { AccountCard, AccountCardSkeleton } from '@/components/dashboard/AccountCard';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { Segmented } from '@/components/ui/Primitives';
@@ -46,15 +47,15 @@ export default function OverviewPage() {
         title={t('overview')}
         subtitle="Live balances, equity curves and drawdown headroom for every account you own."
         actions={
-          <SiteLink site="www" path="/#pricing" className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg transition-all hover:brightness-110">
+          <SiteLink site="www" path="/#pricing" className="inline-flex h-8 items-center gap-2 border border-accent bg-accent px-3.5 text-sm font-semibold text-accent-fg transition-colors hover:bg-accent/90">
             <Plus className="h-4 w-4" />{t('buyAccount')}
           </SiteLink>
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <StatStrip className="mb-6">
         {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <div key={i} className="rounded-xl border border-line bg-panel p-4"><Skeleton className="h-3 w-16" /><Skeleton className="mt-3 h-7 w-28" /></div>)
+          Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-panel p-4"><Skeleton className="h-3 w-16" /><Skeleton className="mt-3 h-6 w-28" /></div>)
         ) : (
           <>
             <Stat label="Total balance" value={fmtUsd(stats.balance)} sub="Active & passed accounts" />
@@ -63,7 +64,7 @@ export default function OverviewPage() {
             <Stat label="Accounts" value={stats.total} sub="All time" />
           </>
         )}
-      </div>
+      </StatStrip>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Segmented
@@ -81,24 +82,24 @@ export default function OverviewPage() {
       </div>
 
       {error && !accounts ? (
-        <div className="rounded-2xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div>
+        <div className="border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div>
       ) : loading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <AccountCardSkeleton key={i} />)}</div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <AccountCardSkeleton key={i} />)}</div>
       ) : shown.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-line bg-panel/50">
+        <div className="border border-dashed border-line2 bg-panel/50">
           <EmptyState
             icon={<Wallet className="h-5 w-5" />}
             title={accounts?.length ? 'No accounts match this filter' : 'No accounts yet'}
             description={accounts?.length ? 'Try another filter to see the rest of your accounts.' : 'Purchase a One-Step or Instant account and it will appear here the moment your payment confirms.'}
             action={!accounts?.length ? (
-              <SiteLink site="www" path="/#pricing" className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110">
+              <SiteLink site="www" path="/#pricing" className="inline-flex h-8 items-center gap-2 border border-accent bg-accent px-3.5 text-sm font-semibold text-accent-fg hover:bg-accent/90">
                 <Plus className="h-4 w-4" />Choose an account
               </SiteLink>
             ) : undefined}
           />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((a) => <AccountCard key={a.id} account={a} />)}
         </div>
       )}

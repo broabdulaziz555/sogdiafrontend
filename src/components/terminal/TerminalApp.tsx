@@ -15,6 +15,7 @@ import { TerminalDataProvider, useTerminalData } from './data';
 import { useSymbolFeed, useSymbolsFeed, usePricesFeed, useTickersFeed } from './feeds';
 import { Hotkeys } from './hotkeys';
 import { MobileTerminal } from './mobile/MobileTerminal';
+import { OrderBook } from './OrderBook';
 import { OrderTicket } from './OrderTicket';
 import { PairBar } from './PairBar';
 import { usePendingEngine } from './pendingEngine';
@@ -53,19 +54,24 @@ function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList
   if (layout === null) body = <div className="grid flex-1 place-items-center"><BootScreen label="Loading terminal" /></div>;
   else if (layout === 'mobile') body = <MobileTerminal />;
   else {
-    // MetaTrader layout: Market Watch · chart + terminal · order ticket
+    // Match-Trader style: [Market Watch / Order book] · [instrument bar / chart / positions ledger] · [order ticket / account]
     body = (
-      <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_290px] gap-px bg-line xl:grid-cols-[240px_minmax(0,1fr)_300px] 2xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <Panel label="Market Watch"><Watchlist /></Panel>
-        <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(200px,34%)] gap-px bg-line">
-          <PairBar />
-          <Panel label="Chart"><PriceChart positions={positions} /></Panel>
-          <Panel label="Terminal"><PositionsPanel className="h-full" /></Panel>
+      <div className="flex min-h-0 flex-1 flex-col bg-line pb-safe">
+        <div className="grid min-h-0 flex-1 grid-cols-[216px_minmax(0,1fr)_272px] gap-px xl:grid-cols-[232px_minmax(0,1fr)_288px] 2xl:grid-cols-[264px_minmax(0,1fr)_312px]">
+          <div className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)] gap-px bg-line">
+            <Panel label="Market Watch"><Watchlist /></Panel>
+            <Panel label="Order book"><OrderBook /></Panel>
+          </div>
+          <div className="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_minmax(176px,32%)] gap-px bg-line">
+            <PairBar />
+            <Panel label="Chart"><PriceChart positions={positions} /></Panel>
+            <Panel label="Terminal"><PositionsPanel className="h-full" /></Panel>
+          </div>
+          <Panel label="Order ticket" className="overflow-y-auto overscroll-contain">
+            <OrderTicket />
+            <AccountPanel />
+          </Panel>
         </div>
-        <Panel label="Order ticket" className="overflow-y-auto overscroll-contain">
-          <OrderTicket />
-          <AccountPanel />
-        </Panel>
       </div>
     );
   }
@@ -84,7 +90,7 @@ function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList
   }, []);
 
   return (
-    <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined} data-symbol={symbol}>
+    <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg pl-safe pr-safe" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined} data-symbol={symbol}>
       <TopBar accounts={accountsList} onAccountChange={onAccountChange} />
       {body}
       <Hotkeys />

@@ -165,7 +165,7 @@ export function CertificatesGallery() {
           {items.map((c, i) => {
             const acct = accountMap.get(c.account_id);
             return (
-              <li key={c.id} className="group overflow-hidden rounded-2xl border border-line bg-panel transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-glow">
+              <li key={c.id} className="group overflow-hidden rounded-2xl border border-line bg-panel transition-colors hover:border-accent/50">
                 <button onClick={() => setOpen(i)} className="relative block w-full text-left" aria-label={`Open certificate ${c.code}`}>
                   <CertImage c={c} className="aspect-[1200/850] w-full" />
                   <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100 group-focus-within:opacity-100"><ZoomIn className="h-7 w-7 text-white" /></span>

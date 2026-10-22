@@ -34,8 +34,8 @@ function PlanCard({ type, plans, size, loading }: { type: 'one_step' | 'instant'
   return (
     <article
       className={cn(
-        'group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-panel p-6 transition-all duration-300 sm:p-8',
-        'hover:-translate-y-1.5 hover:border-accent/50 hover:shadow-glow focus-within:-translate-y-1.5 focus-within:border-accent/50 focus-within:shadow-glow',
+        'group relative flex flex-col overflow-hidden border border-line bg-panel p-6 transition-colors sm:p-8',
+        'hover:border-accent/60 focus-within:border-accent/60',
       )}
     >
       <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden />

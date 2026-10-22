@@ -27,7 +27,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
 
 function NumInput({ id, value, onChange, suffix, placeholder, invalid, disabled, inputRef, step }: { id: string; value: string; onChange: (v: string) => void; suffix?: string; placeholder?: string; invalid?: boolean; disabled?: boolean; inputRef?: React.Ref<HTMLInputElement>; step?: string }) {
   return (
-    <div className={cn('relative flex h-9 items-center rounded-md border bg-panel2 max-lg:h-11 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/25', invalid ? 'border-down' : 'border-line hover:border-subtle/60', disabled && 'opacity-50')}>
+    <div className={cn('relative flex h-8 items-center border bg-panel2 max-lg:h-11 transition-colors focus-within:border-accent focus-within:shadow-[0_0_0_1px_rgb(var(--accent))]', invalid ? 'border-down' : 'border-line hover:border-line2', disabled && 'opacity-50')}>
       <input
         id={id}
         ref={inputRef}
@@ -204,10 +204,10 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   return (
     <section className="flex flex-col gap-3 p-3" aria-label="Order ticket">
       {/* Long / Short */}
-      <div role="tablist" aria-label="Direction" className="grid grid-cols-2 gap-1 rounded-lg bg-panel2 p-1">
+      <div role="tablist" aria-label="Direction" className="grid grid-cols-2 gap-px border border-line bg-line">
         {(['long', 'short'] as Side[]).map((s) => (
           <button key={s} role="tab" aria-selected={side === s} onClick={() => setSide(s)}
-            className={cn('h-8 rounded-md text-sm font-semibold transition-all max-lg:h-10', side === s ? (s === 'long' ? 'bg-up text-black shadow-[0_0_20px_-4px_rgb(var(--up)/0.7)]' : 'bg-down text-white shadow-[0_0_20px_-4px_rgb(var(--down)/0.7)]') : 'text-muted hover:text-fg')}>
+            className={cn('h-8 text-xs font-bold uppercase tracking-[0.08em] transition-colors max-lg:h-10', side === s ? (s === 'long' ? 'bg-up text-black' : 'bg-down text-white') : 'bg-panel2 text-muted hover:text-fg')}>
             {s === 'long' ? 'Buy / Long' : 'Sell / Short'}
           </button>
         ))}
@@ -217,7 +217,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
       <div role="tablist" aria-label="Order type" className="flex items-center gap-4 border-b border-line text-sm">
         {(['market', 'limit', 'stop'] as OType[]).map((t) => (
           <button key={t} role="tab" aria-selected={type === t} onClick={() => setType(t)} className={cn('relative -mb-px h-8 font-medium capitalize transition-colors', type === t ? 'text-fg' : 'text-subtle hover:text-muted')}>
-            {t}{type === t && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded bg-accent" />}
+            {t}{type === t && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-accent" />}
           </button>
         ))}
         <span className="ml-auto text-2xs text-subtle">Avail <span className="num font-mono text-muted">{fmtUsd(free)}</span></span>
@@ -251,7 +251,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
             <span className="pl-0.5 pr-2 text-sm text-subtle">×</span>
           </div>
         </div>
-        <input type="range" min={1} max={maxLev} step={1} value={leverage} onChange={(e) => pickLev(Number(e.target.value))} aria-label="Leverage slider" aria-valuetext={`${leverage}x`} className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(to right, rgb(var(--accent)) ${((leverage - 1) / Math.max(1, maxLev - 1)) * 100}%, rgb(var(--line)) 0)` }} />
+        <input type="range" min={1} max={maxLev} step={1} value={leverage} onChange={(e) => pickLev(Number(e.target.value))} aria-label="Leverage slider" aria-valuetext={`${leverage}x`} className="h-1 w-full cursor-pointer appearance-none bg-line accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(to right, rgb(var(--accent)) ${((leverage - 1) / Math.max(1, maxLev - 1)) * 100}%, rgb(var(--line)) 0)` }} />
         <div className="flex justify-between">
           {LEV_PRESETS.filter((p) => p <= maxLev).map((p) => (
             <button key={p} onClick={() => pickLev(p)} className={cn('rounded px-1 py-1 font-mono text-2xs max-lg:px-1.5 max-lg:text-xs transition-colors', leverage === p ? 'bg-accent/15 text-accent' : 'text-subtle hover:text-fg')}>{p}×</button>

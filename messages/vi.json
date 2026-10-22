@@ -33,7 +33,6 @@
     "platform": "Nền tảng",
     "pricing": "Bảng giá",
     "faq": "Câu hỏi",
-    "legal": "Pháp lý",
     "getFunded": "Nhận vốn",
     "openMenu": "Mở menu",
     "closeMenu": "Đóng menu"
@@ -165,13 +164,8 @@
     "tagline": "Prop trading tiền mã hóa cấp tổ chức cho những nhà giao dịch không muốn chờ đợi.",
     "product": "Sản phẩm",
     "company": "Công ty",
-    "legalCol": "Pháp lý",
-    "terms": "Điều khoản sử dụng",
-    "privacy": "Chính sách quyền riêng tư",
-    "risk": "Công bố rủi ro",
     "contact": "Liên hệ",
-    "rights": "Bảo lưu mọi quyền.",
-    "disclaimer": "Giao dịch tài sản số tiềm ẩn rủi ro thua lỗ đáng kể và không phù hợp với mọi người. Không nội dung nào trên trang này là lời khuyên đầu tư, tài chính, pháp lý hay thuế. Kết quả trong quá khứ không đảm bảo kết quả trong tương lai. Hãy đọc mọi công bố trước khi mua bất kỳ tài khoản nào."
+    "rights": "Bảo lưu mọi quyền."
   },
   "auth": {
     "loginTitle": "Chào mừng trở lại",
@@ -191,8 +185,7 @@
       "passwordLen": "Mật khẩu phải dài 8–16 ký tự.",
       "passwordMix": "Mật khẩu phải có ít nhất một chữ cái và một chữ số.",
       "required": "Trường bắt buộc."
-    },
-    "agree": "Khi tạo tài khoản, bạn đồng ý với Điều khoản sử dụng và xác nhận đã đọc Công bố rủi ro."
+    }
   },
   "checkout": {
     "title": "Thanh toán",

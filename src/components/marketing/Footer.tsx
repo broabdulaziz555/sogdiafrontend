@@ -12,9 +12,9 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative border-t border-line bg-panel2/40">
-      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+    <footer className="relative border-t border-line bg-panel2/60">
+      <div className="mx-auto max-w-7xl px-4 py-12 pb-safe sm:px-6">
+        <div className="grid gap-10 md:grid-cols-[1.6fr_1fr_1fr]">
           <div className="space-y-4">
             <Logo />
             <p className="max-w-xs text-sm text-muted">{t('tagline')}</p>
@@ -27,17 +27,7 @@ export function Footer() {
               <li><Link className="hover:text-fg" href="/#platform">{n('platform')}</Link></li>
               <li><Link className="hover:text-fg" href="/#pricing">{n('pricing')}</Link></li>
               <li><Link className="hover:text-fg" href="/#faq">{n('faq')}</Link></li>
-            </ul>
-          </nav>
-
-          <nav aria-label={t('legalCol')}>
-            <h3 className="label mb-4">{t('legalCol')}</h3>
-            <ul className="space-y-2.5 text-sm text-muted">
-              <li><Link className="hover:text-fg" href="/legal/terms">{t('terms')}</Link></li>
-              <li><Link className="hover:text-fg" href="/legal#privacy">{t('privacy')}</Link></li>
-              <li><Link className="hover:text-fg" href="/legal#risk">{t('risk')}</Link></li>
-              <li><Link className="hover:text-fg" href="/legal/execution">Execution &amp; Spread</Link></li>
-              <li><Link className="hover:text-fg" href="/legal#payouts">Payout Policy</Link></li>
+              <li><Link className="hover:text-fg" href={EXECUTION_PATH}>Execution &amp; Spread</Link></li>
             </ul>
           </nav>
 
@@ -49,20 +39,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 space-y-4 border-t border-line pt-8 text-xs leading-relaxed text-subtle">
-          <p>{t('disclaimer')}</p>
+        <div className="mt-10 space-y-4 border-t border-line pt-6 text-xs leading-relaxed text-subtle">
           <p>
             {TRADING_FOOTER}{' '}
             <Link href={EXECUTION_PATH} className="text-muted underline hover:text-fg">Execution Disclosure</Link>
-          </p>
-          <p>
-            SOGDIA accounts are evaluation and funded-trader products priced in USD and paid in cryptocurrency. Fees are non-refundable except
-            where required by law. Profit splits, drawdown limits and payout cycles are defined by the rules snapshotted on each account at the
-            time of purchase. 
-            Access may be restricted in jurisdictions where the service is prohibited or where sanctions apply. Users are responsible for
-            complying with local laws and for any applicable taxes. Payouts are subject to identity verification (KYC), a wallet address on file,
-            and review for compliance with the Terms of Service, including prohibitions on latency arbitrage, tick scalping, account sharing and
-            other abusive strategies.
           </p>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-subtle">
             <span>© {year} {ENTITY}. {t('rights')}</span>

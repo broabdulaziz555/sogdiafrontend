@@ -41,17 +41,17 @@ export function DocViewer({ url, label }: { url: string | null; label?: string }
   const pdf = isPdf(url);
 
   return (
-    <div className="flex h-full min-h-[320px] flex-col overflow-hidden rounded-xl border border-line bg-bg">
-      <div className="flex items-center gap-1 border-b border-line bg-panel px-2 py-1.5">
-        <span className="mr-auto truncate px-1 text-xs text-muted">{label ?? 'Document'}</span>
+    <div className="flex h-full min-h-[320px] flex-col overflow-hidden bg-bg">
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line bg-panel2 px-2">
+        <span className="mr-auto truncate px-1 text-2xs font-semibold uppercase tracking-[0.1em] text-muted">{label ?? 'Document'}</span>
         {!pdf && (<>
-          <button onClick={() => zoom(0.8)} aria-label="Zoom out" className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-fg/10 hover:text-fg"><ZoomOut className="h-4 w-4" /></button>
+          <button onClick={() => zoom(0.8)} aria-label="Zoom out" className="grid h-7 w-7 place-items-center text-muted hover:bg-fg/10 hover:text-fg"><ZoomOut className="h-4 w-4" /></button>
           <span className="num w-12 text-center font-mono text-xs text-muted">{Math.round(z * 100)}%</span>
-          <button onClick={() => zoom(1.25)} aria-label="Zoom in" className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-fg/10 hover:text-fg"><ZoomIn className="h-4 w-4" /></button>
-          <button onClick={() => setRot((r) => (r + 90) % 360)} aria-label="Rotate" className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-fg/10 hover:text-fg"><RotateCw className="h-4 w-4" /></button>
-          <button onClick={reset} aria-label="Fit to view" className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-fg/10 hover:text-fg"><Maximize2 className="h-4 w-4" /></button>
+          <button onClick={() => zoom(1.25)} aria-label="Zoom in" className="grid h-7 w-7 place-items-center text-muted hover:bg-fg/10 hover:text-fg"><ZoomIn className="h-4 w-4" /></button>
+          <button onClick={() => setRot((r) => (r + 90) % 360)} aria-label="Rotate" className="grid h-7 w-7 place-items-center text-muted hover:bg-fg/10 hover:text-fg"><RotateCw className="h-4 w-4" /></button>
+          <button onClick={reset} aria-label="Fit to view" className="grid h-7 w-7 place-items-center text-muted hover:bg-fg/10 hover:text-fg"><Maximize2 className="h-4 w-4" /></button>
         </>)}
-        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open in new tab" className="grid h-7 w-7 place-items-center rounded text-muted hover:bg-fg/10 hover:text-fg"><ExternalLink className="h-4 w-4" /></a>
+        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open in new tab" className="grid h-7 w-7 place-items-center text-muted hover:bg-fg/10 hover:text-fg"><ExternalLink className="h-4 w-4" /></a>
       </div>
 
       {pdf ? (
@@ -63,7 +63,7 @@ export function DocViewer({ url, label }: { url: string | null; label?: string }
           onPointerMove={(e) => { const d = drag.current; if (d) setPos({ x: d.px + e.clientX - d.x, y: d.py + e.clientY - d.y }); }}
           onPointerUp={() => { drag.current = null; }}
           onDoubleClick={() => (z > 1 ? reset() : zoom(2.5))}>
-          {state === 'loading' && <div className="absolute inset-0 grid place-items-center"><div className="skeleton h-3/4 w-3/4 rounded-lg" /></div>}
+          {state === 'loading' && <div className="absolute inset-0 grid place-items-center"><div className="skeleton h-3/4 w-3/4" /></div>}
           {state === 'error' && <p role="alert" className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-down">The document couldn’t be loaded. The signed link may have expired — reload the list.</p>}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt={label ?? 'KYC document'} draggable={false} onLoad={() => setState('ready')} onError={() => setState('error')}

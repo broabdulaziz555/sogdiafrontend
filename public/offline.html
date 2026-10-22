@@ -12,23 +12,23 @@
     body {
       min-height: 100dvh; background: #080C12; color: #E6ECF4;
       font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
-      display: grid; place-items: center; padding: 24px;
-      background-image: radial-gradient(60% 50% at 50% 0%, rgba(183,243,107,.08), transparent 70%);
+      display: grid; place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
     }
     main { width: 100%; max-width: 460px; }
     .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
     .brand img { width: 28px; height: 28px; }
     .brand b { letter-spacing: .18em; font-size: 15px; }
     .badge {
-      display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 2px;
       border: 1px solid rgba(246,70,93,.35); background: rgba(246,70,93,.1); color: #F6465D;
       font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
     }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: p 1.6s ease-in-out infinite; }
+    .dot { width: 7px; height: 7px; border-radius: 0; background: currentColor; animation: p 1.6s ease-in-out infinite; }
     @keyframes p { 50% { opacity: .3; } }
     h1 { font-size: 26px; letter-spacing: -.02em; margin: 16px 0 6px; }
     p.lead { color: #8292A6; margin-bottom: 22px; }
-    .card { background: #111A25; border: 1px solid #1D2938; border-radius: 14px; overflow: hidden; }
+    .card { background: #111A25; border: 1px solid #1E2B3A; border-radius: 2px; overflow: hidden; }
     .card h2 { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #58677B; padding: 12px 16px; border-bottom: 1px solid #1D2938; display: flex; justify-content: space-between; }
     .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(29,41,56,.6); }
     .row:last-child { border-bottom: 0; }
@@ -37,13 +37,13 @@
     .empty { padding: 28px 16px; text-align: center; color: #8292A6; }
     .actions { display: flex; gap: 10px; margin-top: 18px; }
     button {
-      flex: 1; height: 38px; border-radius: 8px; border: 1px solid #1D2938; background: #0D141D; color: #E6ECF4;
+      flex: 1; height: 38px; border-radius: 2px; border: 1px solid #1E2B3A; background: #0D141D; color: #E6ECF4;
       font: inherit; font-weight: 600; cursor: pointer; transition: border-color .15s;
     }
     button:hover { border-color: #58677B; }
     button.primary { background: #B7F36B; color: #080C12; border-color: #B7F36B; }
     .foot { margin-top: 14px; font-size: 11px; color: #58677B; text-align: center; }
-    :focus-visible { outline: 2px solid #B7F36B; outline-offset: 2px; }
+    :focus-visible { outline: 1px solid #B7F36B; outline-offset: 1px; }
   </style>
 </head>
 <body>

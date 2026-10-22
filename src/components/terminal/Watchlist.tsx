@@ -28,7 +28,7 @@ const Row = memo(function Row({ symbol, base, active, fav }: { symbol: string; b
         aria-current={active}
         onClick={() => setSymbol(symbol)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSymbol(symbol); } }}
-        className={cn(GRID, 'h-[26px] cursor-pointer items-center gap-1 px-2 font-mono text-xs transition-colors hover:bg-fg/[0.05] max-lg:h-11 max-lg:text-sm', active && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}
+        className={cn(GRID, 'h-[24px] cursor-pointer items-center gap-1 px-2 font-mono text-[11px] transition-colors hover:bg-fg/[0.05] max-lg:h-11 max-lg:text-sm', active && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}
       >
         <button onClick={(e) => { e.stopPropagation(); toggle(symbol); }} aria-label={fav ? `Remove ${base} from favorites` : `Add ${base} to favorites`} aria-pressed={fav} className="grid h-4 w-4 place-items-center text-subtle hover:text-warn">
           <Star className={cn('h-3 w-3', fav && 'fill-warn text-warn')} />
@@ -75,25 +75,25 @@ function WatchlistInner() {
 
   return (
     <section className="flex h-full min-h-0 flex-col" aria-label="Market Watch">
-      <div className="flex items-center justify-between border-b border-line px-2.5 py-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Market Watch</h2>
+      <div className="panel-head">
+        <h2 className="panel-title">Market Watch</h2>
         <span className="text-2xs text-subtle">Bid / Ask · live</span>
       </div>
       <div className="space-y-1.5 border-b border-line p-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search 50 pairs…" aria-label="Search pairs" className="h-7 w-full rounded-md border border-line bg-panel2 pl-7 pr-6 text-xs max-lg:h-9 max-lg:text-sm placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search 50 pairs…" aria-label="Search pairs" className="h-7 w-full border border-line bg-bg/60 pl-7 pr-6 text-xs max-lg:h-9 max-lg:text-sm placeholder:text-subtle focus:border-accent focus:outline-none" />
           {q && <button onClick={() => setQ('')} aria-label="Clear search" className="absolute right-1.5 top-1/2 -translate-y-1/2 text-subtle hover:text-fg"><X className="h-3 w-3" /></button>}
         </div>
         <div className="flex gap-1">
           {(['all', 'fav'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t} className={cn('inline-flex h-6 items-center gap-1 rounded px-2 text-xs font-medium', tab === t ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
+            <button key={t} onClick={() => setTab(t)} aria-pressed={tab === t} className={cn('inline-flex h-6 items-center gap-1 px-2 text-xs font-medium', tab === t ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
               {t === 'fav' && <Star className="h-3 w-3" />}{t === 'all' ? `All · ${symbols.length || 50}` : `Favorites · ${favorites.length}`}
             </button>
           ))}
         </div>
       </div>
-      <div className={cn(GRID, 'gap-1 border-b border-line px-2 py-1 text-2xs text-subtle')}>
+      <div className={cn(GRID, 'gap-1 border-b border-line2 bg-panel2 px-2 py-1 text-3xs font-semibold text-subtle')}>
         <span /><Head k="pair">Symbol</Head><Head k="bid" right>Bid</Head><span className="text-right uppercase tracking-wider">Ask</span><span className={cn('flex justify-end', CHG)}><Head k="chg" right>Daily</Head></span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">

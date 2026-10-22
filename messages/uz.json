@@ -33,7 +33,6 @@
     "platform": "Platforma",
     "pricing": "Narxlar",
     "faq": "Savollar",
-    "legal": "Hujjatlar",
     "getFunded": "Kapital olish",
     "openMenu": "Menyuni ochish",
     "closeMenu": "Menyuni yopish"
@@ -165,13 +164,8 @@
     "tagline": "Kutishni yoqtirmaydiganlar uchun institutsional kripto prop-treyding.",
     "product": "Mahsulot",
     "company": "Kompaniya",
-    "legalCol": "Hujjatlar",
-    "terms": "Foydalanish shartlari",
-    "privacy": "Maxfiylik siyosati",
-    "risk": "Risklar haqida ogohlantirish",
     "contact": "Aloqa",
-    "rights": "Barcha huquqlar himoyalangan.",
-    "disclaimer": "Raqamli aktivlar savdosi sezilarli yo‘qotish xavfini o‘z ichiga oladi va hamma uchun mos emas. Sayt materiallari investitsiya, moliyaviy, huquqiy yoki soliq maslahati emas. O‘tgan natijalar kelajakni kafolatlamaydi. Xariddan oldin to‘liq ma’lumotlar bilan tanishing."
+    "rights": "Barcha huquqlar himoyalangan."
   },
   "auth": {
     "loginTitle": "Qaytganingiz bilan",
@@ -191,8 +185,7 @@
       "passwordLen": "Parol 8–16 belgidan iborat bo‘lishi kerak.",
       "passwordMix": "Parolda harf va raqam bo‘lishi kerak.",
       "required": "Majburiy maydon."
-    },
-    "agree": "Hisob yaratish orqali Foydalanish shartlariga rozilik bildirasiz va risklar haqidagi ogohlantirish bilan tanishganingizni tasdiqlaysiz."
+    }
   },
   "checkout": {
     "title": "To‘lov",

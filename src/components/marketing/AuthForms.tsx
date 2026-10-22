@@ -219,7 +219,6 @@ function RegisterInner() {
         {error && <p role="alert" className="rounded-md border border-down/30 bg-down/10 px-3 py-2 text-sm text-down">{error}</p>}
 
         <Button type="submit" variant="primary" size="lg" block loading={busy}>{t('submitRegister')}</Button>
-        <p className="text-xs leading-relaxed text-subtle">{t('agree')}</p>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted">

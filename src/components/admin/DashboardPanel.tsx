@@ -12,6 +12,7 @@ import { useApi } from '@/hooks/useApi';
 import { PageHead } from '@/components/dashboard/PageHead';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/components/ui/States';
+import { StatStrip } from '@/components/ui/Panel';
 import { Section } from './AdminKit';
 import type { DayPoint } from './RevenueChart';
 
@@ -55,9 +56,9 @@ function useSalesSeries() {
 
 function Kpi({ icon: Icon, label, value, sub, warn }: { icon: typeof Users; label: string; value: React.ReactNode; sub?: string; warn?: boolean }) {
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel p-3.5 sm:p-4">
+    <div className="min-w-0 overflow-hidden bg-panel px-3.5 py-3">
       <div className="flex items-center justify-between gap-2"><p className="label truncate">{label}</p><Icon className={warn ? 'h-4 w-4 shrink-0 text-warn' : 'h-4 w-4 shrink-0 text-subtle'} /></div>
-      <p className="num mt-1.5 whitespace-nowrap text-[clamp(1rem,5vw,1.5rem)] font-bold leading-tight tracking-tight">{value}</p>
+      <p className="num mt-1.5 whitespace-nowrap font-mono text-[clamp(1rem,4.6vw,1.375rem)] font-semibold leading-tight tracking-tight">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-muted">{sub}</p>}
     </div>
   );
@@ -78,10 +79,10 @@ export function DashboardPanel() {
       <PageHead title="Dashboard" subtitle="Platform health at a glance. Figures refresh every 30 seconds." />
 
       {stats.error && !s ? (
-        <div className="rounded-xl border border-line bg-panel"><ErrorState error={stats.error} onRetry={() => stats.mutate()} /></div>
+        <div className="border border-line bg-panel"><ErrorState error={stats.error} onRetry={() => stats.mutate()} /></div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {!s ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[92px] rounded-xl" />) : (
+        <StatStrip>
+          {!s ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[84px] rounded-none" />) : (
             <>
               <Kpi icon={Users} label="Users" value={s.users.toLocaleString()} />
               <Kpi icon={Layers} label="Accounts" value={totalAccounts.toLocaleString()} sub={`${(s.accounts.active ?? 0).toLocaleString()} active`} />
@@ -93,10 +94,10 @@ export function DashboardPanel() {
               <Kpi icon={Layers} label="Failed / breached" value={`${(s.accounts.failed ?? 0).toLocaleString()} / ${(s.accounts.breached ?? 0).toLocaleString()}`} />
             </>
           )}
-        </div>
+        </StatStrip>
       )}
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_340px]">
         <Section title="Sales value · last 30 days" actions={<span className="num text-xs text-muted">{fmtUsd(periodTotal)} · {periodSales} sold</span>}>
           <div className="p-4">
             {series.isLoading && !series.data ? <Skeleton className="h-[280px] w-full" />
@@ -114,12 +115,12 @@ export function DashboardPanel() {
           <div className="space-y-3 p-4">
             {!s ? <Skeleton className="h-40 w-full" /> : totalAccounts === 0 ? <EmptyState compact title="No accounts yet" /> : (
               <>
-                <div className="flex h-2.5 overflow-hidden rounded-full bg-fg/[0.08]" role="img" aria-label="Account status distribution">
+                <div className="flex h-2 gap-px overflow-hidden bg-fg/[0.08]" role="img" aria-label="Account status distribution">
                   {Object.entries(s.accounts).filter(([, n]) => n > 0).map(([k, n]) => <span key={k} className={STATUS_TONE[k] ?? 'bg-muted'} style={{ width: `${(n / totalAccounts) * 100}%` }} title={`${k}: ${n}`} />)}
                 </div>
                 <ul className="space-y-2">
                   {Object.entries(s.accounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-                    <li key={k} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 capitalize"><span className={`h-2 w-2 rounded-full ${STATUS_TONE[k] ?? 'bg-muted'}`} />{k}</span><span className="num font-mono">{n.toLocaleString()} <span className="text-xs text-subtle">({((n / totalAccounts) * 100).toFixed(1)}%)</span></span></li>
+                    <li key={k} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 capitalize"><span className={`h-2 w-2 ${STATUS_TONE[k] ?? 'bg-muted'}`} />{k}</span><span className="num font-mono">{n.toLocaleString()} <span className="text-xs text-subtle">({((n / totalAccounts) * 100).toFixed(1)}%)</span></span></li>
                   ))}
                 </ul>
               </>

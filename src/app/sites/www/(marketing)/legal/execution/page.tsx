@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Execution Disclosure' };
 
@@ -47,7 +46,6 @@ export default function ExecutionDisclosurePage() {
             </section>
           ))}
         </div>
-        <p className="mt-12 text-sm text-muted">See also the full <Link href="/legal" className="text-accent hover:underline">Legal &amp; Disclosures</Link>.</p>
       </article>
     </div>
   );

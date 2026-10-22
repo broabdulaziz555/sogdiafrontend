@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, FileQuestion, Search } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, FileQuestion, ListFilter, Search, ShieldCheck } from 'lucide-react';
 import { post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, relTime } from '@/lib/format';
@@ -10,11 +10,12 @@ import type { User } from '@/lib/types';
 import { useApi } from '@/hooks/useApi';
 import { PageHead } from '@/components/dashboard/PageHead';
 import { Button } from '@/components/ui/Button';
+import { Drawer } from '@/components/ui/Modal';
+import { DataRow } from '@/components/ui/Panel';
 import { Input, StatusBadge, Textarea } from '@/components/ui/Primitives';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState, ErrorState } from '@/components/ui/States';
-import { useToast } from '@/components/ui/Toast';
-import { KV, useAction } from './AdminKit';
+import { useAction } from './AdminKit';
 import { DocViewer } from './DocViewer';
 
 type Row = User;
@@ -24,14 +25,18 @@ function docUrlOf(u: Row): string | null {
   return raw && /^https?:\/\//i.test(raw) ? raw : null;
 }
 
+/**
+ * KYC review — split screen. The identity document fills the left half (zoom / pan / rotate),
+ * the applicant's record and the decision controls sit on the right, so the reviewer never looks away.
+ */
 export function KycReview() {
-  const toast = useToast();
   const { busy, run } = useAction();
   const [q, setQ] = useState('');
   const [selId, setSelId] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [manual, setManual] = useState('');
   const [rejecting, setRejecting] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
   const { data, error, isLoading, mutate } = useApi<{ users: Row[]; total: number }>('/admin/users', { kyc_status: 'pending', limit: 100, offset: 0 }, { refreshInterval: 30_000 });
 
   const list = useMemo(() => {
@@ -40,9 +45,11 @@ export function KycReview() {
   }, [data, q]);
 
   const sel = list.find((u) => u.id === selId) ?? null;
+  const idx = sel ? list.findIndex((u) => u.id === sel.id) : -1;
   useEffect(() => { if (!sel && list.length) setSelId(list[0].id); }, [list, sel]);
   useEffect(() => { setNote(''); setManual(''); setRejecting(false); }, [selId]);
 
+  const step = (d: number) => { const n = list[idx + d]; if (n) setSelId(n.id); };
   const advance = () => {
     const i = list.findIndex((u) => u.id === selId);
     setSelId(list[i + 1]?.id ?? list[i - 1]?.id ?? null);
@@ -61,40 +68,25 @@ export function KycReview() {
   };
 
   const url = sel ? docUrlOf(sel) ?? (/^https?:\/\//i.test(manual.trim()) ? manual.trim() : null) : null;
+  const initials = (sel?.full_name || sel?.email || '?').slice(0, 2).toUpperCase();
 
   return (
     <>
-      <PageHead title="KYC review" subtitle="Compare the document with the account details, then approve or reject with a note the trader will see." />
-      {error && !data ? <div className="rounded-xl border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div> : (
-        <div className="grid min-h-[620px] gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:h-[calc(100dvh-13rem)]">
-          {/* queue */}
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-panel" aria-label="Pending reviews">
-            <div className="border-b border-line p-3">
-              <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter queue" aria-label="Filter queue" className="pl-8" /></div>
-              <p className="mt-2 text-2xs text-subtle">{data ? `${data.total} pending${data.total > 100 ? ' (showing first 100)' : ''}` : 'Loading…'}</p>
-            </div>
-            <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
-              {isLoading && !data && Array.from({ length: 6 }).map((_, i) => <li key={i} className="p-3"><Skeleton className="h-10" /></li>)}
-              {data && list.length === 0 && <li><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={q ? 'No matches' : 'Queue is clear'} description={q ? 'Nothing in the queue matches your filter.' : 'No KYC submissions are waiting for review.'} /></li>}
-              {list.map((u) => (
-                <li key={u.id}>
-                  <button onClick={() => setSelId(u.id)} aria-current={u.id === selId} className={cn('block w-full px-3 py-2.5 text-left transition-colors hover:bg-fg/[0.04]', u.id === selId && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}>
-                    <span className="block truncate text-sm font-medium">{u.full_name || u.email}</span>
-                    {u.full_name && <span className="block truncate text-xs text-muted">{u.email}</span>}
-                    <span className="mt-0.5 block text-2xs text-subtle">Joined {relTime(u.created_at)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <PageHead
+        title="KYC review"
+        subtitle="Compare the document with the account details, then approve or reject with a note the trader will see."
+        actions={<Button size="sm" variant="secondary" icon={<ListFilter className="h-3.5 w-3.5" />} onClick={() => setQueueOpen(true)}>Queue{data ? ` · ${data.total}` : ''}</Button>}
+      />
 
-          {/* document */}
-          <section className="min-h-[360px] min-w-0" aria-label="Document">
-            {!sel ? <div className="grid h-full place-items-center rounded-xl border border-dashed border-line"><EmptyState compact title="Select a submission" description="Pick someone from the queue to inspect their document." /></div>
+      {error && !data ? <div className="border border-line bg-panel"><ErrorState error={error} onRetry={() => mutate()} /></div> : (
+        <div className="grid min-h-[640px] gap-px border border-line bg-line lg:h-[calc(100dvh-11.5rem)] lg:grid-cols-[minmax(0,1.3fr)_minmax(380px,1fr)]">
+          {/* ── LEFT: document ───────────────────────────────────────────── */}
+          <section className="min-h-[360px] min-w-0 bg-bg" aria-label="Document">
+            {!sel ? <div className="grid h-full place-items-center"><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={isLoading && !data ? 'Loading queue…' : q ? 'No matches' : 'Queue is clear'} description={isLoading && !data ? undefined : 'No KYC submissions are waiting for review.'} /></div>
               : url ? <DocViewer url={url} label={`${sel.full_name || sel.email} · identity document`} />
               : (
-                <div className="flex h-full flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-line p-6 text-center">
-                  <FileQuestion className="h-8 w-8 text-subtle" />
+                <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+                  <FileQuestion className="h-8 w-8 text-subtle" strokeWidth={1.5} />
                   <div className="max-w-sm space-y-1.5">
                     <p className="font-medium">No viewable document link</p>
                     <p className="text-sm text-muted">The API did not return a signed URL for this submission (<code className="font-mono text-xs">document_url</code> on the user). Paste a signed link to inspect it here.</p>
@@ -104,41 +96,94 @@ export function KycReview() {
               )}
           </section>
 
-          {/* decision */}
-          <section className="flex min-h-0 flex-col overflow-y-auto rounded-xl border border-line bg-panel" aria-label="Decision">
+          {/* ── RIGHT: applicant data + decision ─────────────────────────── */}
+          <section className="flex min-h-0 min-w-0 flex-col bg-panel" aria-label="Applicant">
             {!sel ? <div className="p-4"><Skeleton className="h-40" /></div> : (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <dl className="divide-y divide-line px-4">
-                  <KV k="Name" v={sel.full_name || '—'} />
-                  <KV k="Email" v={sel.email} />
-                  <KV k="Country" v={sel.country || '—'} />
-                  <KV k="Status" v={<StatusBadge status={sel.kyc_status} />} />
-                  <KV k="Joined" v={dateTime(sel.created_at)} />
-                  <KV k="User ID" v={sel.id.slice(0, 8)} mono />
-                </dl>
-                <div className="mt-auto space-y-3 border-t border-line p-4">
+              <>
+                <header className="flex h-9 shrink-0 items-center justify-between border-b border-line bg-panel2/70 px-3">
+                  <span className="panel-title">Applicant</span>
+                  <div className="flex items-center gap-1">
+                    <span className="num mr-1 font-mono text-2xs text-subtle">{idx + 1} / {list.length}</span>
+                    <button onClick={() => step(-1)} disabled={idx <= 0} aria-label="Previous submission" className="grid h-6 w-6 place-items-center border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => step(1)} disabled={idx >= list.length - 1} aria-label="Next submission" className="grid h-6 w-6 place-items-center border border-line text-muted hover:border-line2 hover:text-fg disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+                  </div>
+                </header>
+
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="flex items-center gap-3 border-b border-line px-4 py-4">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center border border-line2 bg-panel2 font-mono text-sm font-semibold text-accent">{initials}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-md font-semibold">{sel.full_name || sel.email}</p>
+                      {sel.full_name && <p className="truncate text-xs text-muted">{sel.email}</p>}
+                    </div>
+                    <span className="ml-auto"><StatusBadge status={sel.kyc_status} /></span>
+                  </div>
+
+                  <div className="px-4 py-3">
+                    <p className="label mb-1">Identity</p>
+                    <dl>
+                      <DataRow k="Full name" v={sel.full_name || '—'} />
+                      <DataRow k="Email" v={sel.email} />
+                      <DataRow k="Country" v={sel.country || '—'} />
+                    </dl>
+                  </div>
+                  <div className="border-t border-line px-4 py-3">
+                    <p className="label mb-1">Record</p>
+                    <dl>
+                      <DataRow k="User ID" v={sel.id.slice(0, 8)} mono />
+                      <DataRow k="Joined" v={dateTime(sel.created_at)} />
+                      <DataRow k="Account age" v={relTime(sel.created_at)} />
+                      <DataRow k="Document" v={url ? 'Available' : 'No link'} tone={url ? 'up' : 'warn'} />
+                    </dl>
+                  </div>
+                  <div className="border-t border-line px-4 py-3">
+                    <p className="flex items-start gap-2 text-2xs leading-relaxed text-subtle"><ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-accent" />Check that the name matches the account, the document is unexpired, all corners are visible and the photo is genuine.</p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 space-y-3 border-t border-line2 bg-panel2/60 p-4">
                   {!rejecting ? (
                     <div className="grid grid-cols-2 gap-2">
-                      <Button variant="danger" onClick={() => setRejecting(true)} disabled={!!busy}>Reject…</Button>
-                      <Button variant="up" loading={busy === 'approve'} onClick={() => decide('approve')}>Approve</Button>
+                      <Button size="lg" variant="danger" onClick={() => setRejecting(true)} disabled={!!busy}>Reject…</Button>
+                      <Button size="lg" variant="up" loading={busy === 'approve'} onClick={() => decide('approve')}>Approve</Button>
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <label htmlFor="kyc-note" className="label">Note for the trader</label>
                       <Textarea id="kyc-note" rows={3} autoFocus value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Document unreadable — please upload a clear photo" maxLength={300} />
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="ghost" onClick={() => setRejecting(false)} disabled={!!busy}>Back</Button>
-                        <Button variant="down" loading={busy === 'reject'} disabled={note.trim().length < 3} onClick={() => decide('reject')}>Confirm reject</Button>
+                        <Button size="lg" variant="ghost" onClick={() => setRejecting(false)} disabled={!!busy}>Back</Button>
+                        <Button size="lg" variant="down" loading={busy === 'reject'} disabled={note.trim().length < 3} onClick={() => decide('reject')}>Confirm reject</Button>
                       </div>
                     </div>
                   )}
                   <p className="text-2xs leading-relaxed text-subtle">Approving unlocks payouts for this user. After a decision the next submission opens automatically.</p>
                 </div>
-              </div>
+              </>
             )}
           </section>
         </div>
       )}
+
+      {/* ── Queue drawer ─────────────────────────────────────────────────── */}
+      <Drawer open={queueOpen} onClose={() => setQueueOpen(false)} title="Pending reviews" subtitle={data ? `${data.total} waiting${data.total > 100 ? ' (showing first 100)' : ''}` : 'Loading…'} width="max-w-md">
+        <div className="border-b border-line p-3">
+          <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or email" aria-label="Filter queue" className="pl-8" /></div>
+        </div>
+        <ul className="divide-y divide-line">
+          {isLoading && !data && Array.from({ length: 6 }).map((_, i) => <li key={i} className="p-3"><Skeleton className="h-10" /></li>)}
+          {data && list.length === 0 && <li><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={q ? 'No matches' : 'Queue is clear'} description={q ? 'Nothing in the queue matches your filter.' : 'No KYC submissions are waiting for review.'} /></li>}
+          {list.map((u) => (
+            <li key={u.id}>
+              <button onClick={() => { setSelId(u.id); setQueueOpen(false); }} aria-current={u.id === selId} className={cn('block w-full px-4 py-2.5 text-left transition-colors hover:bg-fg/[0.04]', u.id === selId && 'bg-accent/[0.08] shadow-[inset_2px_0_0_rgb(var(--accent))]')}>
+                <span className="block truncate text-sm font-medium">{u.full_name || u.email}</span>
+                {u.full_name && <span className="block truncate text-xs text-muted">{u.email}</span>}
+                <span className="mt-0.5 block text-2xs text-subtle">Joined {relTime(u.created_at)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Drawer>
     </>
   );
 }

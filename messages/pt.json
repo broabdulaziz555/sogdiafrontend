@@ -33,7 +33,6 @@
     "platform": "Plataforma",
     "pricing": "Preços",
     "faq": "Perguntas",
-    "legal": "Jurídico",
     "getFunded": "Receba capital",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu"
@@ -165,13 +164,8 @@
     "tagline": "Prop trading cripto institucional para traders que se recusam a esperar.",
     "product": "Produto",
     "company": "Empresa",
-    "legalCol": "Jurídico",
-    "terms": "Termos de uso",
-    "privacy": "Política de privacidade",
-    "risk": "Aviso de risco",
     "contact": "Contato",
-    "rights": "Todos os direitos reservados.",
-    "disclaimer": "Operar ativos digitais envolve risco significativo de perda e não é adequado para todos. Nada neste site constitui aconselhamento de investimento, financeiro, jurídico ou tributário. Resultados passados não garantem resultados futuros. Leia todas as divulgações antes de comprar qualquer conta."
+    "rights": "Todos os direitos reservados."
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
@@ -191,8 +185,7 @@
       "passwordLen": "A senha deve ter de 8 a 16 caracteres.",
       "passwordMix": "A senha deve ter pelo menos uma letra e um número.",
       "required": "Campo obrigatório."
-    },
-    "agree": "Ao criar uma conta, você concorda com os Termos de uso e confirma que leu o Aviso de risco."
+    }
   },
   "checkout": {
     "title": "Checkout",

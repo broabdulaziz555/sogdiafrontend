@@ -21,7 +21,7 @@ type Tab = 'positions' | 'pending' | 'history';
 
 export const sym = (s: string) => s.replace('USDT', '/USDT');
 export const SideTag = ({ side }: { side: Side }) => (
-  <span className={cn('rounded px-1 py-px text-2xs font-semibold uppercase', side === 'long' ? 'bg-up/15 text-up' : 'bg-down/15 text-down')}>{side}</span>
+  <span className={cn('px-1 py-px text-2xs font-semibold uppercase tracking-[0.06em]', side === 'long' ? 'bg-up/15 text-up' : 'bg-down/15 text-down')}>{side}</span>
 );
 /** MetaTrader wording: long = buy, short = sell. */
 export const TypeTag = ({ side }: { side: Side }) => (
@@ -132,7 +132,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     { key: 'mark', header: 'Current', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
     { key: 'liq', header: 'Liq.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
     { key: 'pnl', header: 'Profit', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
-      <span className={cn('num font-mono font-semibold', pnlClass(p.unrealized_pnl))}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 text-2xs font-normal opacity-80">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
+      <span className={cn('num inline-block min-w-[96px] px-1.5 py-px text-right font-mono font-semibold', pnlClass(p.unrealized_pnl), p.unrealized_pnl > 0 ? 'bg-up/10' : p.unrealized_pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 text-2xs font-normal opacity-80">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
     { key: 'act', header: <span className="sr-only">Actions</span>, align: 'right', cell: (p) => (
       <div className="relative flex justify-end gap-1">
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
@@ -151,7 +151,8 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
 
   return (
     <DataTable<Position>
-      compact bare dense
+      compact bare dense zebra
+      rowClassName={(p) => (p.side === 'long' ? 'shadow-[inset_2px_0_0_rgb(var(--up))]' : 'shadow-[inset_2px_0_0_rgb(var(--down))]')}
       columns={cols} rows={positions} rowKey={(p) => p.id}
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
@@ -219,13 +220,15 @@ function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | n
     { key: 'exit', header: 'Close price', align: 'right', hideBelow: 'sm', sortValue: (o) => o.close_price, cell: (o) => <span className="num font-mono">{fmtPrice(o.close_price)}</span> },
     { key: 'closed', header: 'Close time', align: 'right', sortValue: (o) => (o.closed_at ? Date.parse(o.closed_at) : 0), cell: (o) => <span className="num text-xs text-muted">{dateTime(o.closed_at)}</span> },
     { key: 'reason', header: 'Reason', hideBelow: 'lg', sortValue: (o) => o.close_reason, cell: (o) => <span className="text-xs text-muted">{o.close_reason ? REASON[o.close_reason] ?? o.close_reason : '—'}</span> },
-    { key: 'pnl', header: 'Profit', align: 'right', sortValue: (o) => o.pnl, cell: (o) => <span className={cn('num font-mono font-semibold', pnlClass(o.pnl))}>{fmtSigned(o.pnl)}</span> },
+    { key: 'pnl', header: 'Profit', align: 'right', sortValue: (o) => o.pnl, cell: (o) => <span className={cn('num inline-block min-w-[72px] px-1.5 py-px text-right font-mono font-semibold', pnlClass(o.pnl), o.pnl > 0 ? 'bg-up/10' : o.pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(o.pnl)}</span> },
     { key: 'share', header: <span className="sr-only">Share</span>, align: 'right', cell: (o) => <button onClick={() => useTerminal.getState().set({ tradeCard: { id: o.id, label: `${sym(o.symbol)} ${o.side === 'long' ? 'Buy' : 'Sell'}`, live: false, data: { symbol: o.symbol, side: o.side, leverage: o.leverage, entry: o.entry_price, exit: o.close_price, pnl: o.pnl, margin: o.margin, size: o.position_size, opened: o.created_at, closed: o.closed_at, reason: o.close_reason } } })} className="inline-grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label={`Trade card for ${sym(o.symbol)}`} title="Trade card"><Share2 className="h-3.5 w-3.5" /></button> },
   ];
 
   return (
     <DataTable<HistoryOrder>
-      compact bare dense columns={cols} rows={data?.orders} rowKey={(o) => o.id}
+      compact bare dense zebra
+      rowClassName={(o) => (o.side === 'long' ? 'shadow-[inset_2px_0_0_rgb(var(--up)/0.6)]' : 'shadow-[inset_2px_0_0_rgb(var(--down)/0.6)]')}
+      columns={cols} rows={data?.orders} rowKey={(o) => o.id}
       loading={isLoading && !data} error={error && !data ? error : undefined} onRetry={() => void mutate()}
       searchPlaceholder="Search this page" pageSizes={[10, 25, 50, 100]} initialSort={{ key: 'closed', dir: 'desc' }}
       server={{ total: data?.total ?? 0, page, pageSize: size, onPageChange: setPage, onPageSizeChange: (n) => { setSize(n); setPage(0); }, query: q, onQueryChange: setQ, clientSearch: true }}
@@ -243,7 +246,7 @@ function AccountLine({ tab, stats }: { tab: Tab; stats: HistoryResponse['stats']
   const { account, metrics, positions } = useTerminalData();
   if (tab === 'history') {
     return (
-      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line bg-panel2/60 px-3 py-1.5 text-xs">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line2 bg-panel2 px-3 py-1.5 text-xs">
         {stats ? (<>
           <Kv k="Trades" v={stats.trades} />
           <Kv k="Win rate" v={`${fmtNum(stats.win_rate, 1)}%`} />
@@ -257,7 +260,7 @@ function AccountLine({ tab, stats }: { tab: Tab; stats: HistoryResponse['stats']
   const ml = metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
   const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line bg-panel2/60 px-3 py-1.5 text-xs">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line2 bg-panel2 px-3 py-1.5 text-xs">
       <Kv k="Balance" v={fmtUsd(account.balance)} />
       <Kv k="Equity" v={fmtUsd(metrics.equity)} />
       <Kv k="Margin" v={fmtUsd(metrics.used_margin)} />

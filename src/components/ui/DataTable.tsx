@@ -55,6 +55,10 @@ interface Props<T> {
   className?: string;
   stickyHeader?: boolean;
   footerNote?: React.ReactNode;
+  /** Per-row classes — e.g. a coloured left edge by side in a trading ledger. */
+  rowClassName?: (row: T) => string | undefined;
+  /** Alternate row shading for dense ledgers. */
+  zebra?: boolean;
 }
 
 const hide = { sm: 'max-sm:hidden', md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden', '2xl': 'max-2xl:hidden' } as const;
@@ -82,6 +86,8 @@ export function DataTable<T>({
   className,
   stickyHeader = true,
   footerNote,
+  rowClassName,
+  zebra,
 }: Props<T>) {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(initialSort ?? null);
   const [localQuery, setLocalQuery] = useState('');
@@ -153,15 +159,15 @@ export function DataTable<T>({
   const toggleSort = (key: string) =>
     setSort((s) => (!s || s.key !== key ? { key, dir: 'asc' } : s.dir === 'asc' ? { key, dir: 'desc' } : null));
 
-  const py = compact ? 'py-1.5' : dense ? 'py-2' : 'py-3';
-  const px = compact ? 'px-3' : 'px-4';
+  const py = compact ? 'py-1' : dense ? 'py-1.5' : 'py-2.5';
+  const px = compact ? 'px-2.5' : 'px-3';
   const hasToolbar = searchable || toolbar;
   const showSkeleton = loading && !rows;
 
   return (
-    <div className={cn('flex min-h-0 flex-col overflow-hidden bg-panel', !bare && 'rounded-xl border border-line', className)}>
+    <div className={cn('flex min-h-0 flex-col overflow-hidden bg-panel', !bare && 'border border-line', className)}>
       {hasToolbar && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-panel2/50 px-3 py-2">
           {searchable && (
             <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-subtle" />
@@ -170,10 +176,10 @@ export function DataTable<T>({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchPlaceholder}
                 aria-label="Search table"
-                className="h-8 w-full rounded-md border border-line bg-panel2 pl-8 pr-7 text-sm placeholder:text-subtle transition-colors hover:border-subtle/60 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
+                className="h-7 w-full border border-line bg-bg/60 pl-8 pr-7 text-xs placeholder:text-subtle transition-colors hover:border-line2 focus:border-accent focus:outline-none focus:shadow-[0_0_0_1px_rgb(var(--accent))]"
               />
               {query && (
-                <button onClick={() => setQuery('')} aria-label="Clear search" className="absolute right-1.5 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded text-subtle hover:text-fg">
+                <button onClick={() => setQuery('')} aria-label="Clear search" className="absolute right-1.5 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center text-subtle hover:text-fg">
                   <X className="h-3 w-3" />
                 </button>
               )}
@@ -198,7 +204,7 @@ export function DataTable<T>({
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead className={cn(stickyHeader && 'sticky top-0 z-10')}>
-              <tr className="border-b border-line bg-panel2/95 backdrop-blur">
+              <tr className="border-b border-line2 bg-panel2">
                 {columns.map((c) => {
                   const sortable = !!c.sortValue;
                   const active = sort?.key === c.key;
@@ -208,7 +214,7 @@ export function DataTable<T>({
                       scope="col"
                       aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : undefined}
                       className={cn(
-                        'whitespace-nowrap py-2 text-2xs font-medium uppercase tracking-[0.08em] text-subtle',
+                        'whitespace-nowrap py-1.5 text-2xs font-semibold uppercase tracking-[0.1em] text-subtle',
                         px,
                         c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
                         c.hideBelow && hide[c.hideBelow],
@@ -245,9 +251,11 @@ export function DataTable<T>({
                     onKeyDown={onRowClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRowClick(r); } } : undefined}
                     tabIndex={onRowClick ? 0 : undefined}
                     className={cn(
-                      'border-b border-line/60 transition-colors last:border-0',
-                      onRowClick && 'cursor-pointer hover:bg-fg/[0.04] focus-visible:bg-fg/[0.04]',
+                      'border-b border-line/60 transition-colors last:border-0 hover:bg-fg/[0.03]',
+                      zebra && 'even:bg-fg/[0.018]',
+                      onRowClick && 'cursor-pointer focus-visible:bg-fg/[0.04]',
                       activeRowKey === k && 'bg-accent/[0.06] shadow-[inset_2px_0_0_rgb(var(--accent))]',
+                      rowClassName?.(r),
                     )}
                   >
                     {columns.map((c) => (
@@ -273,7 +281,7 @@ export function DataTable<T>({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-panel2/50 px-3 py-2 text-xs text-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line2 bg-panel2 px-3 py-1.5 text-xs text-muted">
         <div className="flex items-center gap-3">
           <span className="num">{total === 0 ? '0 rows' : `${from}–${to} of ${total.toLocaleString()}`}</span>
           {footerNote}
@@ -285,23 +293,23 @@ export function DataTable<T>({
               value={size}
               onChange={(e) => setSize(Number(e.target.value))}
               aria-label="Rows per page"
-              className="h-6 rounded border border-line bg-panel px-1 text-xs focus:border-accent focus:outline-none"
+              className="h-6 border border-line bg-bg/60 px-1 text-xs focus:border-accent focus:outline-none"
             >
               {pageSizes.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
           <div className="flex items-center gap-1">
-            <button onClick={() => goto(0)} disabled={page === 0} aria-label="First page" className="grid h-6 w-6 place-items-center rounded hover:bg-fg/10 disabled:opacity-30 disabled:hover:bg-transparent">
+            <button onClick={() => goto(0)} disabled={page === 0} aria-label="First page" className="grid h-6 w-6 place-items-center border border-line hover:border-line2 hover:bg-fg/[0.05] disabled:opacity-30 disabled:hover:border-line disabled:hover:bg-transparent">
               <ChevronLeft className="h-3.5 w-3.5" /><ChevronLeft className="-ml-2.5 h-3.5 w-3.5" />
             </button>
-            <button onClick={() => goto(page - 1)} disabled={page === 0} aria-label="Previous page" className="grid h-6 w-6 place-items-center rounded hover:bg-fg/10 disabled:opacity-30 disabled:hover:bg-transparent">
+            <button onClick={() => goto(page - 1)} disabled={page === 0} aria-label="Previous page" className="grid h-6 w-6 place-items-center border border-line hover:border-line2 hover:bg-fg/[0.05] disabled:opacity-30 disabled:hover:border-line disabled:hover:bg-transparent">
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <span className="num min-w-[64px] text-center">Page {page + 1} / {pageCount}</span>
-            <button onClick={() => goto(page + 1)} disabled={page >= pageCount - 1} aria-label="Next page" className="grid h-6 w-6 place-items-center rounded hover:bg-fg/10 disabled:opacity-30 disabled:hover:bg-transparent">
+            <button onClick={() => goto(page + 1)} disabled={page >= pageCount - 1} aria-label="Next page" className="grid h-6 w-6 place-items-center border border-line hover:border-line2 hover:bg-fg/[0.05] disabled:opacity-30 disabled:hover:border-line disabled:hover:bg-transparent">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => goto(pageCount - 1)} disabled={page >= pageCount - 1} aria-label="Last page" className="grid h-6 w-6 place-items-center rounded hover:bg-fg/10 disabled:opacity-30 disabled:hover:bg-transparent">
+            <button onClick={() => goto(pageCount - 1)} disabled={page >= pageCount - 1} aria-label="Last page" className="grid h-6 w-6 place-items-center border border-line hover:border-line2 hover:bg-fg/[0.05] disabled:opacity-30 disabled:hover:border-line disabled:hover:bg-transparent">
               <ChevronRight className="h-3.5 w-3.5" /><ChevronRight className="-ml-2.5 h-3.5 w-3.5" />
             </button>
           </div>

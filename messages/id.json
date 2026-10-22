@@ -33,7 +33,6 @@
     "platform": "Platform",
     "pricing": "Harga",
     "faq": "Pertanyaan",
-    "legal": "Legal",
     "getFunded": "Dapatkan pendanaan",
     "openMenu": "Buka menu",
     "closeMenu": "Tutup menu"
@@ -165,13 +164,8 @@
     "tagline": "Prop trading kripto institusional untuk trader yang tidak mau menunggu.",
     "product": "Produk",
     "company": "Perusahaan",
-    "legalCol": "Legal",
-    "terms": "Ketentuan Penggunaan",
-    "privacy": "Kebijakan Privasi",
-    "risk": "Pengungkapan Risiko",
     "contact": "Kontak",
-    "rights": "Hak cipta dilindungi.",
-    "disclaimer": "Trading aset digital mengandung risiko kerugian yang signifikan dan tidak cocok untuk semua orang. Tidak ada isi situs ini yang merupakan saran investasi, keuangan, hukum, atau pajak. Hasil masa lalu tidak menjamin hasil di masa depan. Baca semua pengungkapan sebelum membeli akun apa pun."
+    "rights": "Hak cipta dilindungi."
   },
   "auth": {
     "loginTitle": "Selamat datang kembali",
@@ -191,8 +185,7 @@
       "passwordLen": "Kata sandi harus 8–16 karakter.",
       "passwordMix": "Kata sandi harus memuat minimal satu huruf dan satu angka.",
       "required": "Wajib diisi."
-    },
-    "agree": "Dengan membuat akun, Anda menyetujui Ketentuan Penggunaan dan mengonfirmasi telah membaca Pengungkapan Risiko."
+    }
   },
   "checkout": {
     "title": "Checkout",

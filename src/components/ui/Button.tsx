@@ -17,21 +17,20 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary:
-    'bg-accent text-accent-fg hover:brightness-110 active:brightness-95 shadow-[0_0_0_1px_rgb(var(--accent)/0.5),0_8px_24px_-10px_rgb(var(--accent)/0.55)] hover:shadow-[0_0_0_1px_rgb(var(--accent)/0.7),0_10px_32px_-8px_rgb(var(--accent)/0.65)]',
-  secondary: 'bg-panel2 text-fg border border-line hover:border-subtle/70 hover:bg-fg/[0.04] active:bg-fg/[0.07]',
-  outline: 'border border-line text-fg hover:border-accent/60 hover:text-accent bg-transparent',
-  ghost: 'text-muted hover:text-fg hover:bg-fg/[0.06] active:bg-fg/[0.09]',
-  danger: 'bg-down/10 text-down border border-down/30 hover:bg-down/20 active:bg-down/25',
-  up: 'bg-up text-black hover:brightness-110 active:brightness-95 font-semibold',
-  down: 'bg-down text-white hover:brightness-110 active:brightness-95 font-semibold',
+  primary: 'border border-accent bg-accent font-semibold text-accent-fg hover:bg-accent/90 active:bg-accent/80',
+  secondary: 'border border-line bg-panel2 text-fg hover:border-line2 hover:bg-fg/[0.04] active:bg-fg/[0.07]',
+  outline: 'border border-line2 bg-transparent text-fg hover:border-accent hover:text-accent',
+  ghost: 'border border-transparent text-muted hover:bg-fg/[0.06] hover:text-fg active:bg-fg/[0.09]',
+  danger: 'border border-down/40 bg-down/10 text-down hover:bg-down/20 active:bg-down/25',
+  up: 'border border-up bg-up font-semibold text-black hover:brightness-110 active:brightness-95',
+  down: 'border border-down bg-down font-semibold text-white hover:brightness-110 active:brightness-95',
 };
 
 const sizes: Record<Size, string> = {
-  xs: 'h-6 px-2 text-xs gap-1 rounded',
-  sm: 'h-8 px-3 text-sm gap-1.5 rounded-md',
-  md: 'h-9 px-4 text-base gap-2 rounded-md',
-  lg: 'h-11 px-6 text-md gap-2 rounded-lg font-semibold',
+  xs: 'h-6 px-2 text-xs gap-1',
+  sm: 'h-7 px-2.5 text-xs gap-1.5',
+  md: 'h-8 px-3.5 text-sm gap-2',
+  lg: 'h-10 px-5 text-base gap-2 font-semibold',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -45,8 +44,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'relative inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-all duration-150',
-        'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
+        'relative inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium transition-colors duration-100',
+        'disabled:cursor-not-allowed disabled:opacity-45',
         variants[variant],
         sizes[size],
         block && 'w-full',

@@ -14,11 +14,17 @@ const DEFS: Record<string, Def> = {
   www: { name: 'SOGDIA — Institutional Crypto Prop Firm', short: 'SOGDIA', description: 'Trade crypto 24/7. Keep more of what you earn.' },
   app: {
     name: 'SOGDIA — Trader Dashboard', short: 'SOGDIA', description: 'Accounts, payouts, KYC, certificates and your PnL calendar.',
-    shortcuts: [{ name: 'Payouts', url: '/payouts' }, { name: 'Certificates', url: '/certificates' }, { name: 'PnL calendar', url: '/calendar' }],
+    shortcuts: [{ name: 'Accounts', url: '/' }, { name: 'PnL calendar', url: '/calendar' }, { name: 'Payouts', url: '/payouts' }, { name: 'Verification', url: '/kyc' }],
   },
   trade: { name: 'SOGDIA Terminal', short: 'Terminal', description: 'Professional crypto trading terminal for SOGDIA funded accounts.' },
-  xdepartment: { name: 'SOGDIA Admin', short: 'Admin', description: 'SOGDIA staff console.' },
+  xdepartment: {
+    name: 'SOGDIA Admin', short: 'Admin', description: 'SOGDIA staff console.',
+    shortcuts: [{ name: 'KYC review', url: '/kyc' }, { name: 'Payout queue', url: '/payouts' }, { name: 'Users', url: '/users' }],
+  },
 };
+
+/** Surface colour of the installed app's window chrome / splash screen. Matches --bg in globals.css. */
+const THEME = '#080C12';
 
 function siteOf(req: NextRequest): string {
   const host = (req.headers.get('host') || '').split(':')[0].toLowerCase();
@@ -41,11 +47,12 @@ export function GET(req: NextRequest) {
     id: `/?app=${site}`,
     start_url: '/',
     scope: '/',
-    display: 'standalone',
+    display: 'standalone', // no browser chrome — launches like a native app
     display_override: ['standalone', 'minimal-ui'],
-    orientation: 'any',
-    background_color: '#080C12',
-    theme_color: '#080C12',
+    orientation: 'any', // the terminal is used in landscape on tablets
+    background_color: THEME,
+    theme_color: THEME,
+    launch_handler: { client_mode: 'navigate-existing' }, // re-opening focuses the running window instead of spawning another
     lang: 'en',
     dir: 'ltr',
     categories: ['finance', 'business'],

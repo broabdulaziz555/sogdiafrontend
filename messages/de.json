@@ -33,7 +33,6 @@
     "platform": "Plattform",
     "pricing": "Preise",
     "faq": "Fragen",
-    "legal": "Rechtliches",
     "getFunded": "Kapital erhalten",
     "openMenu": "Menü öffnen",
     "closeMenu": "Menü schließen"
@@ -165,13 +164,8 @@
     "tagline": "Institutionelles Krypto-Prop-Trading für Trader, die nicht warten wollen.",
     "product": "Produkt",
     "company": "Unternehmen",
-    "legalCol": "Rechtliches",
-    "terms": "Nutzungsbedingungen",
-    "privacy": "Datenschutzerklärung",
-    "risk": "Risikohinweis",
     "contact": "Kontakt",
-    "rights": "Alle Rechte vorbehalten.",
-    "disclaimer": "Der Handel mit digitalen Vermögenswerten birgt ein erhebliches Verlustrisiko und ist nicht für jeden geeignet. Nichts auf dieser Website stellt eine Anlage-, Finanz-, Rechts- oder Steuerberatung dar. Frühere Ergebnisse sind keine Garantie für künftige Ergebnisse. Lesen Sie alle Hinweise, bevor Sie ein Konto kaufen."
+    "rights": "Alle Rechte vorbehalten."
   },
   "auth": {
     "loginTitle": "Willkommen zurück",
@@ -191,8 +185,7 @@
       "passwordLen": "Das Passwort muss 8–16 Zeichen lang sein.",
       "passwordMix": "Das Passwort muss mindestens einen Buchstaben und eine Ziffer enthalten.",
       "required": "Pflichtfeld."
-    },
-    "agree": "Mit der Kontoerstellung stimmen Sie den Nutzungsbedingungen zu und bestätigen, den Risikohinweis gelesen zu haben."
+    }
   },
   "checkout": {
     "title": "Kasse",

@@ -4,14 +4,14 @@
  *  - Navigations:               network-first → cached page → /offline.html
  *  - Volatile / privileged endpoints (prices, positions, admin, auth) are never cached.
  */
-const VERSION = 'v3'; // bump = old caches are purged on activate
+const VERSION = 'v4'; // bump = old caches are purged on activate
 const STATIC_CACHE = `sg-static-${VERSION}`;
 const API_CACHE = `sg-api-${VERSION}`;
 const PAGE_CACHE = `sg-pages-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SNAPSHOT_KEY = '/__offline/accounts';
 
-const PRECACHE = [OFFLINE_URL, '/icons/icon.svg', '/icons/icon-192.png'];
+const PRECACHE = [OFFLINE_URL, '/icons/icon.svg', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 // Never cache these API paths
 const API_DENY = [

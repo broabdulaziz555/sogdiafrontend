@@ -5,12 +5,8 @@
   "faq": {
     "a2": "On equity, which is balance plus unrealised PnL. Daily drawdown is measured from your daily starting balance (reset at 00:00 UTC); max drawdown is measured from the initial account size."
   },
-  "footer": {
-    "disclaimer": "Trading digital assets involves substantial risk of loss and is not suitable for every individual. Nothing on this site is investment, financial, legal or tax advice. Past performance is not indicative of future results. Review the full disclosures before purchasing any account."
-  },
-  "auth": {
-    "agree": "By creating an account you agree to the Terms of Service and acknowledge the Risk Disclosure."
-  },
+  "footer": {},
+  "auth": {},
   "platform": {
     "f2Body": "Equity, free margin, margin level and drawdown headroom update with every tick."
   }

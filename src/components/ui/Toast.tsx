@@ -61,14 +61,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2"
+        className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[100] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2"
       >
         {items.map((t) => (
           <div
             key={t.id}
             role="status"
             className={cn(
-              'pointer-events-auto flex animate-fade-up items-start gap-3 rounded-lg border bg-panel p-3 pr-2 shadow-pop',
+              'pointer-events-auto flex animate-fade-up items-start gap-3 border bg-panel p-3 pr-2 shadow-pop',
               t.kind === 'error' ? 'border-down/40' : t.kind === 'success' ? 'border-up/30' : 'border-line',
             )}
           >
