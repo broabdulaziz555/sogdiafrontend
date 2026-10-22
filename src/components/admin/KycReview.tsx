@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { BadgeCheck, ChevronLeft, ChevronRight, FileQuestion, ListFilter, Search, ShieldCheck } from 'lucide-react';
-import { post } from '@/lib/api';
+import { errMsg, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, relTime } from '@/lib/format';
 import { revalidatePath } from '@/lib/mutate';
@@ -20,10 +20,9 @@ import { DocViewer } from './DocViewer';
 
 type Row = User;
 
-function docUrlOf(u: Row): string | null {
-  const raw = u.document_url || u.kyc_document_url || null;
-  return raw && /^https?:\/\//i.test(raw) ? raw : null;
-}
+/** What the user row holds: a storage path (private bucket) or, for legacy rows, a full URL. */
+const docRefOf = (u: Row): string | null => u.kyc_document_url || u.document_url || null;
+const isHttp = (v: string | null | undefined): v is string => !!v && /^https?:\/\//i.test(v);
 
 /**
  * KYC review — split screen. The identity document fills the left half (zoom / pan / rotate),
@@ -34,7 +33,6 @@ export function KycReview() {
   const [q, setQ] = useState('');
   const [selId, setSelId] = useState<string | null>(null);
   const [note, setNote] = useState('');
-  const [manual, setManual] = useState('');
   const [rejecting, setRejecting] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
   const { data, error, isLoading, mutate } = useApi<{ users: Row[]; total: number }>('/admin/users', { kyc_status: 'pending', limit: 100, offset: 0 }, { refreshInterval: 30_000 });
@@ -47,7 +45,7 @@ export function KycReview() {
   const sel = list.find((u) => u.id === selId) ?? null;
   const idx = sel ? list.findIndex((u) => u.id === sel.id) : -1;
   useEffect(() => { if (!sel && list.length) setSelId(list[0].id); }, [list, sel]);
-  useEffect(() => { setNote(''); setManual(''); setRejecting(false); }, [selId]);
+  useEffect(() => { setNote(''); setRejecting(false); }, [selId]);
 
   const step = (d: number) => { const n = list[idx + d]; if (n) setSelId(n.id); };
   const advance = () => {
@@ -67,7 +65,14 @@ export function KycReview() {
     if (ok) setRejecting(false);
   };
 
-  const url = sel ? docUrlOf(sel) ?? (/^https?:\/\//i.test(manual.trim()) ? manual.trim() : null) : null;
+  // The bucket is private: the user row only carries the object path, so ask the API for a short-lived signed link.
+  const ref = sel ? docRefOf(sel) : null;
+  const signed = useApi<{ url: string; kind: 'pdf' | 'image' }>(sel && ref && !isHttp(ref) ? `/admin/kyc/${sel.id}/document` : null, undefined, {
+    refreshInterval: 50 * 60_000, // links live 1 h — renew before they lapse; a fresh one is fetched on every open
+    revalidateOnFocus: false,
+  });
+  const url = sel ? (isHttp(ref) ? ref : signed.data?.url) ?? null : null;
+  const linkLoading = !!sel && !!ref && !isHttp(ref) && signed.isLoading && !signed.data;
   const initials = (sel?.full_name || sel?.email || '?').slice(0, 2).toUpperCase();
 
   return (
@@ -83,15 +88,16 @@ export function KycReview() {
           {/* ── LEFT: document ───────────────────────────────────────────── */}
           <section className="card min-h-[360px] min-w-0 overflow-hidden bg-bg/60" aria-label="Document">
             {!sel ? <div className="grid h-full place-items-center"><EmptyState compact icon={<BadgeCheck className="h-5 w-5" />} title={isLoading && !data ? 'Loading queue…' : q ? 'No matches' : 'Queue is clear'} description={isLoading && !data ? undefined : 'No KYC submissions are waiting for review.'} /></div>
+              : linkLoading ? <div className="grid h-full place-items-center text-sm text-muted">Loading document…</div>
               : url ? <DocViewer url={url} label={`${sel.full_name || sel.email} · identity document`} />
               : (
                 <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
                   <FileQuestion className="h-8 w-8 text-subtle" strokeWidth={1.5} />
                   <div className="max-w-sm space-y-1.5">
-                    <p className="font-medium">No viewable document link</p>
-                    <p className="text-sm text-muted">The API did not return a signed URL for this submission (<code className="font-mono text-xs">document_url</code> on the user). Paste a signed link to inspect it here.</p>
+                    <p className="font-medium">{ref ? 'The document could not be opened' : 'No document uploaded'}</p>
+                    <p className="text-sm text-muted">{ref ? (signed.error ? errMsg(signed.error) : 'The file is missing from storage.') : 'This applicant has not uploaded an identity document yet.'}</p>
                   </div>
-                  <Input value={manual} onChange={(e) => setManual(e.target.value)} placeholder="https://…signed-url" aria-label="Signed document URL" className="max-w-sm" />
+                  {ref && <Button size="sm" variant="secondary" onClick={() => void signed.mutate()}>Try again</Button>}
                 </div>
               )}
           </section>
@@ -133,7 +139,7 @@ export function KycReview() {
                       <DataRow k="User ID" v={sel.id.slice(0, 8)} mono />
                       <DataRow k="Joined" v={dateTime(sel.created_at)} />
                       <DataRow k="Account age" v={relTime(sel.created_at)} />
-                      <DataRow k="Document" v={url ? 'Available' : 'No link'} tone={url ? 'up' : 'warn'} />
+                      <DataRow k="Document" v={url ? 'Available' : linkLoading ? 'Loading…' : ref ? 'Unavailable' : 'Not uploaded'} tone={url ? 'up' : 'warn'} />
                     </dl>
                   </div>
                   <div className="mx-5 mb-5 rounded-2xl border border-line/60 bg-panel2/50 px-4 py-3.5">
