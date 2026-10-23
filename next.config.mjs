@@ -1,4 +1,13 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
 import createNextIntlPlugin from 'next-intl/plugin';
+
+// Which build is this? Render sets RENDER_GIT_COMMIT. The same id is compiled into the app and written to
+// public/version.json, so a running app can tell when a newer build has been deployed.
+const BUILD_ID = (process.env.RENDER_GIT_COMMIT || process.env.VERCEL_GIT_COMMIT_SHA || 'dev').slice(0, 7);
+try {
+  mkdirSync('public', { recursive: true });
+  writeFileSync('public/version.json', JSON.stringify({ id: BUILD_ID }));
+} catch { /* read-only checkout: the app simply skips update checks */ }
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -16,6 +25,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: { NEXT_PUBLIC_BUILD_ID: BUILD_ID },
   experimental: { optimizePackageImports: ['lucide-react'] },
   poweredByHeader: false,
   async rewrites() {

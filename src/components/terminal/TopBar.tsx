@@ -1,12 +1,14 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
-import { Keyboard, LayoutDashboard, LogOut, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
+import { memo, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Activity, Keyboard, LayoutDashboard, LogOut, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/cn';
 import { clearSession } from '@/lib/auth';
 import { fmtNum, fmtSigned, fmtUsd } from '@/lib/format';
 import { siteHref } from '@/lib/sites';
+import { BUILD_ID, diagSubscribe, diagText } from '@/lib/diag';
+import { Modal } from '@/components/ui/Modal';
 import type { Account } from '@/lib/types';
 import { Logo } from '@/components/ui/Logo';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
@@ -50,12 +52,25 @@ function Clock() {
   return <span className="num hidden text-xs text-subtle xl:inline" suppressHydrationWarning>{now ? now.toISOString().slice(11, 19) : '--:--:--'} UTC</span>;
 }
 
+function Diagnostics({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const text = useSyncExternalStore(diagSubscribe, diagText, () => '');
+  const [copied, setCopied] = useState(false);
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* select manually */ } };
+  return (
+    <Modal open={open} onClose={onClose} title="Diagnostics" description={`App build ${BUILD_ID}. Send a screenshot of this if something looks wrong.`} size="lg"
+      footer={<button onClick={() => void copy()} className="h-9 rounded-xl bg-accent px-4 text-sm font-semibold text-white">{copied ? 'Copied' : 'Copy'}</button>}>
+      <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-panel2 p-3 font-mono text-2xs leading-relaxed">{text}</pre>
+    </Modal>
+  );
+}
+
 function UserMenu() {
   const user = useUser();
   const { resolvedTheme, setTheme } = useTheme();
   const soundOn = useTerminal((s) => s.soundOn);
   const setStore = useTerminal((s) => s.set);
   const [open, setOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -73,11 +88,13 @@ function UserMenu() {
           <div className="border-b border-line/60 px-4 py-3"><p className="truncate text-sm font-medium">{user.full_name || 'Trader'}</p><p className="truncate text-xs text-muted">{user.email}</p></div>
           <SiteLink site="app" path="/" role="menuitem" className="mx-1.5 mt-1.5 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-fg/[0.06]"><LayoutDashboard className="h-4 w-4 text-subtle" />Dashboard</SiteLink>
           <InstallApp onDone={() => setOpen(false)} />
+          <button role="menuitem" onClick={() => { setOpen(false); setDiagOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-fg/[0.06]"><Activity className="h-4 w-4 text-subtle" />Diagnostics<span className="ml-auto font-mono text-2xs text-subtle">{BUILD_ID}</span></button>
           <button role="menuitem" onClick={() => setStore({ soundOn: !soundOn })} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-fg/[0.06] sm:hidden">{soundOn ? <Volume2 className="h-4 w-4 text-subtle" /> : <VolumeX className="h-4 w-4 text-subtle" />}Fill sounds: {soundOn ? 'on' : 'off'}</button>
           <button role="menuitem" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-fg/[0.06] sm:hidden">{resolvedTheme === 'dark' ? <Sun className="h-4 w-4 text-subtle" /> : <Moon className="h-4 w-4 text-subtle" />}{resolvedTheme === 'dark' ? 'Light theme' : 'Dark theme'}</button>
           <button role="menuitem" onClick={() => { clearSession(); window.location.replace(siteHref('www', '/login')); }} className="mx-1.5 mb-1.5 flex w-[calc(100%-0.75rem)] items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-down hover:bg-down/10"><LogOut className="h-4 w-4" />Sign out</button>
         </div>
       )}
+      <Diagnostics open={diagOpen} onClose={() => setDiagOpen(false)} />
     </div>
   );
 }

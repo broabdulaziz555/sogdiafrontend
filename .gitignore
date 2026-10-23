@@ -13,3 +13,6 @@ next-env.d.ts
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# written at build time by next.config.mjs
+public/version.json

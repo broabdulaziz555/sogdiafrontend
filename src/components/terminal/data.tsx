@@ -8,6 +8,7 @@ import type { Account, AccountMetrics, HistoryOrder, HistoryResponse, Position, 
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
 import { SPREAD, buildOptimistic, liveMid } from './optimistic';
+import { diag } from '@/lib/diag';
 import { useTerminal, type PendingOrder } from './store';
 import {
   DEFINITIVE_CODES, EMPTY_LEDGER, deriveView, reconcile, withRetry,
@@ -89,6 +90,20 @@ type Snap = PositionsResponse & { startedAt: number };
 /** Per-attempt deadline and total budget for sending an intent. After the budget the intent waits for the server's data to decide. */
 export const TUNING = { attemptMs: 15_000, budgetMs: 90_000 };
 const isDefinitive = (e: unknown) => e instanceof ApiError && DEFINITIVE_CODES.has(e.code);
+const errCode = (e: unknown) => (e instanceof ApiError ? `${e.code}${e.status ? ` ${e.status}` : ''}` : e instanceof Error ? e.name : 'error');
+
+/** Run one request attempt and leave a line in the Diagnostics trail (what, how long, how it ended). */
+async function traced<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  const t0 = Date.now();
+  try {
+    const r = await fn();
+    diag(`${what} ok ${Date.now() - t0}ms`);
+    return r;
+  } catch (e) {
+    diag(`${what} FAILED ${errCode(e)} after ${Date.now() - t0}ms`);
+    throw e;
+  }
+}
 
 /** Show a trade in History the moment it is closed, built from what the screen already knows; the reload that follows swaps in the server's row. */
 function addToHistory(accountId: string, p: Position) {
@@ -138,15 +153,19 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const soundOn = useTerminal((s) => s.soundOn);
 
   // ── snapshot ────────────────────────────────────────────────────────────────────────────────────────────────
+  const lastCount = useRef(-1);
   const swr = useSWR<Snap>(
     ['terminal-positions', accountId],
     async () => {
       const startedAt = Date.now();
       const res = await get<PositionsResponse>('/trade/positions', { account_id: accountId }, { timeoutMs: 20_000 });
+      const ms = Date.now() - startedAt;
+      if (ms > 1500 || res.positions.length !== lastCount.current) diag(`poll ok ${ms}ms · ${res.positions.length} position(s), ${res.pending?.length ?? 0} working order(s)`);
+      lastCount.current = res.positions.length;
       return { ...res, startedAt };
     },
     // the server runs its engine cycle on every call, so poll fast only while something is open or waiting
-    { refreshInterval: (d) => (d?.positions?.length || d?.pending?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true },
+    { refreshInterval: (d) => (d?.positions?.length || d?.pending?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true, onError: (e) => diag(`poll FAILED ${errCode(e)}`) },
   );
   const data = swr.data;
   const { mutate } = swr; // stable across renders, unlike the `swr` object
@@ -192,7 +211,10 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   useEffect(() => {
     if (!data) return;
     const { ledger: next, dropped } = reconcile(ledgerRef.current, data);
-    if (next !== ledgerRef.current) setLedger(() => next);
+    if (next !== ledgerRef.current) {
+      diag(`ledger settled by poll: opens ${Object.keys(ledgerRef.current.opens).length}→${Object.keys(next.opens).length}, closes ${Object.keys(ledgerRef.current.closes).length}→${Object.keys(next.closes).length}${dropped.notPlaced.length ? ` · NOT PLACED ${dropped.notPlaced.map((o) => o.id.slice(0, 8)).join(',')}` : ''}${dropped.notClosed.length ? ` · NOT CLOSED ${dropped.notClosed.map((c) => c.id.slice(0, 8)).join(',')}` : ''}`);
+      setLedger(() => next);
+    }
     for (const o of dropped.notPlaced) toast.error(`Order not placed · ${label(o.body.symbol)}`, 'The server never received it, so nothing was opened. You can place it again.');
     for (const c of dropped.notClosed) toast.warn('Close not confirmed', `The position ${c.id.slice(0, 8)} is still open on the server, so it is shown again.`);
     if (dropped.notClosed.length) refreshHistory();
@@ -284,18 +306,22 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     const intent: OpenIntent = { id, pos, body, createdAt: Date.now(), phase: 'sending' };
     setLedger((l) => ({ ...l, opens: { ...l.opens, [id]: intent } }));
 
+    diag(`open ${id.slice(0, 8)} ${i.side} ${i.symbol} sent${pos ? '' : ' (no live price: waiting for the server)'}`);
     const run = (async (): Promise<OpenOutcome> => {
-      const r = await withRetry(() => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.attemptMs }), { budgetMs: TUNING.budgetMs, isDefinitive });
+      const r = await withRetry(() => traced(`open ${id.slice(0, 8)} attempt`, () => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.attemptMs })), { budgetMs: TUNING.budgetMs, isDefinitive });
       if (r.ok) {
+        diag(`open ${id.slice(0, 8)} confirmed by server${r.value.replayed ? ' (was already stored)' : ''}`);
         patchOpen(id, { phase: 'acked', ackedAt: Date.now(), confirmed: r.value.order });
         setTimeout(() => { void mutate(); }, 600);
         return { ok: true, id, order: r.value.order, replayed: !!r.value.replayed };
       }
       if (r.definitive) {
+        diag(`open ${id.slice(0, 8)} REFUSED ${errCode(r.error)}`);
         dropOpen(id);
         return { ok: false, id, error: r.error };
       }
       // Every attempt went unanswered. The server may well have it; its next snapshot decides (see reconcile).
+      diag(`open ${id.slice(0, 8)} UNCONFIRMED after retries — waiting for the server's list to decide`);
       patchOpen(id, { phase: 'lost', lostAt: Date.now() });
       toast.warn(`Still confirming · ${label(i.symbol)}`, 'The server has not answered yet. The order stays on screen and is resolved as soon as it does.');
       void mutate();
@@ -331,10 +357,10 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
           if (!o.ok && !o.unconfirmed) { dropClose(id); refreshHistory(); return { id, ok: true }; }
         }
         const r = await withRetry(
-          async () => {
+          () => traced(`close ${id.slice(0, 8)} attempt`, async () => {
             try { return await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: TUNING.attemptMs }); }
             catch (e) { if (e instanceof ApiError && e.code === 'ORDER_NOT_OPEN') return null; throw e; } // already closed = done
-          },
+          }),
           { budgetMs: TUNING.budgetMs, isDefinitive },
         );
         if (r.ok) {
@@ -343,6 +369,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
           setTimeout(() => { void mutate(); }, 600);
           return { id, ok: true, res: r.value ?? undefined };
         }
+        if (!r.ok) diag(`close ${id.slice(0, 8)} ${r.definitive ? 'REFUSED' : 'UNCONFIRMED'} ${errCode(r.error)}`);
         if (r.definitive) {
           dropClose(id); // refused: the position is still open, bring it back
           refreshHistory(); // takes the provisional History row back out
