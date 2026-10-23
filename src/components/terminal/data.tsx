@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import { ApiError, get, post } from '@/lib/api';
 import { fmtSigned, fmtPrice } from '@/lib/format';
 import type { Account, AccountMetrics, Position, PositionsResponse, RiskState } from '@/lib/types';
@@ -42,6 +42,15 @@ export const useTerminalData = () => {
 };
 
 const PIN_MAX_MS = 5 * 60_000;
+/** A close we are hiding is shown again after this long if the server still lists the position (the close most likely failed). */
+const CLOSE_HIDE_MS = 90_000;
+
+/** Closed trades changed: reload every History list now and once more shortly after (the server write can lag the reply). */
+function refreshHistory() {
+  const match = (k: unknown) => Array.isArray(k) && k[0] === 'terminal-history';
+  void globalMutate(match);
+  setTimeout(() => { void globalMutate(match); }, 3000);
+}
 
 const REASON: Record<string, string> = { liquidation: 'Liquidated', stop_loss: 'Stop-loss hit', take_profit: 'Take-profit hit' };
 
@@ -106,6 +115,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const applyClosed = useCallback((id: string, r?: { account?: Account; metrics?: AccountMetrics }) => {
     setClosedIds((c) => ({ ...c, [id]: Date.now() }));
     setPinned((l) => l.filter((x) => x.pos.id !== id));
+    refreshHistory();
     void mutate((cur) => (cur ? { ...cur, positions: cur.positions.filter((p) => p.id !== id), account: r?.account ?? cur.account, metrics: r?.metrics ?? cur.metrics } : cur), { revalidate: false });
     setTimeout(() => { void mutate(); }, 1500);
   }, [mutate]);
@@ -121,13 +131,20 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     setPinned((l) => l.filter((x) => !real.includes(x.pos.id)));
     const sent = await Promise.all(real.map(async (id): Promise<CloseOutcome> => {
       try {
-        const res = await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: 30_000 });
+        const res = await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: 60_000 });
         applyClosed(id, res);
         return { id, ok: true, res };
       } catch (error) {
         // "already closed" is not a failure: it is gone on the server too, so it stays hidden and the list is refreshed.
         if (error instanceof ApiError && error.code === 'ORDER_NOT_OPEN') {
           void mutate();
+          return { id, ok: true };
+        }
+        // No answer in time (or the connection dropped): the server may well have closed it. Keep it hidden and re-read the truth
+        // instead of putting a closed position back on screen; the 90 s cap above brings it back if it really is still open.
+        if (!(error instanceof ApiError) || error.code === 'TIMEOUT') {
+          for (const ms of [2000, 6000, 15_000, 40_000]) setTimeout(() => { void mutate(); }, ms);
+          refreshHistory();
           return { id, ok: true };
         }
         setClosedIds((c) => { const n = { ...c }; delete n[id]; return n; });
@@ -158,7 +175,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     });
     setClosedIds((c) => {
       const keys = Object.keys(c);
-      const n = keys.filter((k) => (ids.has(k) || !(fresh > c[k])) && now - c[k] < PIN_MAX_MS);
+      const n = keys.filter((k) => (ids.has(k) || !(fresh > c[k])) && now - c[k] < CLOSE_HIDE_MS);
       return n.length === keys.length ? c : Object.fromEntries(n.map((k) => [k, c[k]]));
     });
   }, [data]);
