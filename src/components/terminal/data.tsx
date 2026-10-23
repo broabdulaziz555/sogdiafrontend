@@ -125,6 +125,8 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   // Likewise a position we just closed stays hidden until the server list stops returning it.
   const [pinned, setPinned] = useState<{ pos: Position; at: number }[]>([]);
   const [closedIds, setClosedIds] = useState<Record<string, number>>({});
+  const closedRef = useRef(closedIds);
+  closedRef.current = closedIds;
 
   const dropOptimistic = useCallback((id: string) => setPinned((l) => l.filter((x) => x.pos.id !== id)), []);
   const addOptimistic = useCallback((p: Position) => setPinned((l) => [{ pos: p, at: Date.now() }, ...l]), []);
@@ -202,12 +204,15 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       });
       return n.length === l.length ? l : n;
     });
+    for (const [k, at] of Object.entries(closedRef.current)) {
+      if (ids.has(k) && now - at >= CLOSE_HIDE_MS) toast.warn('Close not confirmed', 'The server did not confirm the close, so the position is shown again. It is still open.');
+    }
     setClosedIds((c) => {
       const keys = Object.keys(c);
       const n = keys.filter((k) => (ids.has(k) || !(fresh > c[k])) && now - c[k] < CLOSE_HIDE_MS);
       return n.length === keys.length ? c : Object.fromEntries(n.map((k) => [k, c[k]]));
     });
-  }, [data]);
+  }, [data, toast]);
 
   const positions = useMemo(() => {
     const server = (data?.positions ?? []).filter((p) => !closedIds[p.id]);
@@ -242,16 +247,37 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
 
   livePositions.current = live.list;
 
+  // Positions being closed are hidden from the list at once, so the account figures drop them at once too
+  // (margin freed, profit realised into balance); otherwise the panel would still count positions the list no longer shows.
+  const closing_ = useMemo(() => {
+    let margin = 0, pnl = 0, n = 0;
+    for (const p of data?.positions ?? []) if (closedIds[p.id]) { margin += p.margin; pnl += p.unrealized_pnl; n += 1; }
+    return { margin, pnl, n };
+  }, [data, closedIds]);
+
   const liveMetrics = useMemo(() => {
     const m = data?.metrics ?? null;
-    if (!m || !live.delta) return m;
-    return { ...m, equity: Math.round((m.equity + live.delta) * 100) / 100, unrealized_pnl: Math.round((m.unrealized_pnl + live.delta) * 100) / 100 };
-  }, [data, live.delta]);
+    if (!m || (!live.delta && !closing_.n)) return m;
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    return {
+      ...m,
+      equity: r2(m.equity + live.delta),
+      unrealized_pnl: r2(m.unrealized_pnl + live.delta - closing_.pnl),
+      used_margin: r2(m.used_margin - closing_.margin),
+      free_margin: r2(m.free_margin + closing_.margin + closing_.pnl),
+      open_positions: Math.max(0, m.open_positions - closing_.n),
+    };
+  }, [data, live.delta, closing_]);
+
+  const liveAccount = useMemo(() => {
+    const a = data?.account ?? null;
+    return a && closing_.n ? { ...a, balance: Math.round((Number(a.balance) + closing_.pnl) * 100) / 100 } : a;
+  }, [data, closing_]);
 
   const value = useMemo<Ctx>(
     () => ({
       accountId,
-      account: data?.account ?? null,
+      account: liveAccount,
       metrics: liveMetrics,
       risk: data?.risk ?? null,
       positions: live.list,
@@ -265,7 +291,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       applyClosed,
       closePositions,
     }),
-    [accountId, data, live.list, liveMetrics, swr.isLoading, swr.error, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed, closePositions],
+    [accountId, data, liveAccount, live.list, liveMetrics, swr.isLoading, swr.error, refresh, applyOpened, addOptimistic, dropOptimistic, applyClosed, closePositions],
   );
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
