@@ -84,7 +84,7 @@ function UserMenu() {
     <div ref={ref} className="relative">
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="grid h-9 w-9 place-items-center rounded-full border border-line bg-panel2 text-xs font-semibold hover:border-accent/60 sm:h-9 sm:w-9">{initial}</button>
       {open && (
-        <div role="menu" className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-2xl border border-line2/70 bg-panel shadow-pop">
+        <div role="menu" className="absolute right-0 top-11 z-[100] w-56 overflow-hidden rounded-2xl border border-line2/70 bg-panel shadow-pop">
           <div className="border-b border-line/60 px-4 py-3"><p className="truncate text-sm font-medium">{user.full_name || 'Trader'}</p><p className="truncate text-xs text-muted">{user.email}</p></div>
           <SiteLink site="app" path="/" role="menuitem" className="mx-1.5 mt-1.5 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-fg/[0.06]"><LayoutDashboard className="h-4 w-4 text-subtle" />Dashboard</SiteLink>
           <InstallApp onDone={() => setOpen(false)} />
@@ -108,7 +108,7 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
   const upl = metrics?.unrealized_pnl ?? 0;
 
   return (
-    <header className="flex h-[calc(3.25rem+env(safe-area-inset-top))] w-full min-w-0 shrink-0 items-center gap-2 overflow-hidden border-b border-line/50 bg-panel/60 px-3 pt-safe backdrop-blur-xl sm:h-[calc(3.5rem+env(safe-area-inset-top))] sm:gap-4 sm:px-4">
+    <header className="relative z-[70] flex h-[calc(3.25rem+env(safe-area-inset-top))] w-full min-w-0 shrink-0 items-center gap-2 border-b border-line/50 bg-panel/60 px-3 pt-safe backdrop-blur-xl sm:h-[calc(3.5rem+env(safe-area-inset-top))] sm:gap-4 sm:px-4">
       <SiteLink site="app" path="/" aria-label="SOGDIA dashboard" className="shrink-0"><Logo suffix="Terminal" className={cn('[&>span:nth-child(2)]:max-sm:hidden [&>span:nth-child(3)]:max-lg:hidden', mob && '[&>span:nth-child(n+2)]:hidden')} /></SiteLink>
 
       <label className="sr-only" htmlFor="tb-account">Trading account</label>

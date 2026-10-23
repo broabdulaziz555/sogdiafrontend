@@ -47,7 +47,7 @@ export function LocaleSwitcher({ className, align = 'right' }: { className?: str
         {locale}
       </button>
       {open && (
-        <div className={cn('absolute z-50 mt-2 w-56 animate-scale-in overflow-hidden rounded-lg card shadow-pop', align === 'right' ? 'right-0' : 'left-0')}>
+        <div className={cn('absolute z-[100] mt-2 w-56 animate-scale-in overflow-hidden rounded-lg card shadow-pop', align === 'right' ? 'right-0' : 'left-0')}>
           <div className="border-b border-line p-2">
             <input
               autoFocus
