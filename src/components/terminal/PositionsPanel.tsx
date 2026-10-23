@@ -81,7 +81,7 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
 /* ── Open positions ─────────────────────────────────────────────────────── */
 function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
   const toast = useToast();
-  const { positions, loading, error, refresh, applyClosed, closePositions } = useTerminalData();
+  const { positions, loading, error, refresh, closePositions, isUnconfirmed } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const soundOn = useTerminal((s) => s.soundOn);
   const current = useTerminal((s) => s.symbol);
@@ -99,14 +99,13 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         const r = o.res;
         toast.success(`${sym(p.symbol)} closed`, `${fmtSigned(r.order.pnl)} USDT at ${fmtPrice(r.order.close_price)}`);
         if (soundOn) beep(r.order.pnl >= 0 ? 'up' : 'down');
-        applyClosed(p.id, r);
       } else {
         const r = await post<{ closed: { pnl: number; close_price: number } }>('/trade/partial-close', { order_id: p.id, percent });
         toast.success(`${percent}% of ${sym(p.symbol)} closed`, `${fmtSigned(r.closed.pnl)} USDT at ${fmtPrice(r.closed.close_price)}`);
         void refresh();
       }
     } catch (e) { toast.error('Close failed', errMsg(e)); void refresh(); } finally { setBusy(null); }
-  }, [toast, refresh, soundOn, applyClosed, closePositions]);
+  }, [toast, refresh, soundOn, closePositions]);
 
   const flatten = useCallback(async (list: Position[]) => {
     setCloseAll(true);
@@ -142,16 +141,16 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
         <button onClick={() => share(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Share" title="Share"><Share2 className="h-3.5 w-3.5" /></button>
         <div className="relative">
-          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id || p.id.startsWith('tmp-')} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
+          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id || isUnconfirmed(p.id)} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
           {menu === p.id && (
             <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md card shadow-xl">
               {[25, 50, 75].map((n) => <button key={n} role="menuitem" onClick={() => close(p, n)} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-fg/[0.06]">Close {n}%</button>)}
             </div>)}
         </div>
-        <Button size="xs" variant="danger" loading={busy === p.id || p.id.startsWith('tmp-')} onClick={() => close(p)}>Close</Button>
+        <Button size="xs" variant="danger" loading={busy === p.id || isUnconfirmed(p.id)} onClick={() => close(p)}>Close</Button>
       </div>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [current, menu, busy, onEdit, setSymbol, close]);
+  ], [current, menu, busy, onEdit, setSymbol, close, isUnconfirmed]);
 
   return (
     <DataTable<Position>
@@ -160,7 +159,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
       initialSort={{ key: 'pnl', dir: 'asc' }}
-      toolbar={positions.length > 1 ? <Button size="xs" variant="danger" loading={closeAll} onClick={() => flatten(positions.filter((p) => !p.id.startsWith('tmp-')))}>Close all ({positions.length})</Button> : undefined}
+      toolbar={positions.length > 1 ? <Button size="xs" variant="danger" loading={closeAll} onClick={() => flatten(positions)}>Close all ({positions.length})</Button> : undefined}
       empty={{ title: 'No open positions', description: 'Orders you open appear here and update every two seconds.' }}
     />
   );
@@ -168,9 +167,8 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
 
 /* ── Pending ───────────────────────────────────────────────────────────── */
 function PendingTable() {
-  const { accountId } = useTerminalData();
+  const { accountId, cancelPending: remove } = useTerminalData();
   const all = useTerminal((s) => s.pending);
-  const remove = useTerminal((s) => s.removePending);
   const rows = useMemo(() => all.filter((o) => o.accountId === accountId), [all, accountId]);
   const prices = useTerminal((s) => s.prices);
 
@@ -192,7 +190,7 @@ function PendingTable() {
 
   return (
     <DataTable<PendingOrder> compact bare dense columns={cols} rows={rows} rowKey={(o) => o.id} pageSize={10} searchPlaceholder="Search orders"
-      footerNote="Limit and stop orders live in this browser and fire as market orders only while the terminal is open."
+      footerNote={rows.some((o) => !o.server) ? 'Some limit and stop orders are watched by this browser and fire only while the terminal is open.' : 'Limit and stop orders rest on the server and fill even when the terminal is closed.'}
       empty={{ title: 'No pending orders', description: 'Place a Limit or Stop order from the ticket to see it here.' }} />
   );
 }

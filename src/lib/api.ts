@@ -166,16 +166,10 @@ async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promi
 }
 
 export function api<T>(path: string, opts: RequestOpts = {}): Promise<T> {
-  // A position shown instantly (id "tmp-…") has no server row yet; closing / editing it would only 400.
-  const oid = (opts.body as { order_id?: unknown } | undefined)?.order_id;
-  if (typeof oid === 'string' && oid.startsWith('tmp-')) {
-    return Promise.reject(new ApiError('PENDING_CONFIRM', 'This order is still being confirmed — try again in a second.', 0));
-  }
   return send<T>(path, opts, false);
 }
 
-// Reads fail after 45 s instead of hanging forever. Generous on purpose: a slow-but-working answer must still arrive,
-// a cut-off poll leaves the terminal showing old data.
+// Reads fail after 45 s instead of hanging forever (the terminal passes its own, shorter deadline for its poll).
 export const get = <T>(path: string, query?: Query, opts: RequestOpts = {}) => api<T>(path, { timeoutMs: 45_000, ...opts, query });
 export const post = <T>(path: string, body?: unknown, opts: RequestOpts = {}) => api<T>(path, { ...opts, method: 'POST', body });
 export const put = <T>(path: string, body?: unknown, opts: RequestOpts = {}) => api<T>(path, { ...opts, method: 'PUT', body });

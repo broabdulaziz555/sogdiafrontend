@@ -39,9 +39,8 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
   showLevels: boolean; showOrders: boolean; compact: boolean;
 }) {
   const toast = useToast();
-  const { accountId, refresh, closePositions } = useTerminalData();
+  const { accountId, refresh, closePositions, cancelPending: removePending, isUnconfirmed } = useTerminalData();
   const pendingAll = useTerminal((s) => s.pending);
-  const removePending = useTerminal((s) => s.removePending);
   const [busy, setBusy] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null);
 
@@ -76,7 +75,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
         if (p.symbol !== symbol) continue;
         const long = p.side === 'long';
         const qty = fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1);
-        const opening = p.id.startsWith('tmp-');
+        const opening = isUnconfirmed(p.id);
         const pnlAt = (px: number) => p.quantity * (long ? px - p.entry_price : p.entry_price - px);
         out.push({
           key: `p:${p.id}`, price: p.entry_price, tone: 'info', pill: { label: long ? 'Long' : 'Short', side: p.side }, size: qty,
@@ -102,7 +101,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
       }
     }
     return out;
-  }, [positions, pendingAll, accountId, symbol, showLevels, showOrders, busy, closePosition, clearLevel, removePending]);
+  }, [positions, pendingAll, accountId, symbol, showLevels, showOrders, busy, closePosition, clearLevel, removePending, isUnconfirmed]);
 
   // glue every chip to its price, once per frame, straight on the DOM
   useEffect(() => {

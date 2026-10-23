@@ -31,9 +31,12 @@ function FeedStatus({ mob }: { mob?: boolean }) {
   const sock = useTerminal((s) => s.socket);
   const tick = useTerminal((s) => s.tickerSocket);
   const priceOk = useTerminal((s) => s.pricesOk);
-  const state = !priceOk ? 'down' : sock === 'live' && tick === 'live' ? 'live' : sock === 'down' && tick === 'down' ? 'down' : 'degraded';
-  const label = { live: 'Live', degraded: 'Partial', down: 'Offline' }[state];
-  const tip = `Engine prices: ${priceOk ? 'ok' : 'unreachable'} · Market data: ${sock} · 24h stats: ${tick}`;
+  const { syncing, stale } = useTerminalData();
+  const feed = !priceOk ? 'down' : sock === 'live' && tick === 'live' ? 'live' : sock === 'down' && tick === 'down' ? 'down' : 'degraded';
+  // Server link first: unconfirmed orders / a failing poll matter more than the market-data socket.
+  const state = feed === 'down' ? 'down' : stale || syncing > 0 ? 'degraded' : feed;
+  const label = feed === 'down' ? 'Offline' : stale ? 'Reconnecting' : syncing > 0 ? `Syncing ${syncing}` : { live: 'Live', degraded: 'Partial', down: 'Offline' }[feed];
+  const tip = `Engine prices: ${priceOk ? 'ok' : 'unreachable'} · Market data: ${sock} · 24h stats: ${tick} · Server: ${stale ? 'not answering, retrying' : syncing > 0 ? `${syncing} order${syncing > 1 ? 's' : ''} being confirmed` : 'in sync'}`;
   return (
     <span title={tip} role="status" aria-label={`Data feed ${label}`} className={cn('inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-3xs font-semibold text-muted max-sm:border-0 max-sm:px-1', mob && 'border-0 px-1')}>
       <span className={cn('h-2 w-2 rounded-full sm:h-1.5 sm:w-1.5', state === 'live' ? 'bg-up animate-pulse-dot' : state === 'degraded' ? 'bg-warn' : 'bg-down')} /><span className={cn('max-sm:sr-only', mob && 'sr-only')}>{label}</span>

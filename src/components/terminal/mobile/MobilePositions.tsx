@@ -26,12 +26,11 @@ function Cell({ k, children, className }: { k: string; children: React.ReactNode
 
 function MobilePositionsInner() {
   const toast = useToast();
-  const { positions, loading, error, refresh, accountId, closePositions } = useTerminalData();
+  const { positions, loading, error, refresh, accountId, closePositions, cancelPending: removePending } = useTerminalData();
   const setSymbol = useTerminal((s) => s.setSymbol);
   const set = useTerminal((s) => s.set);
   const soundOn = useTerminal((s) => s.soundOn);
   const allPending = useTerminal((s) => s.pending);
-  const removePending = useTerminal((s) => s.removePending);
   const prices = useTerminal((s) => s.prices);
   const pending = useMemo(() => allPending.filter((o) => o.accountId === accountId), [allPending, accountId]);
 
@@ -71,7 +70,7 @@ function MobilePositionsInner() {
 
   const closeAll = useCallback(async () => {
     setBusy('all');
-    const real = positions.filter((p) => !p.id.startsWith('tmp-'));
+    const real = positions;
     const res = await closePositions(real.map((p) => p.id));
     const failed = res.filter((r) => !r.ok).length;
     if (failed) toast.warn('Some positions did not close', `${failed} of ${real.length} failed — try again.`);

@@ -4,9 +4,6 @@ import { useTerminal } from './store';
 /** The engine's house spread (5 bps against the trader, on entry and again on exit) — same figure the backend applies. */
 export const SPREAD = 0.0005;
 
-/** Prefix of provisional position ids. They are never sent to the API. */
-export const TMP_PREFIX = 'tmp-';
-
 /**
  * Best live price the browser holds for a symbol: the websocket last trade for the chart symbol (updated several
  * times a second), otherwise the engine quote. Read at click time, so nothing re-renders on a tick.
@@ -25,6 +22,8 @@ export function liveQuote(symbol: string): { bid: number; ask: number } | null {
 }
 
 export interface OptimisticInput {
+  /** The order's id. The server stores the order under this same id, so the row on screen and the stored row are one. */
+  id: string;
   accountId: string;
   symbol: string;
   side: Side;
@@ -60,7 +59,7 @@ export function buildOptimistic(i: OptimisticInput): Position | null {
   const pnl = (long ? exit - entry : entry - exit) * qty;
 
   return {
-    id: `${TMP_PREFIX}${crypto.randomUUID()}`,
+    id: i.id,
     account_id: i.accountId,
     symbol: i.symbol,
     side: i.side,

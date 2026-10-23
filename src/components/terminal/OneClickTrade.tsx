@@ -12,7 +12,6 @@ import { useToast } from '@/components/ui/Toast';
 import { useTerminalData } from './data';
 import { beep } from './sound';
 import { useTerminal } from './store';
-import { buildOptimistic } from './optimistic';
 
 const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
 
@@ -23,7 +22,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
  */
 function OneClickTradeInner({ className }: { className?: string }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened, closePositions, addOptimistic, dropOptimistic } = useTerminalData();
+  const { account, metrics, positions, refresh, openPosition, closePositions, isUnconfirmed } = useTerminalData();
   const [closing, setClosing] = useState(false);
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
@@ -47,23 +46,19 @@ function OneClickTradeInner({ className }: { className?: string }) {
 
   const submit = useCallback((side: Side) => {
     setConfirm(null);
-    const margin = floorCents(m);
-    // Instant: show the position at the live market price now; the server's confirmed row replaces it on reply.
-    const tmp = buildOptimistic({ accountId, symbol, side, leverage, margin });
-    if (tmp) addOptimistic(tmp);
-    post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', { account_id: accountId, symbol, side, leverage, margin }, { timeoutMs: 30_000 })
-      .then((res) => {
-        applyOpened(res, tmp?.id);
-        toast.success(`${side === 'long' ? 'Long' : 'Short'} ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+    // Instant: the position is on screen at the live price now; the order is sent behind it with its own id and retried
+    // until the server answers (see data.tsx).
+    void openPosition({ symbol, side, leverage, margin: floorCents(m) }).then((o) => {
+      if (o.ok) {
+        toast.success(`${side === 'long' ? 'Long' : 'Short'} ${base}/USDT`, `${leverage}× at ${fmtPrice(o.order.entry_price)} · margin ${fmtUsd(o.order.margin)}`);
         if (soundOn) beep(side === 'long' ? 'up' : 'down');
-      }, (e) => {
-        if (tmp) dropOptimistic(tmp.id);
-        toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
-        void refresh(); // on a timeout the order may still have gone through; either way re-read the truth
-      });
-  }, [accountId, symbol, leverage, m, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic]);
+      } else if (!o.unconfirmed) {
+        toast.error('Order rejected', `${errMsg(o.error)}${o.error instanceof ApiError && o.error.code ? ` [${o.error.code}]` : ''}`);
+      }
+    });
+  }, [symbol, leverage, m, toast, base, soundOn, openPosition]);
 
-  const mine = useMemo(() => positions.filter((p) => p.symbol === symbol && !p.id.startsWith('tmp-')), [positions, symbol]);
+  const mine = useMemo(() => positions.filter((p) => p.symbol === symbol && !isUnconfirmed(p.id)), [positions, symbol, isUnconfirmed]);
   const minePnl = mine.reduce((a, p) => a + p.unrealized_pnl, 0);
   const closeAll = async () => {
     if (!mine.length || closing) return;

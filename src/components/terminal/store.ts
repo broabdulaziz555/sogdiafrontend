@@ -20,6 +20,11 @@ export interface PendingOrder {
   createdAt: number;
   status: 'working' | 'filling' | 'failed';
   error?: string;
+  /** Rests on the server (survives a closed tab). Orders without this flag are watched by the browser. */
+  server?: boolean;
+  /** Server orders: 'sending' until the server has acknowledged the placement (it is re-sent until then). */
+  sync?: 'sending' | 'synced';
+  syncedAt?: number;
 }
 
 export type MobileTab = 'markets' | 'chart' | 'trade' | 'positions' | 'history';

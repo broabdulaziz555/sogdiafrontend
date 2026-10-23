@@ -104,8 +104,27 @@ export interface LiquidatedEvent {
   reason?: 'liquidation' | 'stop_loss' | 'take_profit';
 }
 
+/** A limit / stop order resting on the server. */
+export interface ServerPending {
+  id: string;
+  account_id: string;
+  symbol: string;
+  side: Side;
+  kind: 'limit' | 'stop';
+  trigger_price: number;
+  leverage: number;
+  margin: number;
+  take_profit: number | null;
+  stop_loss: number | null;
+  status: 'working' | 'failed';
+  error: string | null;
+  created_at: string;
+}
+
 export interface PositionsResponse {
   positions: Position[];
+  /** Working (and recently failed) server-side limit / stop orders. Absent on an older backend. */
+  pending?: ServerPending[];
   liquidated: LiquidatedEvent[];
   account: Account;
   metrics: AccountMetrics;

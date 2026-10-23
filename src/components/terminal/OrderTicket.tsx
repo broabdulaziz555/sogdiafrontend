@@ -15,7 +15,6 @@ import { beep } from './sound';
 import { useTerminal } from './store';
 import { ticketApi } from './ticketApi';
 import { ddUsage } from './risk';
-import { buildOptimistic } from './optimistic';
 
 type OType = 'market' | 'limit' | 'stop';
 const LEV_PRESETS = [1, 5, 10, 25, 50, 100, 200];
@@ -57,7 +56,7 @@ function Row({ k, v, tone, tip }: { k: string; v: React.ReactNode; tone?: 'up' |
 
 function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPlaced?: () => void }) {
   const toast = useToast();
-  const { accountId, account, metrics, positions, refresh, applyOpened, addOptimistic, dropOptimistic } = useTerminalData();
+  const { accountId, account, metrics, positions, openPosition, placePending } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const px = useTerminal((s) => s.prices[s.symbol]);
   const lev = useTerminal((s) => s.leverage);
@@ -65,7 +64,6 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const soundOn = useTerminal((s) => s.soundOn);
   const picked = useTerminal((s) => s.pickedPrice);
   const set = useTerminal((s) => s.set);
-  const addPending = useTerminal((s) => s.addPending);
 
   const [side, setSide] = useState<Side>(initialSide ?? 'long');
   const [type, setType] = useState<OType>('market');
@@ -149,38 +147,28 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const doSubmit = useCallback((s: Side) => {
     const marginRounded = floorCents(m);
     setConfirm(null);
+    const tp = Number.isFinite(tpN) ? tpN : null;
+    const sl = Number.isFinite(slN) ? slN : null;
     if (type === 'market') {
-      const body: Record<string, unknown> = { account_id: accountId, symbol, side: s, leverage, margin: marginRounded };
-      if (Number.isFinite(tpN)) body.take_profit = tpN;
-      if (Number.isFinite(slN)) body.stop_loss = slN;
-
-      // Instant: the position goes on screen at the live market price this very moment and the form is free again.
-      // The server fill happens behind it; its confirmed row (authoritative price) replaces the provisional one.
-      const tmp = buildOptimistic({ accountId, symbol, side: s, leverage, margin: marginRounded, tp: Number.isFinite(tpN) ? tpN : null, sl: Number.isFinite(slN) ? slN : null });
-      if (tmp) addOptimistic(tmp);
+      // Instant: the position goes on screen at the live price this very moment and the form is free again. The order is
+      // sent behind it with its own id and retried until the server answers (see data.tsx), so it can neither vanish nor double.
       setMargin(''); setTp(''); setSl(''); setTouched(false);
       onPlaced?.();
-
-      post<{ order: Position; account?: Account; metrics?: AccountMetrics }>('/trade/open', body, { timeoutMs: 30_000 })
-        .then((res) => {
-          applyOpened(res, tmp?.id);
-          toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(res.order.entry_price)} · margin ${fmtUsd(res.order.margin)}`);
+      void openPosition({ symbol, side: s, leverage, margin: marginRounded, tp, sl }).then((o) => {
+        if (o.ok) {
+          toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(o.order.entry_price)} · margin ${fmtUsd(o.order.margin)}`);
           if (soundOn) beep(s === 'long' ? 'up' : 'down');
-        }, (e) => {
-          if (tmp) dropOptimistic(tmp.id);
-          toast.error('Order rejected', `${errMsg(e)}${e instanceof ApiError && e.code ? ` [${e.code}]` : ''}`);
-          void refresh(); // on a timeout the order may still have gone through; either way re-read the truth
-        });
-    } else {
-      addPending({
-        id: crypto.randomUUID(), accountId, symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx,
-        leverage, margin: marginRounded, tp: Number.isFinite(tpN) ? tpN : null, sl: Number.isFinite(slN) ? slN : null, createdAt: Date.now(), status: 'working',
+        } else if (!o.unconfirmed) {
+          toast.error('Order rejected', `${errMsg(o.error)}${o.error instanceof ApiError && o.error.code ? ` [${o.error.code}]` : ''}`);
+        }
       });
-      toast.info('Conditional order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)} — kept in this browser while the terminal is open.`);
+    } else {
+      void placePending({ symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx, leverage, margin: marginRounded, tp, sl });
+      toast.info('Order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)}`);
       setMargin(''); setPrice(''); setTouched(false);
       onPlaced?.();
     }
-  }, [m, type, accountId, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, refresh, applyOpened, addOptimistic, dropOptimistic, addPending, onPlaced]);
+  }, [m, type, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, openPosition, placePending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);
