@@ -7,7 +7,7 @@ import { fmtSigned, fmtPrice } from '@/lib/format';
 import type { Account, AccountMetrics, Position, PositionsResponse, RiskState, ServerPending, Side } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
-import { deriveMetrics, markPosition, normalizePosition } from './liveprice';
+import { deriveMetrics, markPosition, normalizePosition, optimisticPosition } from './liveprice';
 import { diag } from '@/lib/diag';
 import { useTerminal, type PendingOrder } from './store';
 
@@ -17,10 +17,12 @@ import { useTerminal, type PendingOrder } from './store';
  *   • ONE SWR query, GET /trade/positions, is the only source of what is open. The table, the account panel and the
  *     chart all read it.
  *   • Open / close / place-order are ordinary awaited requests (30 s deadline, no retries). While one is running the
- *     button that started it shows a spinner. Nothing is drawn or hidden before the server has answered.
- *   • When the server answers 200, the positions query is invalidated and the table is re-read from the database.
- *   • A request that fails or times out changes nothing on screen. The trader is told to check their positions, and the
- *     positions query is re-read, so what is shown is whatever the database holds.
+ *     button that started it shows a spinner.
+ *   • Open is optimistic, with SWR's own mutation: the new row (flagged `pending`) is in the table at once. On 200 the
+ *     positions query is re-read and the database's row replaces it; on an error the row is taken out again and the
+ *     trader is told. SWR ignores poll results while a mutation runs, so a poll cannot remove or duplicate the row.
+ *   • Close is not optimistic: the row stays (with a spinner) until the database no longer lists it.
+ *   • After a timeout the positions are re-read, so the screen ends up showing whatever the database holds.
  */
 
 /** Deadline for POST /trade/open, /trade/close and the order endpoints. Generous on purpose: a slow answer is not a failure. */
@@ -241,6 +243,11 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   }, []);
 
   // ── open ─────────────────────────────────────────────────────────────────────────────────────────────────
+  // SWR's optimistic mutation: the row is shown at once, the POST runs, then the positions are re-read and the real row
+  // replaces it. While a mutation runs SWR ignores the results of polls, so a poll can neither remove nor duplicate the
+  // row; on an error SWR puts the previous data back.
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const opening = useRef(new Map<string, Promise<OpenOutcome>>());
 
   const openPosition = useCallback((i: OpenInput): Promise<OpenOutcome> => {
@@ -252,11 +259,24 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     if (i.tp != null) body.take_profit = i.tp;
     if (i.sl != null) body.stop_loss = i.sl;
 
+    const row = dataRef.current ? optimisticPosition({ id, accountId, symbol: i.symbol, side: i.side, leverage: i.leverage, margin: i.margin, tp: i.tp, sl: i.sl }) : null;
+
     const run = track(async (): Promise<OpenOutcome> => {
+      let reply: { order: Position; replayed?: boolean } | undefined;
       try {
-        const r = await traced(`open ${id.slice(0, 8)} ${i.side} ${i.symbol}`, () => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.tradeMs }));
-        await invalidate(); // re-read the table from the database
-        return { ok: true, id, order: r.order, replayed: !!r.replayed };
+        await mutate(
+          async () => {
+            reply = await traced(`open ${id.slice(0, 8)} ${i.side} ${i.symbol}`, () => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.tradeMs }));
+            return undefined;
+          },
+          {
+            ...(row && { optimisticData: (cur?: PositionsResponse) => (cur ? { ...cur, positions: [row, ...cur.positions.filter((x) => x.id !== id)] } : cur) as PositionsResponse }),
+            rollbackOnError: true, // the optimistic row goes away if the request fails
+            populateCache: false, // the reply is not written to the cache: the refetch below is
+            revalidate: true, // 200 -> GET /trade/positions at once; its rows replace the optimistic one
+          },
+        );
+        return { ok: true, id, order: reply!.order, replayed: !!reply!.replayed };
       } catch (error) {
         const timedOut = isUnanswered(error);
         if (timedOut) {
@@ -268,7 +288,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     }).finally(() => { opening.current.delete(id); });
     opening.current.set(id, run);
     return run;
-  }, [accountId, track, invalidate, mutate, toast]);
+  }, [accountId, track, mutate, toast]);
 
   // ── close ────────────────────────────────────────────────────────────────────────────────────────────────
   const closingRuns = useRef(new Map<string, Promise<CloseOutcome>>());
@@ -287,6 +307,8 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     setClosing(id, true);
     const run = track(async (): Promise<CloseOutcome> => {
       try {
+        const stillOpening = opening.current.get(id);
+        if (stillOpening && !(await stillOpening).ok) return { id, ok: true }; // never opened: nothing to close
         const res = await traced(`close ${id.slice(0, 8)}`, async () => {
           try { return await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: TUNING.tradeMs }); }
           catch (e) { if (e instanceof ApiError && e.code === 'ORDER_NOT_OPEN') return null; throw e; } // already closed = done

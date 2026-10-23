@@ -1,4 +1,4 @@
-import type { Account, AccountMetrics, Position } from '@/lib/types';
+import type { Account, AccountMetrics, Position, Side } from '@/lib/types';
 import { useTerminal } from './store';
 
 /** The engine's house spread (5 bps against the trader, on entry and again on exit) — same figure the backend applies. */
@@ -39,6 +39,41 @@ export function normalizePosition(raw: Position): Position {
     p[k] = v == null || v === (0 as unknown) ? null : Number.isFinite(Number(v)) ? Number(v) : null;
   }
   return p;
+}
+
+export interface OptimisticInput {
+  /** The order id sent to the server; the stored row has the same id, so the real row replaces this one in place. */
+  id: string;
+  accountId: string;
+  symbol: string;
+  side: Side;
+  leverage: number;
+  margin: number;
+  tp?: number | null;
+  sl?: number | null;
+}
+
+/**
+ * The row shown the moment Long / Short is pressed: the live price with the house spread, flagged `pending`. It exists
+ * only in the SWR cache entry while the request runs; the refetch after the 200 (or the rollback on an error) replaces it.
+ * Null when the browser has no price yet (then nothing is drawn until the server answers).
+ */
+export function optimisticPosition(i: OptimisticInput): Position | null {
+  const mid = liveMid(i.symbol);
+  if (mid == null) return null;
+  const long = i.side === 'long';
+  const entry = long ? mid * (1 + SPREAD) : mid * (1 - SPREAD);
+  const size = i.margin * i.leverage;
+  const qty = size / entry;
+  const exit = long ? mid * (1 - SPREAD) : mid * (1 + SPREAD);
+  const pnl = (long ? exit - entry : entry - exit) * qty;
+  return {
+    id: i.id, account_id: i.accountId, symbol: i.symbol, side: i.side, leverage: i.leverage, margin: i.margin,
+    position_size: size, quantity: qty, entry_price: entry,
+    liquidation_price: long ? entry * (1 - 1 / i.leverage) : entry * (1 + 1 / i.leverage),
+    mark_price: mid, unrealized_pnl: pnl, unrealized_pnl_pct: i.margin > 0 ? (pnl / i.margin) * 100 : 0,
+    status: 'open', created_at: new Date().toISOString(), take_profit: i.tp ?? null, stop_loss: i.sl ?? null, pending: true,
+  };
 }
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;

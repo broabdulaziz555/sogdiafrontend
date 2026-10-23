@@ -70,8 +70,8 @@ function ChartPositionsInner() {
                 <span className="num block truncate font-mono text-2xs text-subtle">{fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1)} @ {fmtPrice(p.entry_price)}</span>
               </button>
               <span className={cn('num font-mono text-sm font-semibold', pnlClass(p.unrealized_pnl))}>{fmtSigned(p.unrealized_pnl)}</span>
-              <button onClick={() => press(p)} disabled={busy === p.id} className={cn('h-9 min-w-[72px] rounded-md border px-2 text-xs font-semibold disabled:opacity-50', armed === p.id ? 'border-down bg-down text-white' : 'border-down/30 bg-down/10 text-down')}>
-                {busy === p.id ? '…' : armed === p.id ? 'Confirm' : 'Close'}
+              <button onClick={() => press(p)} disabled={busy === p.id || p.pending} className={cn('h-9 min-w-[72px] rounded-md border px-2 text-xs font-semibold disabled:opacity-50', armed === p.id ? 'border-down bg-down text-white' : 'border-down/30 bg-down/10 text-down')}>
+                {busy === p.id || p.pending ? '…' : armed === p.id ? 'Confirm' : 'Close'}
               </button>
             </li>
           ))}

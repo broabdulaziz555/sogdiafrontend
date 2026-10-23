@@ -135,7 +135,7 @@ function MobilePositionsInner() {
                         </dl>
 
                         <div className="mt-3 flex items-center gap-2">
-                          <Button size="md" variant="danger" className="h-11 flex-1 text-base" loading={busy === p.id} onClick={() => arm(key, () => void close(p, 100))}>
+                          <Button size="md" variant="danger" className="h-11 flex-1 text-base" loading={busy === p.id || p.pending} onClick={() => arm(key, () => void close(p, 100))}>
                             {armed === key ? 'Tap again to close' : 'Close position'}
                           </Button>
                           <Button size="md" variant={partialFor === p.id ? 'outline' : 'secondary'} className="h-11 w-11 px-0" onClick={() => setPartialFor(partialFor === p.id ? null : p.id)} aria-expanded={partialFor === p.id} aria-label="More actions"><MoreHorizontal className="h-5 w-5" /></Button>

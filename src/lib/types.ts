@@ -96,6 +96,8 @@ export interface Position {
   stop_loss?: number | null;
   /** 'fallback': no live price was available, so the open price stands in for the mark. */
   price_source?: 'live' | 'fallback';
+  /** Client-side only: shown the instant the trader pressed Long/Short, until the server's own row replaces it. */
+  pending?: boolean;
 }
 
 export interface LiquidatedEvent {

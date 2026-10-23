@@ -122,13 +122,25 @@ g.fetch = async (input: any, init: any = {}) => {
   let p!: Promise<any>;
   await act(async () => { p = open('aaaaaaaa-0000-4000-8000-000000000001'); await sleep(100); });
   check('A: request in flight is reported (button spinner)', api.inFlight === 1, api.inFlight);
-  check('A: nothing is drawn before the server has answered', api.positions.length === 0 && srv.open.length === 0, { shown: api.positions.length });
+  check('A: the row is on screen at once, flagged pending, before the server has stored anything', api.positions.length === 1 && api.positions[0].pending === true && srv.open.length === 0, { shown: api.positions.length, pending: api.positions[0]?.pending });
   let oa: any;
   await act(async () => { oa = await p; });
-  check('A: 200 -> position is in the table when the request resolves (table re-read)', oa.ok && api.positions.length === 1 && api.inFlight === 0, { oa: oa.ok, shown: api.positions.length });
+  check('A: 200 -> the database row replaced the optimistic one (same id, no longer pending, one row)', oa.ok && api.positions.length === 1 && !api.positions[0].pending && api.positions[0].id === 'aaaaaaaa-0000-4000-8000-000000000001' && api.inFlight === 0, { oa: oa.ok, shown: api.positions.map((x: any) => [x.id.slice(-1), x.pending]) });
   await settle(300);
   check('A: still exactly one position, list and panel agree on every render', api.positions.length === 1 && srv.open.length === 1 && consistent(), renders.filter((r) => r.positions !== r.open));
   check('A: the open request was sent once (no retries)', srv.counts['/trade/open'] === 1, srv.counts);
+
+  // A2 — polls that land while the open is still running can neither remove nor duplicate the row
+  await mount();
+  srv.fault = (path) => (path === '/trade/open' ? 'slow' : 'ok');
+  mark = renders.length;
+  let p2!: Promise<any>;
+  await act(async () => { p2 = open('a2a2a2a2-0000-4000-8000-000000000001'); await sleep(50); });
+  await act(async () => { await api.refresh(); await sleep(100); await api.refresh(); await sleep(100); });
+  check('A2: still exactly one (pending) row after two polls answered mid-request', api.positions.length === 1 && api.positions[0].pending === true, api.positions.map((x: any) => x.pending));
+  await act(async () => { await p2; }); await settle(300);
+  const tlA2 = renders.slice(mark).map((r) => r.positions);
+  check('A2: never 0 and never 2 rows in any committed render, ends with the real row', tlA2.length > 0 && tlA2.every((n) => n === 1) && !api.positions[0].pending && srv.open.length === 1, tlA2);
 
   // B — reply lost (server stored the order): reported as timed out, NOT retried, table shows what the database holds
   await mount();
@@ -137,15 +149,18 @@ g.fetch = async (input: any, init: any = {}) => {
   await act(async () => { ob = await open('bbbbbbbb-0000-4000-8000-000000000001'); });
   await settle(300);
   check('B: reported as timed-out, with no automatic retry', ob.ok === false && ob.timedOut === true && srv.counts['/trade/open'] === 1, { ob: ob.timedOut, counts: srv.counts });
-  check('B: the position that exists on the server is shown (re-read after the failure)', srv.open.length === 1 && api.positions.length === 1, { stored: srv.open.length, shown: api.positions.length });
+  check('B: the optimistic row is gone and the row the server did store is shown (one row, not pending)', srv.open.length === 1 && api.positions.length === 1 && !api.positions[0].pending, { stored: srv.open.length, shown: api.positions.map((x: any) => x.pending) });
 
   // C — no answer at all (deadline): nothing was stored, nothing is drawn, no ghost, no retry
   await mount();
   srv.fault = (path) => (path === '/trade/open' ? 'hang' : 'ok');
   let oc: any;
-  await act(async () => { oc = await open('cccccccc-0000-4000-8000-000000000001'); });
+  let pcc!: Promise<any>;
+  await act(async () => { pcc = open('cccccccc-0000-4000-8000-000000000001'); await sleep(100); });
+  check('C: while the request hangs the pending row is visible', api.positions.length === 1 && api.positions[0].pending === true, api.positions.length);
+  await act(async () => { oc = await pcc; });
   await settle(300);
-  check('C: deadline -> timedOut, table unchanged and empty', oc.ok === false && oc.timedOut === true && api.positions.length === 0 && srv.counts['/trade/open'] === 1, { oc: oc.timedOut, shown: api.positions.length, counts: srv.counts });
+  check('C: deadline -> timedOut, the optimistic row is removed, table empty', oc.ok === false && oc.timedOut === true && api.positions.length === 0 && srv.counts['/trade/open'] === 1, { oc: oc.timedOut, shown: api.positions.length, counts: srv.counts });
   check('C: trading is possible again (no request stuck)', api.inFlight === 0, api.inFlight);
 
   // D — server error (500): not a timeout, reported with its error, table unchanged
@@ -154,13 +169,13 @@ g.fetch = async (input: any, init: any = {}) => {
   let od: any;
   await act(async () => { od = await open('dddddddd-0000-4000-8000-000000000001'); });
   check('D: 500 -> failure with the server error, not a timeout', od.ok === false && od.timedOut === false && od.error?.code === 'INTERNAL_ERROR', od);
-  check('D: nothing on screen', api.positions.length === 0);
+  check('D: the optimistic row is removed', api.positions.length === 0);
 
   // E — refusal (margin): error returned, table unchanged
   await mount();
   let oe: any;
   await act(async () => { oe = await open('eeeeeeee-0000-4000-8000-000000000001', 999_999); });
-  check('E: INSUFFICIENT_MARGIN -> rejected, nothing opened', oe.ok === false && !oe.timedOut && oe.error?.code === 'INSUFFICIENT_MARGIN' && api.positions.length === 0 && srv.open.length === 0, oe);
+  check('E: INSUFFICIENT_MARGIN -> rejected, the optimistic row is removed, nothing opened', oe.ok === false && !oe.timedOut && oe.error?.code === 'INSUFFICIENT_MARGIN' && api.positions.length === 0 && srv.open.length === 0, oe);
 
   // F — close: the row stays (with a spinner) until the server confirms
   await mount();

@@ -154,8 +154,9 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
     const tp = Number.isFinite(tpN) ? tpN : null;
     const sl = Number.isFinite(slN) ? slN : null;
     if (type === 'market') {
-      // Plain request / response: the button spins until the server answers (up to 30 s). The form is cleared and the
-      // position appears only after the server has stored it and the table has been re-read.
+      // The button spins until the server answers (up to 30 s). The new row is in the table at once (flagged pending, see
+      // data.tsx) and is replaced by the database's row after the 200; if the order fails the row is removed again.
+      // The form is cleared only once the order is in.
       sending.current = true; setSubmitting(true);
       try {
         const o = await openPosition({ symbol, side: s, leverage, margin: marginRounded, tp, sl });

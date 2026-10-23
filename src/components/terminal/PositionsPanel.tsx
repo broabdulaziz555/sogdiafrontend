@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { Share2, SlidersHorizontal, X } from 'lucide-react';
+import { Loader2, Share2, SlidersHorizontal, X } from 'lucide-react';
 import { errMsg, get, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, qtyDecimals, shortId, timeHMS } from '@/lib/format';
@@ -121,7 +121,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
 
   const cols: Column<Position>[] = useMemo(() => [
     { key: 'symbol', header: 'Symbol', sortValue: (p) => p.symbol, searchText: (p) => `${p.symbol} ${p.side} ${p.id}`,
-      cell: (p) => <button onClick={() => setSymbol(p.symbol)} className={cn('text-left font-medium hover:text-accent', p.symbol === current && 'text-accent')}>{sym(p.symbol)}</button> },
+      cell: (p) => <span className="inline-flex items-center gap-1.5"><button onClick={() => setSymbol(p.symbol)} className={cn('text-left font-medium hover:text-accent', p.symbol === current && 'text-accent')}>{sym(p.symbol)}</button>{p.pending && <span className="inline-flex items-center gap-1 text-2xs text-subtle"><Loader2 className="h-3 w-3 animate-spin" aria-hidden />Opening</span>}</span> },
     { key: 'ticket', header: 'Ticket', hideBelow: '2xl', sortValue: (p) => p.id, cell: (p) => <span className="num font-mono text-xs text-muted">#{shortId(p.id)}</span> },
     { key: 'time', header: 'Time', hideBelow: '2xl', sortValue: (p) => Date.parse(p.created_at), cell: (p) => <span className="num whitespace-nowrap text-xs text-muted">{dateTime(p.created_at)}</span> },
     { key: 'type', header: 'Type', sortValue: (p) => p.side, cell: (p) => <TypeTag side={p.side} /> },
@@ -141,20 +141,20 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
         <button onClick={() => share(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Share" title="Share"><Share2 className="h-3.5 w-3.5" /></button>
         <div className="relative">
-          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id || isClosing(p.id)} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
+          <button onClick={() => setMenu(menu === p.id ? null : p.id)} disabled={busy === p.id || isClosing(p.id) || p.pending} aria-haspopup="menu" aria-expanded={menu === p.id} className="h-6 rounded border border-line px-1.5 text-2xs font-medium text-muted hover:border-subtle hover:text-fg disabled:opacity-40" title="Partial close">%</button>
           {menu === p.id && (
             <div role="menu" className="absolute right-0 top-7 z-20 w-24 overflow-hidden rounded-md card shadow-xl">
               {[25, 50, 75].map((n) => <button key={n} role="menuitem" onClick={() => close(p, n)} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-fg/[0.06]">Close {n}%</button>)}
             </div>)}
         </div>
-        <Button size="xs" variant="danger" loading={busy === p.id || isClosing(p.id)} onClick={() => close(p)}>Close</Button>
+        <Button size="xs" variant="danger" loading={busy === p.id || isClosing(p.id)} disabled={p.pending} onClick={() => close(p)}>Close</Button>
       </div>) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [current, menu, busy, onEdit, setSymbol, close, isClosing]);
 
   return (
     <DataTable<Position>
-      bare zebra
+      bare zebra rowClassName={(p) => (p.pending ? 'opacity-60' : undefined)}
       columns={cols} rows={positions} rowKey={(p) => p.id}
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"

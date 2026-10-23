@@ -75,11 +75,12 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
         if (p.symbol !== symbol) continue;
         const long = p.side === 'long';
         const qty = fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1);
-        const closingNow = isClosing(p.id);
+        const opening = !!p.pending;
+        const closingNow = isClosing(p.id) || opening;
         const pnlAt = (px: number) => p.quantity * (long ? px - p.entry_price : p.entry_price - px);
         out.push({
           key: `p:${p.id}`, price: p.entry_price, tone: 'info', pill: { label: long ? 'Long' : 'Short', side: p.side }, size: qty,
-          value: { text: closingNow ? 'Closing…' : `${fmtSigned(p.unrealized_pnl)} USD`, tone: closingNow ? undefined : p.unrealized_pnl >= 0 ? 'up' : 'down' },
+          value: { text: opening ? 'Opening…' : closingNow ? 'Closing…' : `${fmtSigned(p.unrealized_pnl)} USD`, tone: closingNow ? undefined : p.unrealized_pnl >= 0 ? 'up' : 'down' },
           closeLabel: 'Close position', busy: busy === p.id || closingNow, onClose: () => void closePosition(p),
         });
         if (p.take_profit) out.push({ key: `p:${p.id}:tp`, price: p.take_profit, tone: 'up', dotted: true, size: qty, value: { text: `${fmtSigned(pnlAt(p.take_profit))} USD`, tone: 'up' }, closeLabel: 'Remove take-profit', busy: busy === `${p.id}:tp` || closingNow, onClose: () => void clearLevel(p, 'tp') });
