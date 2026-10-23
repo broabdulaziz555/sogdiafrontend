@@ -84,7 +84,7 @@ function UserMenu() {
     <div ref={ref} className="relative">
       <button onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="grid h-9 w-9 place-items-center rounded-full border border-line bg-panel2 text-xs font-semibold hover:border-accent/60 sm:h-9 sm:w-9">{initial}</button>
       {open && (
-        <div role="menu" className="absolute right-0 top-11 z-[100] w-56 overflow-hidden rounded-2xl border border-line2/70 bg-panel shadow-pop">
+        <div role="menu" className="absolute right-0 top-11 z-[9999] w-56 overflow-hidden rounded-2xl border border-line2/70 bg-panel shadow-pop">
           <div className="border-b border-line/60 px-4 py-3"><p className="truncate text-sm font-medium">{user.full_name || 'Trader'}</p><p className="truncate text-xs text-muted">{user.email}</p></div>
           <SiteLink site="app" path="/" role="menuitem" className="mx-1.5 mt-1.5 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm hover:bg-fg/[0.06]"><LayoutDashboard className="h-4 w-4 text-subtle" />Dashboard</SiteLink>
           <InstallApp onDone={() => setOpen(false)} />

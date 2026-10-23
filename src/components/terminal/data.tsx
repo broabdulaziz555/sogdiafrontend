@@ -94,8 +94,8 @@ export const useTerminalData = () => {
 };
 
 const errCode = (e: unknown) => (e instanceof ApiError ? `${e.code}${e.status ? ` ${e.status}` : ''}` : e instanceof Error ? e.name : 'error');
-/** No answer at all (as opposed to an answer saying no). */
-const isUnanswered = (e: unknown) => e instanceof ApiError && (e.code === 'TIMEOUT' || e.code === 'NETWORK_ERROR');
+/** No answer, or a server-side failure after which a write may or may not have landed (as opposed to an answer saying no). */
+const isUnanswered = (e: unknown) => e instanceof ApiError && (e.code === 'TIMEOUT' || e.code === 'NETWORK_ERROR' || e.status >= 500);
 
 /** Run one request and leave a line in the Diagnostics trail (what, how long, how it ended). */
 async function traced<T>(what: string, fn: () => Promise<T>): Promise<T> {

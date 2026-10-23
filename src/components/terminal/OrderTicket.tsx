@@ -178,7 +178,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           toast.info('Order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)}`);
           setMargin(''); setPrice(''); setTouched(false);
           onPlaced?.();
-        } else if (!(r.error instanceof ApiError && (r.error.code === 'TIMEOUT' || r.error.code === 'NETWORK_ERROR'))) {
+        } else if (!(r.error instanceof ApiError && (r.error.code === 'TIMEOUT' || r.error.code === 'NETWORK_ERROR' || r.error.status >= 500))) {
           toast.error('Order rejected', `${errMsg(r.error)}${r.error instanceof ApiError && r.error.code ? ` [${r.error.code}]` : ''}`);
         }
       } finally { sending.current = false; setSubmitting(false); }

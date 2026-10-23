@@ -168,7 +168,7 @@ g.fetch = async (input: any, init: any = {}) => {
   srv.fault = (path) => (path === '/trade/open' ? { error: 'INTERNAL_ERROR', status: 500 } : 'ok');
   let od: any;
   await act(async () => { od = await open('dddddddd-0000-4000-8000-000000000001'); });
-  check('D: 500 -> failure with the server error, not a timeout', od.ok === false && od.timedOut === false && od.error?.code === 'INTERNAL_ERROR', od);
+  check('D: 500 -> outcome unknown: reported like a timeout, with the server error attached', od.ok === false && od.timedOut === true && od.error?.code === 'INTERNAL_ERROR', od);
   check('D: the optimistic row is removed', api.positions.length === 0);
 
   // E — refusal (margin): error returned, table unchanged
