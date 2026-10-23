@@ -25,7 +25,7 @@ const floorCents = (n: number) => Math.floor(n * 100 + 1e-6) / 100;
 
 function NumInput({ id, value, onChange, suffix, placeholder, invalid, disabled, inputRef, step }: { id: string; value: string; onChange: (v: string) => void; suffix?: string; placeholder?: string; invalid?: boolean; disabled?: boolean; inputRef?: React.Ref<HTMLInputElement>; step?: string }) {
   return (
-    <div className={cn('relative flex h-10 items-center rounded-xl border bg-panel2/80 max-lg:h-11 transition focus-within:border-accent/70 focus-within:ring-4 focus-within:ring-accent/10', invalid ? 'border-down' : 'border-line hover:border-line2', disabled && 'opacity-50')}>
+    <div className={cn('relative flex h-8 items-center rounded-lg border bg-panel2/80 max-lg:h-11 transition focus-within:border-accent/70 focus-within:ring-4 focus-within:ring-accent/10', invalid ? 'border-down' : 'border-line hover:border-line2', disabled && 'opacity-50')}>
       <input
         id={id}
         ref={inputRef}
@@ -38,9 +38,9 @@ function NumInput({ id, value, onChange, suffix, placeholder, invalid, disabled,
         aria-invalid={invalid || undefined}
         data-step={step}
         onChange={(e) => { const v = e.target.value.replace(',', '.'); if (/^\d*\.?\d*$/.test(v)) onChange(v); }}
-        className="num h-full min-w-0 flex-1 bg-transparent px-3 text-sm font-medium outline-none placeholder:text-subtle max-lg:text-base"
+        className="num h-full min-w-0 flex-1 bg-transparent px-2.5 text-sm font-medium outline-none placeholder:text-subtle max-lg:text-base"
       />
-      {suffix && <span className="pr-3 text-xs text-subtle">{suffix}</span>}
+      {suffix && <span className="pr-2.5 text-xs text-subtle">{suffix}</span>}
     </div>
   );
 }
@@ -206,12 +206,12 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const sideColor = side === 'long' ? 'up' : 'down';
 
   return (
-    <section className="flex flex-col gap-4 p-4" aria-label="Order ticket">
+    <section className="flex flex-col gap-2.5 p-3" aria-label="Order ticket">
       {/* Long / Short */}
       <div role="tablist" aria-label="Direction" className="grid grid-cols-2 gap-1 rounded-xl border border-line/70 bg-panel2/70 p-1">
         {(['long', 'short'] as Side[]).map((s) => (
           <button key={s} role="tab" aria-selected={side === s} onClick={() => setSide(s)}
-            className={cn('h-10 rounded-lg text-sm font-semibold transition-all max-lg:h-11', side === s ? (s === 'long' ? 'bg-up text-[#04140D] shadow-[0_6px_18px_-8px_rgb(var(--up)/0.8)]' : 'bg-down text-white shadow-[0_6px_18px_-8px_rgb(var(--down)/0.8)]') : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
+            className={cn('h-9 rounded-lg text-sm font-semibold transition-all max-lg:h-11', side === s ? (s === 'long' ? 'bg-up text-[#04140D] shadow-[0_6px_18px_-8px_rgb(var(--up)/0.8)]' : 'bg-down text-white shadow-[0_6px_18px_-8px_rgb(var(--down)/0.8)]') : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
             {s === 'long' ? 'Long' : 'Short'}
           </button>
         ))}
@@ -236,17 +236,17 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           {show('price') && <p role="alert" className="text-2xs text-down">{show('price')}</p>}
         </div>
       ) : (
-        <div className="flex h-10 items-center justify-between rounded-xl border border-line/70 bg-panel2/60 px-3 text-sm">
+        <div className="flex h-8 items-center justify-between rounded-lg border border-line/70 bg-panel2/60 px-2.5 text-sm">
           <span className="text-muted">Market price</span>
           <span className={cn('num font-mono', side === 'long' ? 'text-down' : 'text-up')} title={side === 'long' ? 'Longs fill at the ask' : 'Shorts fill at the bid'}>{fillNow != null ? fmtPrice(fillNow) : '—'}<span className="ml-1 text-2xs text-subtle">{side === 'long' ? 'ask' : 'bid'}</span></span>
         </div>
       )}
 
       {/* Leverage */}
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <label htmlFor="t-lev" className="text-muted">Leverage</label>
-          <div className="flex h-8 items-center rounded-lg border border-line bg-panel2/80 focus-within:border-accent/70">
+          <div className="flex h-7 items-center rounded-lg border border-line bg-panel2/80 focus-within:border-accent/70">
             <input id="t-lev" inputMode="numeric" autoComplete="off" value={levText ?? String(leverage)}
               onFocus={(e) => e.target.select()}
               onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 3); setLevText(d); if (d !== '') setLev(Number(d)); }}
@@ -258,34 +258,34 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         <input type="range" min={1} max={maxLev} step={1} value={leverage} onChange={(e) => pickLev(Number(e.target.value))} aria-label="Leverage slider" aria-valuetext={`${leverage}x`} className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-line accent-[rgb(var(--accent))]" style={{ background: `linear-gradient(to right, rgb(var(--accent)) ${((leverage - 1) / Math.max(1, maxLev - 1)) * 100}%, rgb(var(--line)) 0)` }} />
         <div className="flex justify-between">
           {LEV_PRESETS.filter((p) => p <= maxLev).map((p) => (
-            <button key={p} onClick={() => pickLev(p)} className={cn('rounded-md px-1.5 py-1 text-2xs max-lg:px-1.5 max-lg:text-xs transition-colors', leverage === p ? 'bg-accent/15 text-accent' : 'text-subtle hover:text-fg')}>{p}×</button>
+            <button key={p} onClick={() => pickLev(p)} className={cn('rounded-md px-1.5 py-0.5 text-2xs max-lg:px-1.5 max-lg:py-1 max-lg:text-xs transition-colors', leverage === p ? 'bg-accent/15 text-accent' : 'text-subtle hover:text-fg')}>{p}×</button>
           ))}
         </div>
         {leverage >= 50 && <p className="flex items-start gap-1.5 text-2xs text-warn"><AlertTriangle className="mt-px h-3 w-3 shrink-0" />At {leverage}× a {fmtNum(100 / leverage)}% adverse move liquidates the position.</p>}
       </div>
 
       {/* Margin & size */}
-      <div className="space-y-2">
-        <div className="space-y-1">
+      <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <label htmlFor="t-margin" className="text-xs text-muted">Margin</label>
           <NumInput id="t-margin" inputRef={marginRef} value={margin} onChange={(v) => { setMargin(v); setTouched(true); }} suffix="USDT" placeholder="0.00" invalid={!!show('margin')} disabled={!tradable} />
           {show('margin') && <p role="alert" className="text-2xs text-down">{show('margin')}</p>}
         </div>
         <div className="grid grid-cols-5 gap-1">
           {PCTS.map((p) => (
-            <button key={p} onClick={() => setPct(p)} disabled={!tradable || free <= 0} className={cn('h-7 rounded-lg border text-2xs font-medium transition-colors disabled:opacity-40', Math.round(pctOfFree) === p ? 'border-accent/60 bg-accent/10 text-accent' : 'border-line text-muted hover:border-subtle hover:text-fg')}>{p}%</button>
+            <button key={p} onClick={() => setPct(p)} disabled={!tradable || free <= 0} className={cn('h-6 rounded-md border text-2xs font-medium transition-colors disabled:opacity-40 max-lg:h-8', Math.round(pctOfFree) === p ? 'border-accent/60 bg-accent/10 text-accent' : 'border-line text-muted hover:border-subtle hover:text-fg')}>{p}%</button>
           ))}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <label htmlFor="t-size" className="text-xs text-muted">Position size</label>
           <NumInput id="t-size" value={Number.isFinite(size) ? String(+size.toFixed(2)) : ''} onChange={(v) => { const n = num(v); setMargin(Number.isFinite(n) ? String(+(n / leverage).toFixed(2)) : ''); setTouched(true); }} suffix="USDT" placeholder="0.00" disabled={!tradable} />
-          <p className="num text-right text-2xs text-subtle">{Number.isFinite(qty) ? `≈ ${fmtNum(qty, qtyDecimals(entry ?? 1) + 1)} ${base}` : `≈ — ${base}`}</p>
+          <p className="num text-right text-2xs leading-tight text-subtle">{Number.isFinite(qty) ? `≈ ${fmtNum(qty, qtyDecimals(entry ?? 1) + 1)} ${base}` : `≈ — ${base}`}</p>
         </div>
       </div>
 
       {/* TP / SL */}
       <div className="rounded-xl border border-line/70">
-        <button onClick={() => setTpslOpen((o) => !o)} aria-expanded={tpslOpen} className="flex w-full items-center justify-between px-3.5 py-3 text-xs font-medium text-muted hover:text-fg">
+        <button onClick={() => setTpslOpen((o) => !o)} aria-expanded={tpslOpen} className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-muted hover:text-fg">
           <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Take-profit / Stop-loss</span>
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', tpslOpen && 'rotate-180')} />
         </button>
@@ -308,7 +308,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
       </div>
 
       {/* Summary */}
-      <div className="space-y-2 rounded-xl bg-panel2/60 p-3.5">
+      <div className="space-y-1.5 rounded-xl bg-panel2/60 p-3">
         <Row k="Est. entry" v={entry ? fmtPrice(entry, dp) : '—'} />
         <Row k="Liquidation price" v={liq ? fmtPrice(liq, dp) : '—'} tone="down" tip="entry × (1 ∓ 1 / leverage)" />
         <Row k="Distance to liquidation" v={liqDistPct != null ? `${fmtNum(liqDistPct)}%` : '—'} tone={liqDistPct != null && liqDistPct < 2 ? 'warn' : undefined} />
@@ -327,7 +327,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         <p className="flex items-start gap-1.5 text-2xs text-warn"><AlertTriangle className="mt-px h-3 w-3 shrink-0" />You’ve used {fmtNum(dd.daily * 100, 0)}% of today’s drawdown allowance.</p>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-1 border-t border-line/60 bg-panel/95 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 z-10 -mx-3 -mb-1 border-t border-line/60 bg-panel/95 px-3 py-2 backdrop-blur">
         <Button
           variant={sideColor === 'up' ? 'up' : 'down'}
           size="lg"
@@ -335,7 +335,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           disabled={!tradable || submitting}
           loading={submitting}
           onClick={() => request(side)}
-          className="h-12"
+          className="h-11"
         >
           {side === 'long' ? 'Long' : 'Short'}{type === 'market' ? '' : ` ${type}`} · {base}/USDT
         </Button>

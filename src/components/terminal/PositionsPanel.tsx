@@ -135,7 +135,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     { key: 'mark', header: 'Current', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
     { key: 'liq', header: 'Liq.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
     { key: 'pnl', header: 'Profit', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
-      <span className={cn('num inline-block min-w-[84px] rounded-lg px-2 py-0.5 text-right font-semibold', pnlClass(p.unrealized_pnl), p.unrealized_pnl > 0 ? 'bg-up/10' : p.unrealized_pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(p.unrealized_pnl)}<span className="ml-1 hidden text-2xs font-normal opacity-80 2xl:inline">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>) },
+      <span className={cn('num inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-right font-semibold', pnlClass(p.unrealized_pnl), p.unrealized_pnl > 0 ? 'bg-up/10' : p.unrealized_pnl < 0 ? 'bg-down/10' : '')}>{fmtSigned(p.unrealized_pnl)}<span className="text-2xs font-normal opacity-80">({fmtSigned(p.unrealized_pnl_pct, 1)}%)</span></span>), className: 'min-w-[170px]', headerClassName: 'min-w-[170px]' },
     { key: 'act', header: <span className="sr-only">Actions</span>, align: 'right', cell: (p) => (
       <div className="relative flex justify-end gap-1">
         <button onClick={() => onEdit(p)} className="grid h-6 w-6 place-items-center rounded text-subtle hover:bg-fg/[0.08] hover:text-fg" aria-label="Edit TP/SL" title="Modify S/L · T/P"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
@@ -154,7 +154,7 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
 
   return (
     <DataTable<Position>
-      compact bare dense zebra
+      bare zebra
       columns={cols} rows={positions} rowKey={(p) => p.id}
       loading={loading && positions.length === 0} error={error && positions.length === 0 ? error : undefined} onRetry={() => void refresh()}
       pageSize={10} pageSizes={[10, 25, 50]} searchPlaceholder="Search by symbol or ticket"
@@ -189,7 +189,7 @@ function PendingTable() {
   ];
 
   return (
-    <DataTable<PendingOrder> compact bare dense columns={cols} rows={rows} rowKey={(o) => o.id} pageSize={10} searchPlaceholder="Search orders"
+    <DataTable<PendingOrder> bare columns={cols} rows={rows} rowKey={(o) => o.id} pageSize={10} searchPlaceholder="Search orders"
       footerNote={rows.some((o) => !o.server) ? 'Some limit and stop orders are watched by this browser and fire only while the terminal is open.' : 'Limit and stop orders rest on the server and fill even when the terminal is closed.'}
       empty={{ title: 'No pending orders', description: 'Place a Limit or Stop order from the ticket to see it here.' }} />
   );
@@ -227,7 +227,7 @@ function HistoryTable({ onStats }: { onStats?: (st: HistoryResponse['stats'] | n
 
   return (
     <DataTable<HistoryOrder>
-      compact bare dense zebra
+      bare zebra
       columns={cols} rows={data?.orders} rowKey={(o) => o.id}
       loading={isLoading && !data} error={error && !data ? error : undefined} onRetry={() => void mutate()}
       searchPlaceholder="Search this page" pageSizes={[10, 25, 50, 100]} initialSort={{ key: 'closed', dir: 'desc' }}
@@ -243,7 +243,6 @@ function Kv({ k, v, tone }: { k: string; v: React.ReactNode; tone?: 'up' | 'down
 }
 
 function AccountLine({ tab, stats }: { tab: Tab; stats: HistoryResponse['stats'] | null }) {
-  const { account, metrics, positions } = useTerminalData();
   if (tab === 'history') {
     return (
       <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line2 bg-panel2 px-3 py-1.5 text-xs">
@@ -256,19 +255,8 @@ function AccountLine({ tab, stats }: { tab: Tab; stats: HistoryResponse['stats']
       </div>
     );
   }
-  if (!account || !metrics) return null;
-  const ml = metrics.used_margin > 0 ? (metrics.equity / metrics.used_margin) * 100 : null;
-  const total = positions.reduce((a, p) => a + p.unrealized_pnl, 0);
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-0.5 border-t border-line2 bg-panel2 px-3 py-1.5 text-xs">
-      <Kv k="Balance" v={fmtUsd(account.balance)} />
-      <Kv k="Equity" v={fmtUsd(metrics.equity)} />
-      <Kv k="Margin" v={fmtUsd(metrics.used_margin)} />
-      <Kv k="Free margin" v={fmtUsd(metrics.free_margin)} />
-      <Kv k="Margin level" v={ml == null ? '—' : `${fmtNum(ml, 2)}%`} tone={ml != null && ml < 120 ? 'down' : ml != null && ml < 200 ? 'warn' : undefined} />
-      <span className="ml-auto"><Kv k="Profit" v={fmtSigned(total)} tone={total > 0 ? 'up' : total < 0 ? 'down' : undefined} /></span>
-    </div>
-  );
+  // Balance, equity, margin and free margin live in the top bar only.
+  return null;
 }
 
 /* ── Container ──────────────────────────────────────────────────────────── */

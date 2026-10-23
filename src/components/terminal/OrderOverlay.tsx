@@ -109,6 +109,10 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
     if (!el || !series || !chips.length) return;
     let raf = 0;
     const tick = () => {
+      // stop short of the price scale, whatever its current width (it grows with the number of digits)
+      const scaleW = chart?.priceScale('right').width() ?? 72;
+      const right = `${Math.max(scaleW, 48) + 8}px`;
+      if (el.style.right !== right) el.style.right = right;
       const h = el.clientHeight;
       for (const c of Array.from(el.children) as HTMLElement[]) {
         const y = series.priceToCoordinate(Number(c.dataset.price));
@@ -125,7 +129,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
   if (!chips.length) return null;
 
   return (
-    <div ref={host} className="pointer-events-none absolute inset-y-0 left-0 right-[72px] z-[3] overflow-hidden" aria-label="Orders on chart">
+    <div ref={host} className="pointer-events-none absolute inset-y-0 left-0 right-20 z-[3] overflow-hidden" aria-label="Orders on chart">
       {chips.map((c) => (
         <div
           key={c.key}

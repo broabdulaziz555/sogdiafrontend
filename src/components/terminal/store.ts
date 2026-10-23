@@ -44,7 +44,6 @@ interface State {
   showLevels: boolean;
   showOrders: boolean;
   showQuotes: boolean;
-  quickMargin: string;
   cardOpts: CardOpts;
   leverage: number;
   pending: PendingOrder[];
@@ -97,7 +96,6 @@ export const useTerminal = create<State>()(
       showLevels: true,
       showOrders: true,
       showQuotes: true,
-      quickMargin: '100',
       cardOpts: DEFAULT_CARD_OPTS,
       leverage: 20,
       pending: [],
@@ -168,7 +166,6 @@ export const useTerminal = create<State>()(
         showLevels: s.showLevels,
         showOrders: s.showOrders,
         showQuotes: s.showQuotes,
-        quickMargin: s.quickMargin,
         cardOpts: s.cardOpts,
         leverage: s.leverage,
         // 'filling' is never persisted: other tabs must not see an in-flight order as fillable, and a crash mid-fill must not replay it.

@@ -21,7 +21,6 @@ import { fmtCompact, fmtNum, fmtPrice, fmtSigned, priceDecimals, qtyDecimals } f
 import { cn } from '@/lib/cn';
 import type { Position } from '@/lib/types';
 import { Spinner } from '@/components/ui/States';
-import { OneClickTrade } from './OneClickTrade';
 import { OrderOverlay } from './OrderOverlay';
 import { cssRgb } from './theme';
 import { useTerminalLayout } from './useLayout';
@@ -535,7 +534,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       if (!keep.has(k)) { try { series.removePriceLine(l); } catch { /* already gone */ } lineMap.current.delete(k); }
     }
     for (const sp of specs) {
-      const opts = { price: sp.price, color: sp.color, lineWidth: sp.width ?? 1, lineStyle: sp.style, axisLabelVisible: sp.axis !== false, title: sp.title };
+      const opts = { price: sp.price, color: sp.color, lineWidth: sp.width ?? 1, lineStyle: sp.style, axisLabelVisible: false, title: sp.title }; // tags on the price scale would cover its numbers; the chips and line titles carry the information
       const ex = lineMap.current.get(sp.key);
       if (ex) ex.applyOptions(opts); else lineMap.current.set(sp.key, series.createPriceLine(opts));
     }
@@ -625,8 +624,6 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         <div ref={cdRef} aria-label="Time until the candle closes" title="Time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden min-w-[58px] rounded-sm px-1.5 py-px text-center font-mono text-2xs font-semibold" />
 
         <OrderOverlay chart={chartRef.current} series={candleRef.current} symbol={symbol} positions={positions} showLevels={showLevels} showOrders={showOrders} compact={mob} />
-
-        <div className="absolute left-2 top-11 z-[4] max-lg:hidden"><OneClickTrade /></div>
 
         {status === 'loading' && (
           <div className="absolute inset-0 z-[2] grid place-items-center bg-panel/60 backdrop-blur-[1px]"><div className="flex items-center gap-2 text-sm text-muted"><Spinner className="h-4 w-4" />Loading {symbol.replace('USDT', '/USDT')}…</div></div>
