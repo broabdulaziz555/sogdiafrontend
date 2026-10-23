@@ -134,7 +134,7 @@ export interface PositionsResponse {
   metrics: AccountMetrics;
   risk: RiskState;
   /** What the server read for this call: orders the database listed for the account vs positions it returned. */
-  debug?: { account_id: string; db_open_orders: number; returned: number; closed_by_cycle: number; account_status: string };
+  debug?: { account_id: string; db_open_orders: number; returned: number; closed_by_cycle: number; account_status: string; risk_engine?: 'on' | 'off' };
 }
 
 export interface HistoryOrder {

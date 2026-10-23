@@ -148,7 +148,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       if (!Array.isArray(raw.positions)) throw new ApiError('INTERNAL_ERROR', 'Unexpected positions response (no positions array).', 0, raw);
       if (ms > 1500 || count !== lastCount.current) {
         const d = raw.debug;
-        diag(`poll ok ${ms}ms · ${count} position(s), ${raw.pending?.length ?? 0} working order(s)${d ? ` · server read ${d.db_open_orders} from the database, returned ${d.returned}${d.closed_by_cycle ? `, closed ${d.closed_by_cycle}` : ''}` : ''}`);
+        diag(`poll ok ${ms}ms · ${count} position(s), ${raw.pending?.length ?? 0} working order(s)${d ? ` · server read ${d.db_open_orders} from the database, returned ${d.returned}${d.closed_by_cycle ? `, closed ${d.closed_by_cycle}` : ''}${d.risk_engine ? ` · risk engine ${d.risk_engine}` : ''}` : ''}`);
       }
       lastCount.current = count;
       return { ...raw, positions: raw.positions.map(normalizePosition) };

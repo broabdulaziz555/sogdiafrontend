@@ -224,6 +224,16 @@ g.fetch = async (input: any, init: any = {}) => {
   const tlI = renders.slice(mark).map((r) => r.positions);
   check('I: position is never dropped by the late stale poll (every committed render after the 200)', tlI.length > 0 && tlI.every((n) => n === 1) && api.positions.length === 1, tlI);
 
+  // M — slow refetches after the 200 (700 ms) and slow polls in general: the row never blinks out between the optimistic and the real one
+  await mount();
+  srv.fault = (path) => (path === '/trade/positions' ? 'slow' : 'ok');
+  mark = renders.length;
+  await act(async () => { await open('13131313-0000-4000-8000-000000000001'); await sleep(50); await open('13131313-0000-4000-8000-000000000002'); });
+  await act(async () => { await api.refresh(); await sleep(900); await api.refresh(); await sleep(900); });
+  const tlM = renders.slice(mark).map((r) => r.positions);
+  const maxM = Math.max(...tlM), minAfterFirst = Math.min(...tlM.slice(tlM.indexOf(1)));
+  check('M: slow refetches/polls: rows only ever go 1 -> 2, never down; ends with two real rows', minAfterFirst >= 1 && maxM === 2 && api.positions.length === 2 && api.positions.every((x: any) => !x.pending) && srv.open.length === 2, { tlM: [...new Set(tlM)], pend: api.positions.map((x: any) => x.pending) });
+
   // J — limit / stop orders: server list is the truth
   const pend = () => api.placePending({ symbol: 'BTCUSDT', side: 'long', kind: 'limit', trigger: 90, leverage: 10, margin: 300, tp: null, sl: null });
   await mount();
