@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import useSWR, { mutate as globalMutate } from 'swr';
 import { ApiError, get, post } from '@/lib/api';
 import { fmtSigned, fmtPrice } from '@/lib/format';
-import type { Account, AccountMetrics, Position, PositionsResponse, RiskState } from '@/lib/types';
+import type { Account, AccountMetrics, HistoryOrder, HistoryResponse, Position, PositionsResponse, RiskState } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
 import { SPREAD, liveMid } from './optimistic';
@@ -44,6 +44,31 @@ export const useTerminalData = () => {
 const PIN_MAX_MS = 5 * 60_000;
 /** A close we are hiding is shown again after this long if the server still lists the position (the close most likely failed). */
 const CLOSE_HIDE_MS = 90_000;
+
+/** Show a trade in History the moment it is closed, built from what the screen already knows; the reload that follows swaps in the server's row. */
+function addToHistory(accountId: string, p: Position) {
+  const exit = p.side === 'long' ? p.mark_price * (1 - SPREAD) : p.mark_price * (1 + SPREAD);
+  const row: HistoryOrder = {
+    id: p.id, symbol: p.symbol, side: p.side, leverage: p.leverage, margin: p.margin, position_size: p.position_size,
+    entry_price: p.entry_price, close_price: exit, pnl: p.unrealized_pnl, status: 'closed', close_reason: 'manual',
+    created_at: p.created_at, closed_at: new Date().toISOString(),
+  };
+  void globalMutate(
+    (k: unknown) => Array.isArray(k) && k[0] === 'terminal-history' && k[1] === accountId && k[2] === 0,
+    (cur?: HistoryResponse) => {
+      if (!cur || cur.orders.some((o) => o.id === row.id)) return cur;
+      const st = cur.stats;
+      const wins = st.wins + (row.pnl > 0 ? 1 : 0), losses = st.losses + (row.pnl > 0 ? 0 : 1), trades = st.trades + 1;
+      return {
+        ...cur,
+        orders: [row, ...cur.orders].slice(0, Math.max(cur.limit || 0, 1)),
+        total: cur.total + 1,
+        stats: { trades, wins, losses, win_rate: Math.round((wins / trades) * 10000) / 100, net_pnl: Math.round((st.net_pnl + row.pnl) * 100) / 100 },
+      };
+    },
+    { revalidate: false },
+  );
+}
 
 /** Closed trades changed: reload every History list now and once more shortly after (the server write can lag the reply). */
 function refreshHistory() {
@@ -121,6 +146,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   }, [mutate]);
 
   const closing = useRef(new Set<string>());
+  const livePositions = useRef<Position[]>([]);
   const closePositions = useCallback(async (ids: string[]): Promise<CloseOutcome[]> => {
     // a close already in flight for an id is not sent again (double tap, hotkey + button, close-all + single close)
     const skipped = ids.filter((id) => closing.current.has(id)).map((id): CloseOutcome => ({ id, ok: true }));
@@ -129,6 +155,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     const now = Date.now();
     setClosedIds((c) => { const n = { ...c }; for (const id of real) n[id] = now; return n; });
     setPinned((l) => l.filter((x) => !real.includes(x.pos.id)));
+    for (const id of real) { const p = livePositions.current.find((x) => x.id === id); if (p) addToHistory(accountId, p); }
     const sent = await Promise.all(real.map(async (id): Promise<CloseOutcome> => {
       try {
         const res = await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: 60_000 });
@@ -138,6 +165,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
         // "already closed" is not a failure: it is gone on the server too, so it stays hidden and the list is refreshed.
         if (error instanceof ApiError && error.code === 'ORDER_NOT_OPEN') {
           void mutate();
+          refreshHistory();
           return { id, ok: true };
         }
         // No answer in time (or the connection dropped): the server may well have closed it. Keep it hidden and re-read the truth
@@ -148,13 +176,14 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
           return { id, ok: true };
         }
         setClosedIds((c) => { const n = { ...c }; delete n[id]; return n; });
+        refreshHistory(); // take the provisional History row back out
         return { id, ok: false, error };
       } finally {
         closing.current.delete(id);
       }
     }));
     return [...skipped, ...sent];
-  }, [applyClosed, mutate]);
+  }, [applyClosed, mutate, accountId]);
 
   // Housekeeping. A pinned (just opened) position is dropped once the server list shows it, or once a poll that STARTED
   // after it was confirmed still does not list it (so it is genuinely gone: closed by SL/TP/liquidation). A stale or
@@ -210,6 +239,8 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     return { list, delta };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positions, tick]);
+
+  livePositions.current = live.list;
 
   const liveMetrics = useMemo(() => {
     const m = data?.metrics ?? null;
