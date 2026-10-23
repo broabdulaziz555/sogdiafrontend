@@ -21,6 +21,26 @@ export function liveQuote(symbol: string): { bid: number; ask: number } | null {
   return mid == null ? null : { bid: mid * (1 - SPREAD), ask: mid * (1 + SPREAD) };
 }
 
+/**
+ * The database hands numeric columns back as strings in some setups ("81234.5"). Every numeric field of a position is
+ * parsed with Number() here, once, before anything reads it. A position is NEVER dropped: a field that is not a number
+ * is logged and kept at 0 so the row still renders.
+ */
+const NUM_FIELDS = ['leverage', 'margin', 'position_size', 'quantity', 'entry_price', 'liquidation_price', 'mark_price', 'unrealized_pnl', 'unrealized_pnl_pct'] as const;
+export function normalizePosition(raw: Position): Position {
+  const p = { ...raw } as Position & Record<string, unknown>;
+  for (const k of NUM_FIELDS) {
+    const n = Number(raw[k]);
+    if (!Number.isFinite(n)) console.warn('[positions] field is not a number, showing 0', { id: raw.id, field: k, value: raw[k] });
+    p[k] = Number.isFinite(n) ? n : 0;
+  }
+  for (const k of ['take_profit', 'stop_loss'] as const) {
+    const v = raw[k];
+    p[k] = v == null || v === (0 as unknown) ? null : Number.isFinite(Number(v)) ? Number(v) : null;
+  }
+  return p;
+}
+
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**

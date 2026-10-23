@@ -94,6 +94,8 @@ export interface Position {
   created_at: string;
   take_profit?: number | null;
   stop_loss?: number | null;
+  /** 'fallback': no live price was available, so the open price stands in for the mark. */
+  price_source?: 'live' | 'fallback';
 }
 
 export interface LiquidatedEvent {
@@ -129,6 +131,8 @@ export interface PositionsResponse {
   account: Account;
   metrics: AccountMetrics;
   risk: RiskState;
+  /** What the server read for this call: orders the database listed for the account vs positions it returned. */
+  debug?: { account_id: string; db_open_orders: number; returned: number; closed_by_cycle: number; account_status: string };
 }
 
 export interface HistoryOrder {

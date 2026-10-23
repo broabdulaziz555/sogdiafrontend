@@ -20,14 +20,14 @@ const srv = {
   balance: 10000, open: [] as Row[], closed: [] as Row[],
   // fault injection: return a function that decides per request
   fault: (_path: string, _n: number): 'ok' | 'drop' | 'hang' | 'slow' | 'stale' | { error: string; status: number } => 'ok',
-  counts: {} as Record<string, number>, openStores: 0, epoch: 0, pending: [] as any[], featureOff: false, pendingStores: 0,
+  counts: {} as Record<string, number>, openStores: 0, epoch: 0, pending: [] as any[], featureOff: false, pendingStores: 0, strings: false,
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const posOf = (r: Row) => ({ id: r.id, account_id: ACC, symbol: r.symbol, side: r.side, leverage: r.leverage, margin: r.margin, position_size: r.margin * r.leverage, quantity: 1, entry_price: 100, liquidation_price: 90, mark_price: 100, unrealized_pnl: 0, unrealized_pnl_pct: 0, status: 'open', created_at: r.created_at });
 function snapshot() {
   const used = srv.open.reduce((a, r) => a + r.margin, 0);
   return {
-    positions: [...srv.open].reverse().map(posOf), pending: srv.pending.map((p) => ({ ...p })), liquidated: [],
+    positions: [...srv.open].reverse().map(posOf).map((x: any) => (srv.strings ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v])) : x)), pending: srv.pending.map((p) => ({ ...p })), liquidated: [],
     account: { id: ACC, size: 10000, balance: srv.balance, equity: srv.balance, daily_start_balance: 10000, status: 'active', max_leverage: 200, daily_dd_pct: 4, max_dd_pct: 6 },
     metrics: { equity: srv.balance, unrealized_pnl: 0, used_margin: used, free_margin: srv.balance - used, open_positions: srv.open.length, daily_dd_limit: 9600, max_dd_limit: 9400, daily_dd_remaining: 0, max_dd_remaining: 0, daily_dd_used_pct: 0, max_dd_used_pct: 0, profit_target: 10800, profit_pct: 0, target_reached: false },
     risk: { breached: false, reason: null, status: 'active' }, server_time: Date.now(),
@@ -237,6 +237,16 @@ g.fetch = async (input: any, init: any = {}) => {
   check('J3: cancel is not shown until the server confirms', useTerminal.getState().pending.length === 1);
   await act(async () => { await cp; });
   check('J3: cancelled on the server and gone from the list', srv.pending.length === 0 && useTerminal.getState().pending.length === 0, { srv: srv.pending.length, st: useTerminal.getState().pending });
+
+  // K — numbers that arrive as strings are parsed, never dropped; the response is read from `positions`
+  await mount();
+  await act(async () => { await open('12121212-0000-4000-8000-000000000001'); await open('12121212-0000-4000-8000-000000000002'); }); await settle(300);
+  srv.strings = true;
+  await act(async () => { await api.refresh(); }); await settle(300);
+  const sp = api.positions;
+  check('K: string numbers -> every position kept, all fields are numbers', sp.length === 2 && sp.every((x: any) => ['margin', 'entry_price', 'quantity', 'liquidation_price', 'unrealized_pnl', 'mark_price'].every((k) => typeof x[k] === 'number' && Number.isFinite(x[k]))), sp[0]);
+  check('K: panel figures are finite numbers', api.metrics != null && Number.isFinite(api.metrics.equity) && api.metrics.used_margin === 1000, api.metrics);
+  srv.strings = false;
 
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASS');
   cleanup(); process.exit(fails ? 1 : 0);

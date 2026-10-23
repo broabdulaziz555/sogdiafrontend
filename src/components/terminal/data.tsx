@@ -7,7 +7,7 @@ import { fmtSigned, fmtPrice } from '@/lib/format';
 import type { Account, AccountMetrics, Position, PositionsResponse, RiskState, ServerPending, Side } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
-import { deriveMetrics, markPosition } from './liveprice';
+import { deriveMetrics, markPosition, normalizePosition } from './liveprice';
 import { diag } from '@/lib/diag';
 import { useTerminal, type PendingOrder } from './store';
 
@@ -138,11 +138,18 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     ['terminal-positions', accountId],
     async () => {
       const t0 = Date.now();
-      const res = await get<PositionsResponse>('/trade/positions', { account_id: accountId }, { timeoutMs: 20_000 });
+      const raw = await get<PositionsResponse>('/trade/positions', { account_id: accountId }, { timeoutMs: 20_000 });
       const ms = Date.now() - t0;
-      if (ms > 1500 || res.positions.length !== lastCount.current) diag(`poll ok ${ms}ms · ${res.positions.length} position(s), ${res.pending?.length ?? 0} working order(s)`);
-      lastCount.current = res.positions.length;
-      return res;
+      const count = Array.isArray(raw.positions) ? raw.positions.length : -1;
+      // the raw JSON, on the first poll and whenever the number of positions changes (every 2.5 s would drown the console)
+      if (count !== lastCount.current) console.log('[positions] raw response', raw);
+      if (!Array.isArray(raw.positions)) throw new ApiError('INTERNAL_ERROR', 'Unexpected positions response (no positions array).', 0, raw);
+      if (ms > 1500 || count !== lastCount.current) {
+        const d = raw.debug;
+        diag(`poll ok ${ms}ms · ${count} position(s), ${raw.pending?.length ?? 0} working order(s)${d ? ` · server read ${d.db_open_orders} from the database, returned ${d.returned}${d.closed_by_cycle ? `, closed ${d.closed_by_cycle}` : ''}` : ''}`);
+      }
+      lastCount.current = count;
+      return { ...raw, positions: raw.positions.map(normalizePosition) };
     },
     // the server runs its engine cycle on every call, so poll fast only while something is open or waiting
     { refreshInterval: (d) => (d?.positions?.length || d?.pending?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true, onError: (e) => diag(`poll FAILED ${errCode(e)}`) },
