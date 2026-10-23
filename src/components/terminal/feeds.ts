@@ -6,7 +6,7 @@ import { binanceGet, FeedSocket, mapMini, mapRest24 } from '@/lib/binance';
 import { get } from '@/lib/api';
 import type { MarketPricesResponse, MarketSymbol } from '@/lib/types';
 import { useTerminal } from './store';
-import { SPREAD } from './optimistic';
+import { SPREAD } from './liveprice';
 
 /** When the browser last got prices straight from Binance's stream. While that is fresh the 1.5 s backend poll only confirms the feed is up. */
 let streamPriceAt = 0;

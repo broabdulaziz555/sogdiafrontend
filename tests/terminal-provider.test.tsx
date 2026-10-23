@@ -19,7 +19,7 @@ type Row = { id: string; symbol: string; side: 'long' | 'short'; margin: number;
 const srv = {
   balance: 10000, open: [] as Row[], closed: [] as Row[],
   // fault injection: return a function that decides per request
-  fault: (_path: string, _n: number): 'ok' | 'drop' | 'hang' | 'slow' | { error: string; status: number } => 'ok',
+  fault: (_path: string, _n: number): 'ok' | 'drop' | 'hang' | 'slow' | 'stale' | { error: string; status: number } => 'ok',
   counts: {} as Record<string, number>, openStores: 0, epoch: 0, pending: [] as any[], featureOff: false, pendingStores: 0,
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -60,7 +60,7 @@ g.fetch = async (input: any, init: any = {}) => {
     }
     if (path === '/trade/pending') {
       if (srv.featureOff) return json({ ok: false, error: { code: 'FEATURE_UNAVAILABLE', message: 'off' } }, 501);
-      if (!srv.pending.some((x) => x.id === body.id)) { srv.pending.push({ id: body.id, account_id: ACC, symbol: body.symbol, side: body.side, kind: body.kind, trigger_price: body.trigger_price, leverage: body.leverage, margin: body.margin, take_profit: null, stop_loss: null, status: 'working', error: null, created_at: new Date().toISOString() }); srv.pendingStores++; }
+      if (!srv.pending.some((x) => x.id === body.id)) { srv.pending.push({ id: body.id, account_id: body.account_id, symbol: body.symbol, side: body.side, kind: body.kind, trigger_price: body.trigger_price, leverage: body.leverage, margin: body.margin, take_profit: null, stop_loss: null, status: 'working', error: null, created_at: new Date().toISOString() }); srv.pendingStores++; }
       return json({ ok: true, data: { order: { id: body.id } } });
     }
     if (path === '/trade/pending/cancel') { srv.pending = srv.pending.filter((x) => x.id !== body.id); return json({ ok: true, data: { id: body.id } }); }
@@ -69,6 +69,7 @@ g.fetch = async (input: any, init: any = {}) => {
   };
   if (f === 'hang') { await new Promise((_, rej) => init.signal?.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' })))); }
   if (f === 'slow') await sleep(700);
+  if (f === 'stale') { const early = await respond(); await sleep(700); return early; }
   if (ep !== srv.epoch) throw new TypeError('request from a previous scenario');
   if (typeof f === 'object') return json({ ok: false, error: { code: f.error, message: f.error } }, f.status);
   const res = await respond(); // the server DID process it
@@ -81,11 +82,9 @@ g.fetch = async (input: any, init: any = {}) => {
   const { TerminalDataProvider, useTerminalData, TUNING } = await import('../src/components/terminal/data');
   const { useTerminal } = await import('../src/components/terminal/store');
   const { ToastProvider } = await import('../src/components/ui/Toast');
-  const { RETRY_DELAYS_MS } = await import('../src/components/terminal/sync');
   const { SWRConfig } = await import('swr');
 
-  RETRY_DELAYS_MS.splice(0, RETRY_DELAYS_MS.length, 0, 40, 60, 80, 100);
-  TUNING.attemptMs = 400; TUNING.budgetMs = 4000;
+  TUNING.tradeMs = 400;
   useTerminal.setState({ symbol: 'BTCUSDT', last: 100, prices: { BTCUSDT: { symbol: 'BTCUSDT', price: 100, bid: 99.95, ask: 100.05 } as any } });
 
   let fails = 0;
@@ -94,6 +93,7 @@ g.fetch = async (input: any, init: any = {}) => {
   let api!: ReturnType<typeof useTerminalData>;
   const renders: { positions: number; open: number; used: number; sumMargin: number; ids?: string; tree?: number }[] = [];
   let treeCounter = 0;
+  let mark = 0;
   let seq = 0; // a fresh account id per scenario keeps SWR's global cache from leaking one scenario into the next
   function Probe() {
     const tree = React.useRef(++treeCounter).current;
@@ -116,123 +116,128 @@ g.fetch = async (input: any, init: any = {}) => {
   const consistent = () => renders.every((r) => r.positions === r.open && Math.abs(r.sumMargin - r.used) < 0.005);
   const open = (id: string, margin = 500) => api.openPosition({ id, symbol: 'BTCUSDT', side: 'long', leverage: 10, margin });
 
-  // A — normal open: on screen at once, one position at the end
+  // A — open: spinner while the server works, nothing on screen until it has answered, then the table is re-read
   await mount();
   srv.fault = (path) => (path === '/trade/open' ? 'slow' : 'ok');
   let p!: Promise<any>;
-  await act(async () => { p = open('aaaaaaaa-0000-4000-8000-000000000001'); await sleep(0); });
-  check('A: position visible before the server has answered', api.positions.length === 1 && api.isUnconfirmed('aaaaaaaa-0000-4000-8000-000000000001') && srv.open.length === 0, { shown: api.positions.length, stored: srv.open.length });
-  await act(async () => { await p; }); await settle(700);
-  check('A: one position, confirmed', api.positions.length === 1 && !api.isUnconfirmed('aaaaaaaa-0000-4000-8000-000000000001') && srv.open.length === 1);
-  check('A: list and panel agreed on every render', consistent(), renders.filter((r) => r.positions !== r.open));
+  await act(async () => { p = open('aaaaaaaa-0000-4000-8000-000000000001'); await sleep(100); });
+  check('A: request in flight is reported (button spinner)', api.inFlight === 1, api.inFlight);
+  check('A: nothing is drawn before the server has answered', api.positions.length === 0 && srv.open.length === 0, { shown: api.positions.length });
+  let oa: any;
+  await act(async () => { oa = await p; });
+  check('A: 200 -> position is in the table when the request resolves (table re-read)', oa.ok && api.positions.length === 1 && api.inFlight === 0, { oa: oa.ok, shown: api.positions.length });
+  await settle(300);
+  check('A: still exactly one position, list and panel agree on every render', api.positions.length === 1 && srv.open.length === 1 && consistent(), renders.filter((r) => r.positions !== r.open));
+  check('A: the open request was sent once (no retries)', srv.counts['/trade/open'] === 1, srv.counts);
 
-  // B — server stores the order but the reply is lost; client retries; exactly one position, never disappears
+  // B — reply lost (server stored the order): reported as timed out, NOT retried, table shows what the database holds
   await mount();
-  srv.fault = (path, n) => (path === '/trade/open' && n === 1 ? 'drop' : 'ok');
-  let mark = renders.length;
-  await act(async () => { await open('bbbbbbbb-0000-4000-8000-000000000001'); });
-  await settle(600);
-  const seen = renders.slice(mark).map((r) => r.positions); if (!seen.every((n) => n === 1)) console.log('   B renders', JSON.stringify(renders.slice(mark)), 'srv.open', srv.open.map((r) => r.id));
-  check('B: never vanished while the reply was lost (every committed render)', seen.length > 0 && seen.every((n) => n === 1), seen);
-  check('B: stored once (idempotent retry)', srv.open.length === 1 && srv.openStores === 1 && srv.counts['/trade/open'] >= 2, srv.counts);
-  check('B: ends with exactly one confirmed position', api.positions.length === 1 && !api.isUnconfirmed('bbbbbbbb-0000-4000-8000-000000000001'));
-  check('B: consistent on every render', consistent());
+  srv.fault = (path) => (path === '/trade/open' ? 'drop' : 'ok');
+  let ob: any;
+  await act(async () => { ob = await open('bbbbbbbb-0000-4000-8000-000000000001'); });
+  await settle(300);
+  check('B: reported as timed-out, with no automatic retry', ob.ok === false && ob.timedOut === true && srv.counts['/trade/open'] === 1, { ob: ob.timedOut, counts: srv.counts });
+  check('B: the position that exists on the server is shown (re-read after the failure)', srv.open.length === 1 && api.positions.length === 1, { stored: srv.open.length, shown: api.positions.length });
 
-  // C — a hung request (no answer at all) then recovery
+  // C — no answer at all (deadline): nothing was stored, nothing is drawn, no ghost, no retry
   await mount();
-  srv.fault = (path, n) => (path === '/trade/open' && n <= 2 ? 'hang' : 'ok');
-  await act(async () => { const q = open('cccccccc-0000-4000-8000-000000000001'); await sleep(900); expect(api.positions.length === 1); await q; });
-  await settle(600);
-  check('C: after two hung attempts the order lands once', srv.open.length === 1 && api.positions.length === 1, { open: srv.open.length, shown: api.positions.length });
+  srv.fault = (path) => (path === '/trade/open' ? 'hang' : 'ok');
+  let oc: any;
+  await act(async () => { oc = await open('cccccccc-0000-4000-8000-000000000001'); });
+  await settle(300);
+  check('C: deadline -> timedOut, table unchanged and empty', oc.ok === false && oc.timedOut === true && api.positions.length === 0 && srv.counts['/trade/open'] === 1, { oc: oc.timedOut, shown: api.positions.length, counts: srv.counts });
+  check('C: trading is possible again (no request stuck)', api.inFlight === 0, api.inFlight);
 
-  // D — every attempt fails; the server never has it: shown as syncing, then removed with a message, never a ghost
+  // D — server error (500): not a timeout, reported with its error, table unchanged
   await mount();
   srv.fault = (path) => (path === '/trade/open' ? { error: 'INTERNAL_ERROR', status: 500 } : 'ok');
-  let outcome: any;
-  await act(async () => { outcome = await open('dddddddd-0000-4000-8000-000000000001'); });
-  check('D: reported as unconfirmed (not a hard failure)', outcome.ok === false && outcome.unconfirmed === true, outcome);
-  check('D: still on screen while undecided', api.positions.length === 1);
-  await act(async () => { await sleep(TUNING.attemptMs); }); // lostAt + settle window is 25 s in prod; poll below proves absence
-  check('D: syncing counter reflects the undecided order', api.syncing >= 1, api.syncing);
+  let od: any;
+  await act(async () => { od = await open('dddddddd-0000-4000-8000-000000000001'); });
+  check('D: 500 -> failure with the server error, not a timeout', od.ok === false && od.timedOut === false && od.error?.code === 'INTERNAL_ERROR', od);
+  check('D: nothing on screen', api.positions.length === 0);
 
-  // E — definitive refusal removes it at once
+  // E — refusal (margin): error returned, table unchanged
   await mount();
-  let o2: any;
-  await act(async () => { o2 = await open('eeeeeeee-0000-4000-8000-000000000001', 999_999); });
-  check('E: INSUFFICIENT_MARGIN -> gone, error reported', o2.ok === false && !o2.unconfirmed && api.positions.length === 0 && srv.open.length === 0, { o2, shown: api.positions.length });
+  let oe: any;
+  await act(async () => { oe = await open('eeeeeeee-0000-4000-8000-000000000001', 999_999); });
+  check('E: INSUFFICIENT_MARGIN -> rejected, nothing opened', oe.ok === false && !oe.timedOut && oe.error?.code === 'INSUFFICIENT_MARGIN' && api.positions.length === 0 && srv.open.length === 0, oe);
 
-  // F — close with the reply dropped: stays closed, never reappears, no error
+  // F — close: the row stays (with a spinner) until the server confirms
   await mount();
-  await act(async () => { await open('ffffffff-0000-4000-8000-000000000001'); await open('ffffffff-0000-4000-8000-000000000002'); await open('ffffffff-0000-4000-8000-000000000003'); }); await settle(500);
-  check('F: three positions open', api.positions.length === 3 && api.metrics?.used_margin === 1500, api.metrics);
-  srv.fault = (path, n) => (path === '/trade/close' && n === 1 ? 'drop' : 'ok');
-  let res: any[] = [];
+  await act(async () => { await open('ffffffff-0000-4000-8000-000000000001'); await open('ffffffff-0000-4000-8000-000000000002'); }); await settle(300);
+  check('F: two positions open', api.positions.length === 2 && api.metrics?.used_margin === 1000, api.metrics);
+  srv.fault = (path) => (path === '/trade/close' ? 'slow' : 'ok');
+  let pc!: Promise<any[]>;
   mark = renders.length;
-  await act(async () => {
-    res = await api.closePositions(['ffffffff-0000-4000-8000-000000000001', 'ffffffff-0000-4000-8000-000000000002', 'ffffffff-0000-4000-8000-000000000003']);
-  });
-  await settle(900);
-  const timeline = renders.slice(mark).map((r) => r.positions);
-  check('F: all three closed on the server exactly once', srv.open.length === 0 && srv.closed.length === 3 && srv.balance === 10015, { open: srv.open.length, closed: srv.closed.length, bal: srv.balance });
-  check('F: table is empty from the first render after the tap and stays empty (every committed render)', timeline.length > 0 && timeline.every((n) => n === 0), timeline);
-  check('F: panel shows no margin, balance includes the profit', api.metrics?.used_margin === 0 && api.account?.balance === 10015 && api.positions.length === 0, { m: api.metrics, a: api.account?.balance });
-  check('F: every outcome ok', res.length === 3 && res.every((r: any) => r.ok), res);
-  check('F: list and panel agreed on every render', consistent(), renders.filter((r) => r.positions !== r.open || Math.abs(r.sumMargin - r.used) > 0.005).slice(0, 3));
+  await act(async () => { pc = api.closePositions(['ffffffff-0000-4000-8000-000000000001']); await sleep(200); });
+  check('F: while the close is on its way the row is still listed and shows a spinner', api.positions.length === 2 && api.isClosing('ffffffff-0000-4000-8000-000000000001') && !api.isClosing('ffffffff-0000-4000-8000-000000000002'), { shown: api.positions.length });
+  let rc: any[] = [];
+  await act(async () => { rc = await pc; });
+  check('F: 200 -> row gone when the request resolves, spinner off, balance includes the profit', rc[0].ok && api.positions.length === 1 && !api.isClosing('ffffffff-0000-4000-8000-000000000001') && api.account?.balance === 10005 && api.metrics?.used_margin === 500, { shown: api.positions.length, bal: api.account?.balance });
+  check('F: the list never dropped below 1 in a committed render while closing', renders.slice(mark).every((r) => r.positions >= 1), renders.slice(mark).map((r) => r.positions));
 
-  // G — slow polls (700 ms) while trading
+  // G — close failures leave the row exactly where it was
   await mount();
-  srv.fault = (path) => (path === '/trade/positions' ? 'slow' : 'ok');
-  await act(async () => { await open('99999999-0000-4000-8000-000000000001'); await sleep(50); await open('99999999-0000-4000-8000-000000000002'); await sleep(50); await api.closePositions(['99999999-0000-4000-8000-000000000001']); });
+  await act(async () => { await open('99999999-0000-4000-8000-000000000001'); }); await settle(300);
+  srv.fault = (path) => (path === '/trade/close' ? { error: 'INTERNAL_ERROR', status: 500 } : 'ok');
+  let rg: any[] = [];
+  await act(async () => { rg = await api.closePositions(['99999999-0000-4000-8000-000000000001']); }); await settle(300);
+  check('G: server error on close -> reported, position still listed', !rg[0].ok && api.positions.length === 1 && srv.open.length === 1, { rg, shown: api.positions.length });
+  srv.fault = (path) => (path === '/trade/close' ? 'hang' : 'ok');
+  await act(async () => { rg = await api.closePositions(['99999999-0000-4000-8000-000000000001']); }); await settle(300);
+  check('G: close timed out -> reported, position still listed, spinner off', !rg[0].ok && api.positions.length === 1 && !api.isClosing('99999999-0000-4000-8000-000000000001'), { rg, shown: api.positions.length });
+  srv.fault = (path) => (path === '/trade/close' ? 'drop' : 'ok');
+  await act(async () => { rg = await api.closePositions(['99999999-0000-4000-8000-000000000001']); }); await settle(300);
+  check('G: reply lost but the server did close it -> the re-read removes the row', srv.open.length === 0 && api.positions.length === 0, { stored: srv.open.length, shown: api.positions.length });
+
+  // H — double tap: one request per id
+  await mount();
+  await act(async () => { await Promise.all([open('88888888-0000-4000-8000-000000000001'), open('88888888-0000-4000-8000-000000000001')]); }); await settle(300);
+  check('H: same order sent twice = one request, one position', srv.open.length === 1 && srv.counts['/trade/open'] === 1 && api.positions.length === 1, { stored: srv.open.length, counts: srv.counts });
+  await act(async () => { await Promise.all([api.closePositions(['88888888-0000-4000-8000-000000000001']), api.closePositions(['88888888-0000-4000-8000-000000000001'])]); }); await settle(300);
+  check('H: double close = one request', srv.closed.length === 1 && srv.counts['/trade/close'] === 1 && api.positions.length === 0, srv.counts);
+
+  // I — a slow poll that started BEFORE the open and answers AFTER it must not wipe the new position
+  await mount();
+  srv.fault = (path, n) => (path === '/trade/positions' && n === srv.counts['/trade/positions'] ? 'stale' : 'ok');
+  srv.fault = (() => { const base = srv.counts['/trade/positions'] ?? 0; return (path: string, n: number) => (path === '/trade/positions' && n === base + 1 ? 'stale' : 'ok'); })();
+  let slowPoll!: Promise<any>;
+  await act(async () => { slowPoll = api.refresh(); await sleep(50); });
   mark = renders.length;
-  await settle(2500);
-  const tl2 = renders.slice(mark).map((r) => r.positions);
-  check('G: with slow polls the book stays at exactly one position (#2), steadily', tl2.length > 0 && tl2.every((n) => n === 1) && api.positions.map((p) => p.id.slice(-1)).join('') === '2', { tl2: [...new Set(tl2)], ids: api.positions.map((p) => p.id) });
-  check('G: consistent on every render', consistent());
+  await act(async () => { await open('77777777-0000-4000-8000-000000000001'); });
+  await act(async () => { await sleep(1000); await slowPoll; });
+  const tlI = renders.slice(mark).map((r) => r.positions);
+  check('I: position is never dropped by the late stale poll (every committed render after the 200)', tlI.length > 0 && tlI.every((n) => n === 1) && api.positions.length === 1, tlI);
 
-  // H — double tap: same close twice, same open id twice
-  await mount();
-  await act(async () => { await open('88888888-0000-4000-8000-000000000001'); await open('88888888-0000-4000-8000-000000000001'); }); await settle(500);
-  check('H: same order id sent twice = one position', srv.open.length === 1 && api.positions.length === 1, { stored: srv.open.length, shown: api.positions.length, counts: srv.counts });
-  await act(async () => { await Promise.all([api.closePositions(['88888888-0000-4000-8000-000000000001']), api.closePositions(['88888888-0000-4000-8000-000000000001'])]); }); await settle(500);
-  check('H: double close = one close', srv.closed.length === 1 && api.positions.length === 0, srv.closed.length);
-
-  // I — server-side limit/stop orders
+  // J — limit / stop orders: server list is the truth
   const pend = () => api.placePending({ symbol: 'BTCUSDT', side: 'long', kind: 'limit', trigger: 90, leverage: 10, margin: 300, tp: null, sl: null });
   await mount();
   let pr: any;
-  await act(async () => { pr = await pend(); }); await settle(300);
+  await act(async () => { pr = await pend(); });
   let st = useTerminal.getState().pending;
-  check('I1: placed on the server and mirrored locally as synced', srv.pending.length === 1 && st.length === 1 && st[0].server === true && st[0].sync === 'synced', { srv: srv.pending.length, st });
-  // the server fills it (its own engine): pending gone, position appears under the same id
+  check('J1: placed -> shown from the server list', pr.ok && srv.pending.length === 1 && st.length === 1 && st[0].server === true, { srv: srv.pending.length, st });
   const fid = srv.pending[0].id;
   srv.pending = []; srv.open.push({ id: fid, symbol: 'BTCUSDT', side: 'long', margin: 300, leverage: 10, created_at: new Date().toISOString() });
   await act(async () => { await api.refresh(); }); await settle(300);
   st = useTerminal.getState().pending;
-  check('I1: after the server fills it the local order is gone and the position is shown', st.length === 0 && api.positions.some((p) => p.id === fid), { st, ids: api.positions.map((p) => p.id) });
+  check('J1: after the server fills it the order is gone and the position is shown', st.length === 0 && api.positions.some((p) => p.id === fid), { st, ids: api.positions.map((p) => p.id) });
 
   await mount();
   srv.featureOff = true;
   await act(async () => { await pend(); }); await settle(300);
   st = useTerminal.getState().pending;
-  check('I2: migration not run -> falls back to a browser-side order', st.length === 1 && st[0].server === false, st);
-
-  await mount();
-  srv.fault = (path, n) => (path === '/trade/pending' && n === 1 ? 'drop' : 'ok');
-  await act(async () => { await pend(); }); await settle(400);
-  check('I3: reply lost -> re-sent -> stored once, synced', srv.pendingStores === 1 && srv.pending.length === 1 && useTerminal.getState().pending[0]?.sync === 'synced', { stores: srv.pendingStores, st: useTerminal.getState().pending });
+  check('J2: migration not run -> browser-side order', st.length === 1 && st[0].server === false, st);
 
   await mount();
   await act(async () => { await pend(); }); await settle(300);
   const cid = srv.pending[0].id;
   srv.fault = (path) => (path === '/trade/pending/cancel' ? 'slow' : 'ok');
-  await act(async () => { api.cancelPending(cid); });
-  const right = useTerminal.getState().pending.length === 0;
-  await act(async () => { await api.refresh(); }); // poll lands while the cancel is still on its way: must not bring it back
-  check('I4: cancel is instant and a poll cannot resurrect the order', right && useTerminal.getState().pending.length === 0);
-  await settle(1500);
-  check('I4: cancel reached the server', srv.pending.length === 0, srv.pending);
+  let cp!: Promise<void>;
+  await act(async () => { cp = api.cancelPending(cid); await sleep(100); });
+  check('J3: cancel is not shown until the server confirms', useTerminal.getState().pending.length === 1);
+  await act(async () => { await cp; });
+  check('J3: cancelled on the server and gone from the list', srv.pending.length === 0 && useTerminal.getState().pending.length === 0, { srv: srv.pending.length, st: useTerminal.getState().pending });
 
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASS');
   cleanup(); process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error('CRASH', e); process.exit(1); });
-function expect(_: boolean) {}

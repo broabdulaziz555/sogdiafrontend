@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useTerminalData } from './data';
 import { beep } from './sound';
 import { useTerminal, type PendingOrder } from './store';
-import { liveQuote } from './optimistic';
+import { liveQuote } from './liveprice';
 
 const STORAGE_KEY = 'sg-terminal-v1';
 
@@ -45,13 +45,13 @@ export function usePendingEngine(accountId: string | null) {
     const fill = (o: PendingOrder) => {
       const st = useTerminal.getState();
       st.updatePending(o.id, { status: 'filling', error: undefined });
-      void openPosition({ id: o.id, symbol: o.symbol, side: o.side, leverage: o.leverage, margin: o.margin, tp: o.tp, sl: o.sl, limitPrice: o.kind === 'limit' ? o.trigger : null }).then((r) => {
+      void openPosition({ id: o.id, symbol: o.symbol, side: o.side, leverage: o.leverage, margin: o.margin, tp: o.tp, sl: o.sl }).then((r) => {
         const s = useTerminal.getState();
         if (r.ok) {
           s.removePending(o.id);
           toast.success(`${o.kind === 'limit' ? 'Limit' : 'Stop'} filled · ${o.symbol.replace('USDT', '/USDT')}`, `${o.side} ${o.leverage}× at ${fmtPrice(r.order.entry_price)}`);
           if (s.soundOn) beep(o.side === 'long' ? 'up' : 'down');
-        } else if (r.unconfirmed) {
+        } else if (r.timedOut) {
           s.updatePending(o.id, { status: 'failed', error: 'Not confirmed — check your positions' });
         } else {
           s.updatePending(o.id, { status: 'failed', error: errMsg(r.error) });

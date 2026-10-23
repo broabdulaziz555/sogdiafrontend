@@ -4,28 +4,33 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import useSWR, { mutate as globalMutate } from 'swr';
 import { ApiError, get, post } from '@/lib/api';
 import { fmtSigned, fmtPrice } from '@/lib/format';
-import type { Account, AccountMetrics, HistoryOrder, HistoryResponse, Position, PositionsResponse, RiskState, ServerPending, Side } from '@/lib/types';
+import type { Account, AccountMetrics, Position, PositionsResponse, RiskState, ServerPending, Side } from '@/lib/types';
 import { useToast } from '@/components/ui/Toast';
 import { beep } from './sound';
-import { SPREAD, buildOptimistic, liveMid } from './optimistic';
+import { deriveMetrics, markPosition } from './liveprice';
 import { diag } from '@/lib/diag';
 import { useTerminal, type PendingOrder } from './store';
-import {
-  DEFINITIVE_CODES, EMPTY_LEDGER, deriveView, reconcile, withRetry,
-  type CloseIntent, type Ledger, type OpenBody, type OpenIntent, type Snapshot,
-} from './sync';
 
 /*
- * Terminal data layer. How it works (details in ./sync.ts):
+ * Terminal data layer: plain request / response.
  *
- *   • A poll of /trade/positions gives the authoritative snapshot (positions, limit/stop orders, account).
- *   • Everything the trader does (open, close, place an order) is written to a LEDGER first, so the screen reacts at
- *     once, then sent with a client-generated id and retried until the server answers. Retrying is safe because the
- *     server stores an order under the id it is given.
- *   • The screen is snapshot + ledger. An intent leaves the ledger only when server data settles it, so a slow, failed
- *     or out-of-order poll can never make a position vanish, reappear or double.
- *   • Account figures are computed from the positions on screen, so the table and the panel always agree.
+ *   • ONE SWR query, GET /trade/positions, is the only source of what is open. The table, the account panel and the
+ *     chart all read it.
+ *   • Open / close / place-order are ordinary awaited requests (30 s deadline, no retries). While one is running the
+ *     button that started it shows a spinner. Nothing is drawn or hidden before the server has answered.
+ *   • When the server answers 200, the positions query is invalidated and the table is re-read from the database.
+ *   • A request that fails or times out changes nothing on screen. The trader is told to check their positions, and the
+ *     positions query is re-read, so what is shown is whatever the database holds.
  */
+
+/** Deadline for POST /trade/open, /trade/close and the order endpoints. Generous on purpose: a slow answer is not a failure. */
+export const TRADE_TIMEOUT_MS = 30_000;
+/** Mutable only so the tests can shorten the deadline. */
+export const TUNING = { tradeMs: TRADE_TIMEOUT_MS };
+/** How long a request waits for the table re-read that follows a 200 before it reports the result (the re-read carries on regardless). */
+const REFRESH_WAIT_MS = 3_000;
+
+export const TIMEOUT_TOAST = { title: 'Order execution is taking longer than expected', body: 'Check your positions.' };
 
 export interface OpenInput {
   /** Reuse an id (a limit order that fills keeps its own id, which makes the fill idempotent). */
@@ -36,16 +41,16 @@ export interface OpenInput {
   margin: number;
   tp?: number | null;
   sl?: number | null;
-  /** A limit order opens at its own price, a market order at the live price. */
-  limitPrice?: number | null;
 }
 
 export type OpenOutcome =
   | { ok: true; id: string; order: Position; replayed: boolean }
-  | { ok: false; id: string; error: unknown; /** The server may or may not have it; it is shown as syncing until it is known. */ unconfirmed?: boolean };
+  /** `timedOut`: no answer in time. The order may or may not exist; the provider has already told the trader to check positions. */
+  | { ok: false; id: string; error: unknown; timedOut: boolean };
 
 export interface CloseResult { order: { pnl: number; close_price: number } }
-export interface CloseOutcome { id: string; ok: boolean; res?: CloseResult; error?: unknown; unconfirmed?: boolean }
+/** `ok` without `res`: the position was already closed. */
+export interface CloseOutcome { id: string; ok: boolean; res?: CloseResult; error?: unknown }
 
 export interface PendingInput {
   symbol: string;
@@ -66,16 +71,17 @@ interface Ctx {
   positions: Position[];
   loading: boolean;
   error: unknown;
+  /** The last poll failed but older data is still shown. */
   stale: boolean;
-  /** Intents the server has not confirmed yet (shown on screen, still being sent). */
-  syncing: number;
-  /** True for a position that is on screen but not yet stored by the server (cannot be closed or edited yet). */
-  isUnconfirmed: (id: string) => boolean;
+  /** Trade requests currently waiting for the server (used to hold back an app update). */
+  inFlight: number;
+  /** True while a close request for this position is running (its Close button shows a spinner). */
+  isClosing: (id: string) => boolean;
   refresh: () => Promise<unknown>;
   openPosition: (i: OpenInput) => Promise<OpenOutcome>;
   closePositions: (ids: string[]) => Promise<CloseOutcome[]>;
   placePending: (i: PendingInput) => Promise<{ ok: true; id: string } | { ok: false; error: unknown }>;
-  cancelPending: (id: string) => void;
+  cancelPending: (id: string) => Promise<void>;
 }
 
 const DataCtx = createContext<Ctx | null>(null);
@@ -85,14 +91,11 @@ export const useTerminalData = () => {
   return c;
 };
 
-type Snap = PositionsResponse & { startedAt: number };
-
-/** Per-attempt deadline and total budget for sending an intent. After the budget the intent waits for the server's data to decide. */
-export const TUNING = { attemptMs: 15_000, budgetMs: 90_000 };
-const isDefinitive = (e: unknown) => e instanceof ApiError && DEFINITIVE_CODES.has(e.code);
 const errCode = (e: unknown) => (e instanceof ApiError ? `${e.code}${e.status ? ` ${e.status}` : ''}` : e instanceof Error ? e.name : 'error');
+/** No answer at all (as opposed to an answer saying no). */
+const isUnanswered = (e: unknown) => e instanceof ApiError && (e.code === 'TIMEOUT' || e.code === 'NETWORK_ERROR');
 
-/** Run one request attempt and leave a line in the Diagnostics trail (what, how long, how it ended). */
+/** Run one request and leave a line in the Diagnostics trail (what, how long, how it ended). */
 async function traced<T>(what: string, fn: () => Promise<T>): Promise<T> {
   const t0 = Date.now();
   try {
@@ -103,31 +106,6 @@ async function traced<T>(what: string, fn: () => Promise<T>): Promise<T> {
     diag(`${what} FAILED ${errCode(e)} after ${Date.now() - t0}ms`);
     throw e;
   }
-}
-
-/** Show a trade in History the moment it is closed, built from what the screen already knows; the reload that follows swaps in the server's row. */
-function addToHistory(accountId: string, p: Position) {
-  const exit = p.side === 'long' ? p.mark_price * (1 - SPREAD) : p.mark_price * (1 + SPREAD);
-  const row: HistoryOrder = {
-    id: p.id, symbol: p.symbol, side: p.side, leverage: p.leverage, margin: p.margin, position_size: p.position_size,
-    entry_price: p.entry_price, close_price: exit, pnl: p.unrealized_pnl, status: 'closed', close_reason: 'manual',
-    created_at: p.created_at, closed_at: new Date().toISOString(),
-  };
-  void globalMutate(
-    (k: unknown) => Array.isArray(k) && k[0] === 'terminal-history' && k[1] === accountId && k[2] === 0,
-    (cur?: HistoryResponse) => {
-      if (!cur || cur.orders.some((o) => o.id === row.id)) return cur;
-      const st = cur.stats;
-      const wins = st.wins + (row.pnl > 0 ? 1 : 0), losses = st.losses + (row.pnl > 0 ? 0 : 1), trades = st.trades + 1;
-      return {
-        ...cur,
-        orders: [row, ...cur.orders].slice(0, Math.max(cur.limit || 0, 1)),
-        total: cur.total + 1,
-        stats: { trades, wins, losses, win_rate: Math.round((wins / trades) * 10000) / 100, net_pnl: Math.round((st.net_pnl + row.pnl) * 100) / 100 },
-      };
-    },
-    { revalidate: false },
-  );
 }
 
 /** Closed trades changed: reload every History list now and once more shortly after (the server write can lag the reply). */
@@ -143,8 +121,10 @@ const label = (symbol: string) => symbol.replace('USDT', '/USDT');
 const fromServer = (s: ServerPending): PendingOrder => ({
   id: s.id, accountId: s.account_id, symbol: s.symbol, side: s.side, kind: s.kind, trigger: s.trigger_price,
   leverage: s.leverage, margin: s.margin, tp: s.take_profit, sl: s.stop_loss, createdAt: Date.parse(s.created_at) || Date.now(),
-  status: s.status === 'failed' ? 'failed' : 'working', error: s.error ?? undefined, server: true, sync: 'synced', syncedAt: 0,
+  status: s.status === 'failed' ? 'failed' : 'working', error: s.error ?? undefined, server: true,
 });
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Single shared poll of /trade/positions (2.5 s with open trades or working orders, 10 s when flat). */
 export function TerminalDataProvider({ accountId, children }: { accountId: string; children: React.ReactNode }) {
@@ -152,17 +132,17 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const seen = useRef(new Set<string>());
   const soundOn = useTerminal((s) => s.soundOn);
 
-  // ── snapshot ────────────────────────────────────────────────────────────────────────────────────────────────
+  // ── the one query ───────────────────────────────────────────────────────────────────────────────────────────
   const lastCount = useRef(-1);
-  const swr = useSWR<Snap>(
+  const swr = useSWR<PositionsResponse>(
     ['terminal-positions', accountId],
     async () => {
-      const startedAt = Date.now();
+      const t0 = Date.now();
       const res = await get<PositionsResponse>('/trade/positions', { account_id: accountId }, { timeoutMs: 20_000 });
-      const ms = Date.now() - startedAt;
+      const ms = Date.now() - t0;
       if (ms > 1500 || res.positions.length !== lastCount.current) diag(`poll ok ${ms}ms · ${res.positions.length} position(s), ${res.pending?.length ?? 0} working order(s)`);
       lastCount.current = res.positions.length;
-      return { ...res, startedAt };
+      return res;
     },
     // the server runs its engine cycle on every call, so poll fast only while something is open or waiting
     { refreshInterval: (d) => (d?.positions?.length || d?.pending?.length ? 2500 : 10_000), dedupingInterval: 1000, revalidateOnFocus: true, keepPreviousData: true, errorRetryInterval: 3000, shouldRetryOnError: true, onError: (e) => diag(`poll FAILED ${errCode(e)}`) },
@@ -171,6 +151,12 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
   const { mutate } = swr; // stable across renders, unlike the `swr` object
   const refresh = useCallback(() => mutate(), [mutate]);
 
+  /** Invalidate the positions query and wait (briefly) for the table to be re-read from the database. */
+  const invalidate = useCallback(async () => {
+    await Promise.race([mutate().catch(() => undefined), sleep(REFRESH_WAIT_MS)]);
+  }, [mutate]);
+
+  // liquidations / SL / TP hits and account breaches reported by the server
   useEffect(() => {
     if (!data) return;
     for (const ev of data.liquidated ?? []) {
@@ -190,76 +176,42 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
     }
   }, [data, toast, accountId, soundOn]);
 
-  // ── ledger (what the trader asked for and the server has not caught up with) ───────────────────────────────
-  const [ledger, setLedgerState] = useState<Ledger>(EMPTY_LEDGER);
-  const ledgerRef = useRef<Ledger>(EMPTY_LEDGER);
-  const setLedger = useCallback((fn: (l: Ledger) => Ledger) => {
-    const next = fn(ledgerRef.current);
-    if (next === ledgerRef.current) return;
-    ledgerRef.current = next;
-    setLedgerState(next);
-  }, []);
-  const patchOpen = useCallback((id: string, p: Partial<OpenIntent>) => setLedger((l) => (l.opens[id] ? { ...l, opens: { ...l.opens, [id]: { ...l.opens[id], ...p } } } : l)), [setLedger]);
-  const patchClose = useCallback((id: string, p: Partial<CloseIntent>) => setLedger((l) => (l.closes[id] ? { ...l, closes: { ...l.closes, [id]: { ...l.closes[id], ...p } } } : l)), [setLedger]);
-  const dropOpen = useCallback((id: string) => setLedger((l) => { if (!l.opens[id]) return l; const { [id]: _x, ...opens } = l.opens; void _x; return { ...l, opens }; }), [setLedger]);
-  const dropClose = useCallback((id: string) => setLedger((l) => { if (!l.closes[id]) return l; const { [id]: _x, ...closes } = l.closes; void _x; return { ...l, closes }; }), [setLedger]);
-
-  useEffect(() => { setLedger(() => EMPTY_LEDGER); }, [accountId, setLedger]);
-
-  // Settle the ledger (and mirror server-side limit/stop orders into the store) every time a new snapshot arrives.
-  const cancelled = useRef(new Map<string, number>());
+  // server-side limit / stop orders: the server's list is the truth, the store just mirrors it
   useEffect(() => {
-    if (!data) return;
-    const { ledger: next, dropped } = reconcile(ledgerRef.current, data);
-    if (next !== ledgerRef.current) {
-      diag(`ledger settled by poll: opens ${Object.keys(ledgerRef.current.opens).length}→${Object.keys(next.opens).length}, closes ${Object.keys(ledgerRef.current.closes).length}→${Object.keys(next.closes).length}${dropped.notPlaced.length ? ` · NOT PLACED ${dropped.notPlaced.map((o) => o.id.slice(0, 8)).join(',')}` : ''}${dropped.notClosed.length ? ` · NOT CLOSED ${dropped.notClosed.map((c) => c.id.slice(0, 8)).join(',')}` : ''}`);
-      setLedger(() => next);
-    }
-    for (const o of dropped.notPlaced) toast.error(`Order not placed · ${label(o.body.symbol)}`, 'The server never received it, so nothing was opened. You can place it again.');
-    for (const c of dropped.notClosed) toast.warn('Close not confirmed', `The position ${c.id.slice(0, 8)} is still open on the server, so it is shown again.`);
-    if (dropped.notClosed.length) refreshHistory();
-
-    // server-side limit / stop orders
-    if (!data.pending) return; // older backend: browser-side orders only
+    if (!data?.pending) return; // older backend: browser-side orders only
     const st = useTerminal.getState();
     const srv = new Map(data.pending.map((s) => [s.id, s]));
     const open = new Set(data.positions.map((p) => p.id));
-    const now = Date.now();
-    for (const [id, at] of cancelled.current) if (now - at > 120_000) cancelled.current.delete(id);
 
     let changed = false;
     const out: PendingOrder[] = [];
     for (const o of st.pending) {
-      if (o.accountId !== accountId || !o.server || o.sync === 'sending') { out.push(o); continue; }
+      if (o.accountId !== accountId || !o.server) { out.push(o); continue; }
       const s = srv.get(o.id);
       if (s) {
         const upd = fromServer(s);
         if (o.status !== upd.status || o.error !== upd.error) { changed = true; out.push({ ...o, status: upd.status, error: upd.error }); } else out.push(o);
         continue;
       }
-      if (data.startedAt > (o.syncedAt ?? 0)) {
-        changed = true; // filled, cancelled elsewhere, or dismissed
-        if (open.has(o.id)) {
-          const p = data.positions.find((x) => x.id === o.id);
-          toast.success(`${o.kind === 'limit' ? 'Limit' : 'Stop'} filled · ${label(o.symbol)}`, `${o.side} ${o.leverage}×${p ? ` at ${fmtPrice(p.entry_price)}` : ''}`);
-          if (useTerminal.getState().soundOn) beep(o.side === 'long' ? 'up' : 'down');
-        }
-        continue;
+      changed = true; // filled, cancelled elsewhere, or dismissed
+      if (open.has(o.id)) {
+        const p = data.positions.find((x) => x.id === o.id);
+        toast.success(`${o.kind === 'limit' ? 'Limit' : 'Stop'} filled · ${label(o.symbol)}`, `${o.side} ${o.leverage}×${p ? ` at ${fmtPrice(p.entry_price)}` : ''}`);
+        if (useTerminal.getState().soundOn) beep(o.side === 'long' ? 'up' : 'down');
       }
-      out.push(o);
     }
     for (const s of data.pending) {
-      if (cancelled.current.has(s.id) || out.some((o) => o.id === s.id)) continue;
+      if (out.some((o) => o.id === s.id)) continue;
       changed = true;
       out.push(fromServer(s));
     }
     if (changed) useTerminal.setState({ pending: out });
-  }, [data, accountId, toast, setLedger]);
+  }, [data, accountId, toast]);
 
   // ── live price layer ─────────────────────────────────────────────────────────────────────────────────────
-  // Between polls the numbers follow the browser's live price (same spread and maths as the server).
+  // Between polls the numbers follow the browser's live price (same spread and maths as the server). Display only.
   const [tick, setTick] = useState(0);
-  const hasOpen = (data?.positions.length ?? 0) > 0 || Object.keys(ledger.opens).length > 0;
+  const hasOpen = (data?.positions.length ?? 0) > 0;
   useEffect(() => {
     if (!hasOpen) return;
     const t = setInterval(() => setTick((n) => n + 1), 500);
@@ -268,206 +220,136 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
 
   const view = useMemo(() => {
     if (!data) return null;
-    const mark = (p: Position): Position => {
-      const mid = liveMid(p.symbol);
-      if (mid == null) return p;
-      const exit = p.side === 'long' ? mid * (1 - SPREAD) : mid * (1 + SPREAD);
-      const pnl = Math.round(((p.side === 'long' ? exit - p.entry_price : p.entry_price - exit) * p.quantity) * 100) / 100;
-      return { ...p, mark_price: mid, unrealized_pnl: pnl, unrealized_pnl_pct: p.margin > 0 ? Math.round((pnl / p.margin) * 10000) / 100 : 0 };
-    };
-    return deriveView(data, ledger, mark);
+    const positions = data.positions.map(markPosition);
+    return { positions, metrics: deriveMetrics(data.metrics, data.account, positions) };
     // `tick` re-prices the live layer without a new snapshot
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, ledger, tick]);
+  }, [data, tick]);
 
-  // Latest things the click handlers need to read without waiting for a render.
-  const livePositions = useRef<Position[]>([]);
-  livePositions.current = view?.positions ?? [];
-  const dataRef = useRef<Snap | undefined>(undefined);
-  dataRef.current = data;
-  /** A position the trader can act on: on screen, being opened, or in the latest server list. */
-  const findPosition = useCallback((id: string): Position | null => {
-    const o = ledgerRef.current.opens[id];
-    return livePositions.current.find((p) => p.id === id) ?? (o ? o.confirmed ?? o.pos : null) ?? dataRef.current?.positions.find((p) => p.id === id) ?? null;
+  // ── requests in flight ───────────────────────────────────────────────────────────────────────────────────
+  const [inFlight, setInFlight] = useState(0);
+  const track = useCallback(async <T,>(run: () => Promise<T>): Promise<T> => {
+    setInFlight((n) => n + 1);
+    try { return await run(); } finally { setInFlight((n) => n - 1); }
   }, []);
 
-  // ── actions ──────────────────────────────────────────────────────────────────────────────────────────────
-  const openDone = useRef(new Map<string, Promise<OpenOutcome>>());
+  // ── open ─────────────────────────────────────────────────────────────────────────────────────────────────
+  const opening = useRef(new Map<string, Promise<OpenOutcome>>());
 
   const openPosition = useCallback((i: OpenInput): Promise<OpenOutcome> => {
     const id = i.id ?? crypto.randomUUID();
-    const existing = openDone.current.get(id);
-    if (existing) return existing; // the same order sent twice (double tap, replayed fill) is one order
+    const running = opening.current.get(id);
+    if (running) return running; // the same order sent twice (double tap, replayed fill) is one request
 
-    const body: OpenBody = { account_id: accountId, order_id: id, symbol: i.symbol, side: i.side, leverage: i.leverage, margin: i.margin };
+    const body: Record<string, unknown> = { account_id: accountId, order_id: id, symbol: i.symbol, side: i.side, leverage: i.leverage, margin: i.margin };
     if (i.tp != null) body.take_profit = i.tp;
     if (i.sl != null) body.stop_loss = i.sl;
-    const pos = buildOptimistic({ id, accountId, symbol: i.symbol, side: i.side, leverage: i.leverage, margin: i.margin, tp: i.tp, sl: i.sl, limitPrice: i.limitPrice });
-    const intent: OpenIntent = { id, pos, body, createdAt: Date.now(), phase: 'sending' };
-    setLedger((l) => ({ ...l, opens: { ...l.opens, [id]: intent } }));
 
-    diag(`open ${id.slice(0, 8)} ${i.side} ${i.symbol} sent${pos ? '' : ' (no live price: waiting for the server)'}`);
-    const run = (async (): Promise<OpenOutcome> => {
-      const r = await withRetry(() => traced(`open ${id.slice(0, 8)} attempt`, () => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.attemptMs })), { budgetMs: TUNING.budgetMs, isDefinitive });
-      if (r.ok) {
-        diag(`open ${id.slice(0, 8)} confirmed by server${r.value.replayed ? ' (was already stored)' : ''}`);
-        patchOpen(id, { phase: 'acked', ackedAt: Date.now(), confirmed: r.value.order });
-        setTimeout(() => { void mutate(); }, 600);
-        return { ok: true, id, order: r.value.order, replayed: !!r.value.replayed };
-      }
-      if (r.definitive) {
-        diag(`open ${id.slice(0, 8)} REFUSED ${errCode(r.error)}`);
-        dropOpen(id);
-        return { ok: false, id, error: r.error };
-      }
-      // Every attempt went unanswered. The server may well have it; its next snapshot decides (see reconcile).
-      diag(`open ${id.slice(0, 8)} UNCONFIRMED after retries — waiting for the server's list to decide`);
-      patchOpen(id, { phase: 'lost', lostAt: Date.now() });
-      toast.warn(`Still confirming · ${label(i.symbol)}`, 'The server has not answered yet. The order stays on screen and is resolved as soon as it does.');
-      void mutate();
-      return { ok: false, id, error: r.error, unconfirmed: true };
-    })().finally(() => { setTimeout(() => openDone.current.delete(id), 5000); });
-    openDone.current.set(id, run);
-    return run;
-  }, [accountId, setLedger, patchOpen, dropOpen, mutate, toast]);
-
-  const closing = useRef(new Set<string>());
-
-  const closePositions = useCallback(async (ids: string[]): Promise<CloseOutcome[]> => {
-    // a close already running for an id is not sent again (double tap, hotkey + button, close-all + single close)
-    const skipped = ids.filter((id) => closing.current.has(id) || ledgerRef.current.closes[id]).map((id): CloseOutcome => ({ id, ok: true }));
-    const todo = ids.filter((id) => !closing.current.has(id) && !ledgerRef.current.closes[id]);
-    todo.forEach((id) => closing.current.add(id));
-    const now = Date.now();
-    const mine = todo.filter((id) => findPosition(id));
-    setLedger((l) => {
-      const closes = { ...l.closes };
-      for (const id of mine) closes[id] = { id, createdAt: now, phase: 'sending' };
-      return { ...l, closes };
-    });
-    for (const id of mine) { const p = findPosition(id); if (p) addToHistory(accountId, p); }
-    for (const id of todo) if (!mine.includes(id)) { closing.current.delete(id); skipped.push({ id, ok: true }); } // not on screen: nothing to close
-
-    const sent = await Promise.all(mine.map(async (id): Promise<CloseOutcome> => {
+    const run = track(async (): Promise<OpenOutcome> => {
       try {
-        // a position still being stored is closed once the server has it
-        const pendingOpen = openDone.current.get(id);
-        if (pendingOpen) {
-          const o = await pendingOpen;
-          if (!o.ok && !o.unconfirmed) { dropClose(id); refreshHistory(); return { id, ok: true }; }
+        const r = await traced(`open ${id.slice(0, 8)} ${i.side} ${i.symbol}`, () => post<{ order: Position; replayed?: boolean }>('/trade/open', body, { timeoutMs: TUNING.tradeMs }));
+        await invalidate(); // re-read the table from the database
+        return { ok: true, id, order: r.order, replayed: !!r.replayed };
+      } catch (error) {
+        const timedOut = isUnanswered(error);
+        if (timedOut) {
+          toast.warn(TIMEOUT_TOAST.title, TIMEOUT_TOAST.body);
+          void mutate(); // the order may well exist: show whatever the database holds
         }
-        const r = await withRetry(
-          () => traced(`close ${id.slice(0, 8)} attempt`, async () => {
-            try { return await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: TUNING.attemptMs }); }
-            catch (e) { if (e instanceof ApiError && e.code === 'ORDER_NOT_OPEN') return null; throw e; } // already closed = done
-          }),
-          { budgetMs: TUNING.budgetMs, isDefinitive },
-        );
-        if (r.ok) {
-          patchClose(id, { phase: 'acked', ackedAt: Date.now(), pnl: r.value?.order?.pnl });
-          refreshHistory();
-          setTimeout(() => { void mutate(); }, 600);
-          return { id, ok: true, res: r.value ?? undefined };
-        }
-        if (!r.ok) diag(`close ${id.slice(0, 8)} ${r.definitive ? 'REFUSED' : 'UNCONFIRMED'} ${errCode(r.error)}`);
-        if (r.definitive) {
-          dropClose(id); // refused: the position is still open, bring it back
-          refreshHistory(); // takes the provisional History row back out
-          return { id, ok: false, error: r.error };
-        }
-        patchClose(id, { phase: 'lost', lostAt: Date.now() });
-        toast.warn('Still confirming the close', 'The server has not answered yet. The position stays hidden and is resolved as soon as it does.');
-        refreshHistory();
-        void mutate();
-        return { id, ok: true, unconfirmed: true };
-      } finally {
-        closing.current.delete(id);
+        return { ok: false, id, error, timedOut };
       }
-    }));
-    return [...skipped, ...sent];
-  }, [accountId, setLedger, patchClose, dropClose, mutate, toast, findPosition]);
+    }).finally(() => { opening.current.delete(id); });
+    opening.current.set(id, run);
+    return run;
+  }, [accountId, track, invalidate, mutate, toast]);
+
+  // ── close ────────────────────────────────────────────────────────────────────────────────────────────────
+  const closingRuns = useRef(new Map<string, Promise<CloseOutcome>>());
+  const [closingIds, setClosingIds] = useState<ReadonlySet<string>>(new Set());
+  const isClosing = useCallback((id: string) => closingIds.has(id), [closingIds]);
+  const setClosing = useCallback((id: string, on: boolean) => setClosingIds((cur) => {
+    if (cur.has(id) === on) return cur;
+    const next = new Set(cur);
+    if (on) next.add(id); else next.delete(id);
+    return next;
+  }), []);
+
+  const closeOne = useCallback((id: string): Promise<CloseOutcome> => {
+    const running = closingRuns.current.get(id);
+    if (running) return running; // double tap, hotkey + button, close-all + single close: one request
+    setClosing(id, true);
+    const run = track(async (): Promise<CloseOutcome> => {
+      try {
+        const res = await traced(`close ${id.slice(0, 8)}`, async () => {
+          try { return await post<CloseResult>('/trade/close', { order_id: id }, { timeoutMs: TUNING.tradeMs }); }
+          catch (e) { if (e instanceof ApiError && e.code === 'ORDER_NOT_OPEN') return null; throw e; } // already closed = done
+        });
+        refreshHistory();
+        await invalidate(); // the row leaves the table when the database no longer lists it
+        return { id, ok: true, res: res ?? undefined };
+      } catch (error) {
+        void mutate(); // whatever happened, show what the database holds (the position stays visible)
+        return { id, ok: false, error };
+      }
+    }).finally(() => { closingRuns.current.delete(id); setClosing(id, false); });
+    closingRuns.current.set(id, run);
+    return run;
+  }, [track, invalidate, mutate, setClosing]);
+
+  const closePositions = useCallback((ids: string[]) => Promise.all(ids.map(closeOne)), [closeOne]);
 
   // ── limit / stop orders ─────────────────────────────────────────────────────────────────────────────────
-  const sendingPending = useRef(new Set<string>());
-
-  const pushPending = useCallback(async (o: PendingOrder) => {
-    if (sendingPending.current.has(o.id)) return;
-    sendingPending.current.add(o.id);
-    try {
-      const r = await withRetry(
-        () => post('/trade/pending', { id: o.id, account_id: o.accountId, symbol: o.symbol, side: o.side, kind: o.kind, trigger_price: o.trigger, leverage: o.leverage, margin: o.margin, take_profit: o.tp, stop_loss: o.sl }, { timeoutMs: TUNING.attemptMs }),
-        { budgetMs: TUNING.budgetMs, isDefinitive },
-      );
-      const st = useTerminal.getState();
-      if (r.ok) { st.updatePending(o.id, { sync: 'synced', syncedAt: Date.now() }); void mutate(); return; }
-      if (r.definitive && r.error instanceof ApiError && r.error.code === 'FEATURE_UNAVAILABLE') {
-        st.updatePending(o.id, { server: false, sync: undefined }); // not enabled on the server yet: the browser watches it, as before
-        return;
-      }
-      if (r.definitive) {
-        st.removePending(o.id);
-        toast.error(`Order refused · ${label(o.symbol)}`, r.error instanceof Error ? r.error.message : 'The server refused this order.');
-      }
-      // otherwise: left as 'sending'; it is re-sent below until the server answers
-    } finally {
-      sendingPending.current.delete(o.id);
-    }
-  }, [mutate, toast]);
-
   const placePending = useCallback(async (i: PendingInput) => {
     const id = crypto.randomUUID();
-    const o: PendingOrder = { id, accountId, symbol: i.symbol, side: i.side, kind: i.kind, trigger: i.trigger, leverage: i.leverage, margin: i.margin, tp: i.tp, sl: i.sl, createdAt: Date.now(), status: 'working', server: true, sync: 'sending' };
-    useTerminal.getState().addPending(o);
-    await pushPending(o);
-    return { ok: true as const, id };
-  }, [accountId, pushPending]);
+    try {
+      await track(() => traced(`order ${id.slice(0, 8)} ${i.kind} ${i.symbol}`, () => post('/trade/pending', { id, account_id: accountId, symbol: i.symbol, side: i.side, kind: i.kind, trigger_price: i.trigger, leverage: i.leverage, margin: i.margin, take_profit: i.tp, stop_loss: i.sl }, { timeoutMs: TUNING.tradeMs })));
+      await invalidate(); // the working order shows up from the server's list
+      return { ok: true as const, id };
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'FEATURE_UNAVAILABLE') {
+        // not enabled on the server yet: the browser watches it, as before
+        useTerminal.getState().addPending({ id, accountId, symbol: i.symbol, side: i.side, kind: i.kind, trigger: i.trigger, leverage: i.leverage, margin: i.margin, tp: i.tp, sl: i.sl, createdAt: Date.now(), status: 'working', server: false });
+        return { ok: true as const, id };
+      }
+      if (isUnanswered(error)) { toast.warn(TIMEOUT_TOAST.title, TIMEOUT_TOAST.body); void mutate(); }
+      return { ok: false as const, error };
+    }
+  }, [accountId, track, invalidate, mutate, toast]);
 
-  // Orders still waiting for the server's acknowledgement (slow link, tab reopened) are sent again. Same id, so never twice.
-  useEffect(() => {
-    const resend = () => {
-      for (const o of useTerminal.getState().pending) if (o.accountId === accountId && o.server && o.sync === 'sending') void pushPending(o);
-    };
-    resend();
-    const t = setInterval(resend, 10_000);
-    return () => clearInterval(t);
-  }, [accountId, pushPending]);
-
-  const cancelPending = useCallback((id: string) => {
+  const cancelPending = useCallback(async (id: string) => {
     const st = useTerminal.getState();
     const o = st.pending.find((x) => x.id === id);
-    st.removePending(id);
-    if (!o?.server) return;
-    cancelled.current.set(id, Date.now());
-    void withRetry(() => post('/trade/pending/cancel', { id, account_id: o.accountId }, { timeoutMs: TUNING.attemptMs }), { budgetMs: TUNING.budgetMs, isDefinitive }).then(() => { void mutate(); });
-  }, [mutate]);
+    if (!o) return;
+    if (!o.server) { st.removePending(id); return; } // browser-side order
+    try {
+      await track(() => traced(`cancel ${id.slice(0, 8)}`, () => post('/trade/pending/cancel', { id, account_id: o.accountId }, { timeoutMs: TUNING.tradeMs })));
+      await invalidate();
+    } catch (e) {
+      toast.error('Could not cancel the order', e instanceof Error ? e.message : 'Try again.');
+      void mutate();
+    }
+  }, [track, invalidate, mutate, toast]);
 
   // ── context ──────────────────────────────────────────────────────────────────────────────────────────────
-  const syncing = useMemo(
-    () => Object.values(ledger.opens).filter((o) => o.phase !== 'acked').length + Object.values(ledger.closes).filter((c) => c.phase !== 'acked').length,
-    [ledger],
-  );
-  const unconfirmed = view?.unconfirmed;
-  const isUnconfirmed = useCallback((id: string) => !!unconfirmed?.has(id), [unconfirmed]);
-
   const value = useMemo<Ctx>(
     () => ({
       accountId,
-      account: view?.account ?? null,
+      account: data?.account ?? null,
       metrics: view?.metrics ?? null,
       risk: data?.risk ?? null,
       positions: view?.positions ?? [],
       loading: swr.isLoading && !data,
       error: swr.error,
       stale: !!swr.error && !!data,
-      syncing,
-      isUnconfirmed,
+      inFlight,
+      isClosing,
       refresh,
       openPosition,
       closePositions,
       placePending,
       cancelPending,
     }),
-    [accountId, view, data, swr.isLoading, swr.error, syncing, isUnconfirmed, refresh, openPosition, closePositions, placePending, cancelPending],
+    [accountId, view, data, swr.isLoading, swr.error, inFlight, isClosing, refresh, openPosition, closePositions, placePending, cancelPending],
   );
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

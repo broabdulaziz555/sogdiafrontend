@@ -39,7 +39,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
   showLevels: boolean; showOrders: boolean; compact: boolean;
 }) {
   const toast = useToast();
-  const { accountId, refresh, closePositions, cancelPending: removePending, isUnconfirmed } = useTerminalData();
+  const { accountId, refresh, closePositions, cancelPending: removePending, isClosing } = useTerminalData();
   const pendingAll = useTerminal((s) => s.pending);
   const [busy, setBusy] = useState<string | null>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -75,15 +75,15 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
         if (p.symbol !== symbol) continue;
         const long = p.side === 'long';
         const qty = fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1);
-        const opening = isUnconfirmed(p.id);
+        const closingNow = isClosing(p.id);
         const pnlAt = (px: number) => p.quantity * (long ? px - p.entry_price : p.entry_price - px);
         out.push({
           key: `p:${p.id}`, price: p.entry_price, tone: 'info', pill: { label: long ? 'Long' : 'Short', side: p.side }, size: qty,
-          value: { text: opening ? 'Opening…' : `${fmtSigned(p.unrealized_pnl)} USD`, tone: opening ? undefined : p.unrealized_pnl >= 0 ? 'up' : 'down' },
-          closeLabel: 'Close position', busy: busy === p.id || opening, onClose: () => void closePosition(p),
+          value: { text: closingNow ? 'Closing…' : `${fmtSigned(p.unrealized_pnl)} USD`, tone: closingNow ? undefined : p.unrealized_pnl >= 0 ? 'up' : 'down' },
+          closeLabel: 'Close position', busy: busy === p.id || closingNow, onClose: () => void closePosition(p),
         });
-        if (p.take_profit) out.push({ key: `p:${p.id}:tp`, price: p.take_profit, tone: 'up', dotted: true, size: qty, value: { text: `${fmtSigned(pnlAt(p.take_profit))} USD`, tone: 'up' }, closeLabel: 'Remove take-profit', busy: busy === `${p.id}:tp` || opening, onClose: () => void clearLevel(p, 'tp') });
-        if (p.stop_loss) out.push({ key: `p:${p.id}:sl`, price: p.stop_loss, tone: 'warn', dotted: true, size: qty, value: { text: `${fmtSigned(pnlAt(p.stop_loss))} USD`, tone: 'down' }, closeLabel: 'Remove stop-loss', busy: busy === `${p.id}:sl` || opening, onClose: () => void clearLevel(p, 'sl') });
+        if (p.take_profit) out.push({ key: `p:${p.id}:tp`, price: p.take_profit, tone: 'up', dotted: true, size: qty, value: { text: `${fmtSigned(pnlAt(p.take_profit))} USD`, tone: 'up' }, closeLabel: 'Remove take-profit', busy: busy === `${p.id}:tp` || closingNow, onClose: () => void clearLevel(p, 'tp') });
+        if (p.stop_loss) out.push({ key: `p:${p.id}:sl`, price: p.stop_loss, tone: 'warn', dotted: true, size: qty, value: { text: `${fmtSigned(pnlAt(p.stop_loss))} USD`, tone: 'down' }, closeLabel: 'Remove stop-loss', busy: busy === `${p.id}:sl` || closingNow, onClose: () => void clearLevel(p, 'sl') });
       }
     }
     if (showOrders) {
@@ -101,7 +101,7 @@ function OrderOverlayInner({ chart, series, symbol, positions, showLevels, showO
       }
     }
     return out;
-  }, [positions, pendingAll, accountId, symbol, showLevels, showOrders, busy, closePosition, clearLevel, removePending, isUnconfirmed]);
+  }, [positions, pendingAll, accountId, symbol, showLevels, showOrders, busy, closePosition, clearLevel, removePending, isClosing]);
 
   // glue every chip to its price, once per frame, straight on the DOM
   useEffect(() => {

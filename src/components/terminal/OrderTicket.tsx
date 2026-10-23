@@ -72,7 +72,10 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const [tp, setTp] = useState('');
   const [sl, setSl] = useState('');
   const [tpslOpen, setTpslOpen] = useState(false);
-    const [confirm, setConfirm] = useState<Side | null>(null);
+  const [confirm, setConfirm] = useState<Side | null>(null);
+  // true while an order waits for the server's answer: the button shows a spinner and a second order cannot be sent
+  const [submitting, setSubmitting] = useState(false);
+  const sending = useRef(false);
   const [touched, setTouched] = useState(false);
   // free-text buffer for the leverage box so the field can be emptied and retyped (null = mirror the store)
   const [levText, setLevText] = useState<string | null>(null);
@@ -144,35 +147,47 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const pickLev = (v: number) => { setLevText(null); setLev(v); };
   const setPct = (p: number) => { setMargin(free > 0 ? String(floorCents((free * p) / 100)) : ''); setTouched(true); };
 
-  const doSubmit = useCallback((s: Side) => {
+  const doSubmit = useCallback(async (s: Side) => {
+    if (sending.current) return;
     const marginRounded = floorCents(m);
     setConfirm(null);
     const tp = Number.isFinite(tpN) ? tpN : null;
     const sl = Number.isFinite(slN) ? slN : null;
     if (type === 'market') {
-      // Instant: the position goes on screen at the live price this very moment and the form is free again. The order is
-      // sent behind it with its own id and retried until the server answers (see data.tsx), so it can neither vanish nor double.
-      setMargin(''); setTp(''); setSl(''); setTouched(false);
-      onPlaced?.();
-      void openPosition({ symbol, side: s, leverage, margin: marginRounded, tp, sl }).then((o) => {
+      // Plain request / response: the button spins until the server answers (up to 30 s). The form is cleared and the
+      // position appears only after the server has stored it and the table has been re-read.
+      sending.current = true; setSubmitting(true);
+      try {
+        const o = await openPosition({ symbol, side: s, leverage, margin: marginRounded, tp, sl });
         if (o.ok) {
           toast.success(`${s === 'long' ? 'Long' : 'Short'} opened · ${base}/USDT`, `${leverage}× at ${fmtPrice(o.order.entry_price)} · margin ${fmtUsd(o.order.margin)}`);
           if (soundOn) beep(s === 'long' ? 'up' : 'down');
-        } else if (!o.unconfirmed) {
+          setMargin(''); setTp(''); setSl(''); setTouched(false);
+          onPlaced?.();
+        } else if (!o.timedOut) {
+          // refused: the form stays as it is so the trader can fix it (a timeout was already announced by the data layer)
           toast.error('Order rejected', `${errMsg(o.error)}${o.error instanceof ApiError && o.error.code ? ` [${o.error.code}]` : ''}`);
         }
-      });
+      } finally { sending.current = false; setSubmitting(false); }
     } else {
-      void placePending({ symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx, leverage, margin: marginRounded, tp, sl });
-      toast.info('Order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)}`);
-      setMargin(''); setPrice(''); setTouched(false);
-      onPlaced?.();
+      sending.current = true; setSubmitting(true);
+      try {
+        const r = await placePending({ symbol, side: s, kind: type === 'limit' ? 'limit' : 'stop', trigger: triggerPx, leverage, margin: marginRounded, tp, sl });
+        if (r.ok) {
+          toast.info('Order placed', `${type === 'limit' ? 'Limit' : 'Stop'} ${s} ${base}/USDT @ ${fmtPrice(triggerPx)}`);
+          setMargin(''); setPrice(''); setTouched(false);
+          onPlaced?.();
+        } else if (!(r.error instanceof ApiError && (r.error.code === 'TIMEOUT' || r.error.code === 'NETWORK_ERROR'))) {
+          toast.error('Order rejected', `${errMsg(r.error)}${r.error instanceof ApiError && r.error.code ? ` [${r.error.code}]` : ''}`);
+        }
+      } finally { sending.current = false; setSubmitting(false); }
     }
   }, [m, type, symbol, leverage, tpN, slN, triggerPx, toast, base, soundOn, openPosition, placePending, onPlaced]);
 
   const request = useCallback((s: Side) => {
     setSide(s);
     setTouched(true);
+    if (sending.current) return;
     if (!tradable || hasError) { if (hasError) toast.warn('Check the order', String(Object.values(errors)[0] ?? '')); return; }
     if (confirmOrders) setConfirm(s); else void doSubmit(s);
   }, [tradable, hasError, errors, confirmOrders, doSubmit, toast]);
@@ -317,7 +332,8 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
           variant={sideColor === 'up' ? 'up' : 'down'}
           size="lg"
           block
-          disabled={!tradable}
+          disabled={!tradable || submitting}
+          loading={submitting}
           onClick={() => request(side)}
           className="h-12"
         >
@@ -335,7 +351,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         onClose={() => setConfirm(null)}
         size="sm"
         title={`Confirm ${confirm === 'long' ? 'long' : 'short'} · ${base}/USDT`}
-        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} onClick={() => confirm && doSubmit(confirm)} data-autofocus>Confirm</Button></>}
+        footer={<><Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button><Button variant={confirm === 'long' ? 'up' : 'down'} onClick={() => confirm && void doSubmit(confirm)} data-autofocus>Confirm</Button></>}
       >
         <div className="space-y-2 p-5 text-sm">
           <Row k="Type" v={<span className="capitalize">{type}</span>} />

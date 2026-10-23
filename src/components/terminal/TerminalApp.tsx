@@ -38,14 +38,14 @@ const Panel = ({ children, label, className }: { children: React.ReactNode; labe
 );
 
 function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList: Account[]; onAccountChange: (id: string) => void; onInactive: () => void }) {
-  const { accountId, account, positions, refresh, syncing } = useTerminalData();
+  const { accountId, account, positions, refresh, inFlight } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
   const layout = useTerminalLayout();
 
   useEffect(() => { useTerminal.setState({ accountId }); }, [accountId]);
   usePendingEngine(accountId);
   const busyRef = useRef(false);
-  busyRef.current = syncing > 0;
+  busyRef.current = inFlight > 0;
   useUpdateWatcher(useCallback(() => busyRef.current, []));
   // the engine failed / passed this account: re-read the account list so the terminal moves off it instead of showing a dead account
   const notified = useRef('');
