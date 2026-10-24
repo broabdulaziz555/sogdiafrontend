@@ -102,7 +102,8 @@ async function traced<T>(what: string, fn: () => Promise<T>): Promise<T> {
   const t0 = Date.now();
   try {
     const r = await fn();
-    diag(`${what} ok ${Date.now() - t0}ms`);
+    const srv = (r as { server_ms?: unknown } | null)?.server_ms;
+    diag(`${what} ok ${Date.now() - t0}ms${typeof srv === 'number' ? ` (server ${srv}ms)` : ''}`);
     return r;
   } catch (e) {
     diag(`${what} FAILED ${errCode(e)} after ${Date.now() - t0}ms`);
@@ -148,7 +149,7 @@ export function TerminalDataProvider({ accountId, children }: { accountId: strin
       if (!Array.isArray(raw.positions)) throw new ApiError('INTERNAL_ERROR', 'Unexpected positions response (no positions array).', 0, raw);
       if (ms > 1500 || count !== lastCount.current) {
         const d = raw.debug;
-        diag(`poll ok ${ms}ms · ${count} position(s), ${raw.pending?.length ?? 0} working order(s)${d ? ` · server read ${d.db_open_orders} from the database, returned ${d.returned}${d.closed_by_cycle ? `, closed ${d.closed_by_cycle}` : ''}${d.risk_engine ? ` · risk engine ${d.risk_engine}` : ''}` : ''}`);
+        diag(`poll ok ${ms}ms${d?.server_ms != null ? ` (server ${d.server_ms}ms)` : ''} · ${count} position(s), ${raw.pending?.length ?? 0} working order(s)${d ? ` · server read ${d.db_open_orders} from the database, returned ${d.returned}${d.closed_by_cycle ? `, closed ${d.closed_by_cycle}` : ''}${d.risk_engine ? ` · risk engine ${d.risk_engine}` : ''}` : ''}`);
       }
       lastCount.current = count;
       return { ...raw, positions: raw.positions.map(normalizePosition) };

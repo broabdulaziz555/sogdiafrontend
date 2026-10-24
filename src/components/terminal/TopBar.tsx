@@ -10,6 +10,7 @@ import { siteHref } from '@/lib/sites';
 import { BUILD_ID, diagSubscribe, diagText } from '@/lib/diag';
 import { Modal } from '@/components/ui/Modal';
 import type { Account } from '@/lib/types';
+import { accountStage, statusLabel } from './accountStage';
 import { Logo } from '@/components/ui/Logo';
 import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher';
 import { SiteLink } from '@/components/ui/SiteLink';
@@ -114,7 +115,7 @@ function TopBarInner({ accounts, onAccountChange }: { accounts: Account[]; onAcc
       <label className="sr-only" htmlFor="tb-account">Trading account</label>
       <select id="tb-account" value={accountId} onChange={(e) => onAccountChange(e.target.value)}
         className={cn('h-10 min-w-0 flex-1 truncate rounded-xl border border-line bg-panel2/80 px-3 text-xs font-medium outline-none focus:border-accent', !mob && 'sm:h-10 sm:max-w-[220px] sm:flex-none md:flex-none')}>
-        {accounts.map((a) => <option key={a.id} value={a.id}>{a.type === 'instant' ? 'Instant' : 'One-Step'} · {fmtUsd(a.size).replace(/\.00$/, '')} · {a.id.slice(0, 6)}</option>)}
+        {accounts.map((a) => <option key={a.id} value={a.id}>{accountStage(a)} · {fmtUsd(a.size).replace(/\.00$/, '')} · {a.id.slice(0, 6)}{a.status !== 'active' ? ` · ${statusLabel(a.status)}` : ''}</option>)}
       </select>
 
       <div className={cn('hidden min-w-0 flex-1 items-center gap-4 overflow-x-auto scroll-none', !mob && 'md:flex')} aria-label="Account summary">

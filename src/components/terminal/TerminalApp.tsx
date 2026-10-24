@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { SiteLink } from '@/components/ui/SiteLink';
 import { AccountPanel } from './AccountPanel';
+import { pickAccount, statusLabel } from './accountStage';
 import { TerminalDataProvider, useTerminalData } from './data';
 import { useSymbolFeed, useSymbolsFeed, usePricesFeed, useTickersFeed } from './feeds';
 import { Hotkeys } from './hotkeys';
@@ -37,6 +38,20 @@ const Panel = ({ children, label, className }: { children: React.ReactNode; labe
   <div className={cn('card min-h-0 min-w-0 overflow-hidden rounded-2xl', className)}><ErrorBoundary label={label} compact>{children}</ErrorBoundary></div>
 );
 
+/** A breached (or otherwise closed) account is still fully viewable; this strip says why it cannot trade. */
+function AccountBanner() {
+  const { account } = useTerminalData();
+  if (!account || account.status === 'active') return null;
+  const breached = account.status === 'failed' || account.status === 'breached';
+  return (
+    <div role="status" className={cn('flex shrink-0 items-center gap-2 border-b px-3 py-1.5 text-xs sm:px-4', breached ? 'border-down/30 bg-down/10 text-down' : 'border-line bg-panel2 text-muted')}>
+      <b className="shrink-0">{statusLabel(account.status)}</b>
+      <span className="min-w-0 truncate">{breached && account.breach_reason ? account.breach_reason : 'This account cannot open new positions.'}</span>
+      <span className="ml-auto shrink-0 font-medium">View only</span>
+    </div>
+  );
+}
+
 function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList: Account[]; onAccountChange: (id: string) => void; onInactive: () => void }) {
   const { accountId, account, positions, refresh, inFlight } = useTerminalData();
   const symbol = useTerminal((s) => s.symbol);
@@ -47,7 +62,7 @@ function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList
   const busyRef = useRef(false);
   busyRef.current = inFlight > 0;
   useUpdateWatcher(useCallback(() => busyRef.current, []));
-  // the engine failed / passed this account: re-read the account list so the terminal moves off it instead of showing a dead account
+  // the engine failed / passed this account: re-read the account list once so the selector shows the new status. The terminal stays on it (view-only).
   const notified = useRef('');
   useEffect(() => {
     if (!account || account.status === 'active') return;
@@ -99,6 +114,7 @@ function Workspace({ accountsList, onAccountChange, onInactive }: { accountsList
   return (
     <div className="fixed inset-0 flex min-h-0 w-full flex-col overflow-hidden bg-bg pl-safe pr-safe" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined} data-symbol={symbol}>
       <TopBar accounts={accountsList} onAccountChange={onAccountChange} />
+      <AccountBanner />
       {body}
       <Hotkeys />
       <TradeCardModal />
@@ -125,15 +141,16 @@ export function TerminalApp() {
     return () => document.body.classList.remove('app-locked');
   }, []);
 
-  const tradable = useMemo(() => (accounts ?? []).filter((a) => a.status === 'active'), [accounts]);
+  // every account is listed and viewable, breached ones included; only an active account can trade
+  const list = useMemo(() => accounts ?? [], [accounts]);
 
-  // pick: ?account= → last used → first active
+  // pick: ?account= → last used → first active → first
   useEffect(() => {
-    if (!tradable.length) return;
+    if (!list.length) return;
     let want: string | null = null;
     try { want = new URL(window.location.href).searchParams.get('account') || window.localStorage.getItem(LAST_ACCOUNT); } catch { /* storage blocked */ }
-    setChosen((cur) => (cur && tradable.some((a) => a.id === cur) ? cur : tradable.find((a) => a.id === want)?.id ?? tradable[0].id));
-  }, [tradable]);
+    setChosen((cur) => pickAccount(list, cur, want));
+  }, [list]);
 
   const change = useCallback((id: string) => {
     setChosen(id);
@@ -143,14 +160,14 @@ export function TerminalApp() {
   if (isLoading && !accounts) return <BootScreen label="Loading accounts" />;
   if (error && !accounts) return <div className="grid h-dvh place-items-center bg-bg"><ErrorState error={error} onRetry={() => mutate()} title="Could not load your accounts" /></div>;
 
-  if (!tradable.length || !chosen) {
-    const other = (accounts ?? []).filter((a) => a.status !== 'active');
+  if (list.length && !chosen) return <BootScreen label="Loading terminal" />;
+  if (!list.length) {
     return (
       <div className="grid h-dvh place-items-center bg-bg p-6">
         <EmptyState
           icon={<Wallet className="h-5 w-5" />}
-          title={other.length ? 'No active trading account' : 'No trading account yet'}
-          description={other.length ? `Your accounts are ${[...new Set(other.map((a) => a.status))].join(', ')}. Open the dashboard to review them or buy a new one.` : 'Choose an account size to start trading.'}
+          title="No trading account yet"
+          description="Choose an account size to start trading."
           action={<div className="flex gap-2"><SiteLink site="app" path="/"><Button variant="secondary">Open dashboard</Button></SiteLink><SiteLink site="www" path="/#pricing"><Button variant="primary">View plans</Button></SiteLink></div>}
         />
       </div>
@@ -158,9 +175,9 @@ export function TerminalApp() {
   }
 
   return (
-    <TerminalDataProvider accountId={chosen}>
+    <TerminalDataProvider accountId={chosen!}>
       <Feeds />
-      <Workspace accountsList={tradable} onAccountChange={change} onInactive={() => void mutate()} />
+      <Workspace accountsList={list} onAccountChange={change} onInactive={() => void mutate()} />
     </TerminalDataProvider>
   );
 }

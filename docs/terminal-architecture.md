@@ -28,3 +28,19 @@ Without the migration they stay browser-side (`pendingEngine.ts`).
 insert → `200`. The risk engine runs after the reply, on every positions poll, and on `/api/cron/tick`.
 
 **Diagnostics** (menu → Diagnostics): app build id plus a trail of polls and trade requests with timings.
+
+
+## Accounts, breaches and the session (Oct 24)
+
+- **Breached accounts stay on the terminal.** The account list is never filtered by status. The terminal opens on the
+  current account, else `?account=` / the last one used, else the first active one, else the first of any status
+  (`pickAccount`). A non-active account is view-only: the order ticket is disabled with a reason, and a strip under the
+  header shows the status and the breach reason. The selector labels accounts `Evaluation` (has a profit target) or
+  `Funded` (everything else), plus the status when it is not active.
+- **Backend risk is two rules only:** equity touching or crossing the daily or the max drawdown floor fails the account
+  and closes its positions. Nothing is checked on open.
+- **The session can no longer stall requests.** A token about to expire is renewed in the background and a request
+  waits at most 3 s for it. A refresh that does not answer gives up after 10 s. Only a *rejected* refresh token signs
+  the user out; a slow or unreachable auth service never does.
+- **Diagnostics** now shows `(server N ms)` next to the total for opens and polls, which separates a slow server from
+  a slow network path.

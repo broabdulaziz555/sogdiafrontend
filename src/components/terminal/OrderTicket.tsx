@@ -1,5 +1,6 @@
 'use client';
 
+import { isTradingAccount, statusLabel } from './accountStage';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronDown, Info, Keyboard, ShieldCheck } from 'lucide-react';
 import { post, errMsg, ApiError } from '@/lib/api';
@@ -85,7 +86,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const maxLev = Math.min(200, account?.max_leverage ?? 200);
   const leverage = Math.min(lev, maxLev);
   const free = metrics?.free_margin ?? account?.equity ?? 0;
-  const tradable = account?.status === 'active';
+  const tradable = isTradingAccount(account);
 
   // click on the order book fills the price and flips to a limit order
   useEffect(() => {
@@ -323,7 +324,7 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         </p>
       )}
 
-      {!tradable && account && <p role="alert" className="rounded-xl border border-down/30 bg-down/10 px-3 py-2.5 text-xs text-down">This account is <b>{account.status}</b> and can’t open new positions.</p>}
+      {!tradable && account && <p role="alert" className="rounded-xl border border-down/30 bg-down/10 px-3 py-2.5 text-xs text-down">This account is <b>{statusLabel(account.status).toLowerCase()}</b> and can’t open new positions. You can still view it.</p>}
       {tradable && dd.daily >= 0.8 && (
         <p className="flex items-start gap-1.5 text-2xs text-warn"><AlertTriangle className="mt-px h-3 w-3 shrink-0" />You’ve used {fmtNum(dd.daily * 100, 0)}% of today’s drawdown allowance.</p>
       )}

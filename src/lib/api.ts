@@ -63,29 +63,45 @@ export function assetUrl(p: string): string {
   return p;
 }
 
-let refreshing: Promise<boolean> | null = null;
+/**
+ * ok      – a new session is stored
+ * denied  – the server rejected the refresh token: the session is over
+ * down    – nothing conclusive (timeout, offline, 5xx): the session may well be fine, so it is NEVER cleared for this
+ */
+type RefreshResult = 'ok' | 'denied' | 'down';
+const REFRESH_TIMEOUT_MS = 10_000;
+/** A token that is only "expiring soon" is still valid, so a request waits at most this long for the renewal. */
+const REFRESH_WAIT_MS = 3_000;
 
-async function doRefresh(): Promise<boolean> {
+let refreshing: Promise<RefreshResult> | null = null;
+
+async function doRefresh(): Promise<RefreshResult> {
   const rt = getRefreshToken();
-  if (!rt) return false;
+  if (!rt) return 'denied';
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), REFRESH_TIMEOUT_MS);
   try {
     const res = await fetch(buildUrl('/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: rt }),
+      signal: ctl.signal,
+      cache: 'no-store',
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => null);
     if (json?.ok && json.data?.session) {
       setSession(json.data.session as Session);
-      return true;
+      return 'ok';
     }
+    return res.status === 401 || res.status === 400 ? 'denied' : 'down';
   } catch {
-    /* fallthrough */
+    return 'down';
+  } finally {
+    clearTimeout(timer);
   }
-  return false;
 }
 
-function refreshOnce(): Promise<boolean> {
+function refreshOnce(): Promise<RefreshResult> {
   if (!refreshing) refreshing = doRefresh().finally(() => { refreshing = null; });
   return refreshing;
 }
@@ -100,7 +116,11 @@ async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promi
   const timeoutErr = () => new ApiError('TIMEOUT', 'The server took too long to answer. The order may still have gone through — check Positions before trying again.', 0);
   try {
 
-    if (auth && !retried && isExpiringSoon() && getRefreshToken()) await refreshOnce();
+    // Renew a token that is about to expire, but never make the request wait long for it: the current token still works for a
+    // moment, and a request that hits an expired one gets a 401 and renews below.
+    if (auth && !retried && isExpiringSoon() && getRefreshToken()) {
+      await Promise.race([refreshOnce(), new Promise<void>((r) => setTimeout(r, REFRESH_WAIT_MS))]);
+    }
 
     const h: Record<string, string> = { Accept: 'application/json', ...headers };
     const token = auth ? getAccessToken() : null;
@@ -146,7 +166,9 @@ async function send<T>(path: string, opts: RequestOpts, retried: boolean): Promi
     }
 
     if (res.status === 401 && auth && !retried && getRefreshToken()) {
-      if (await refreshOnce()) return send<T>(path, opts, true);
+      const renewed = await refreshOnce();
+      if (renewed === 'ok') return send<T>(path, opts, true);
+      if (renewed === 'down') throw new ApiError('NETWORK_ERROR', 'Could not renew your session just now. Try again in a moment.', 0);
       clearSession();
     }
 
