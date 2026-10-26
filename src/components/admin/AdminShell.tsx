@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BadgeCheck, CandlestickChart, ChevronDown, ChevronRight, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ScrollText, Settings2, ShieldAlert, Users, Wallet, WalletCards, X, ArrowLeftRight,
-} from 'lucide-react';
+  BadgeCheck, CandlestickChart, ChevronDown, ChevronRight, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ScrollText, Settings2, ShieldAlert, Users, Wallet, WalletCards, X, ArrowLeftRight, Award } from 'lucide-react';
 import { clearSession } from '@/lib/auth';
 import { InstallApp } from '@/components/pwa/InstallApp';
 import { cn } from '@/lib/cn';
@@ -31,6 +30,7 @@ const GROUPS: Group[] = [
     { href: '/accounts', label: 'Accounts', icon: WalletCards },
     { href: '/trades', label: 'Trades', icon: ArrowLeftRight },
     { href: '/payouts', label: 'Payout queue', icon: Wallet },
+    { href: '/certificates', label: 'Certificates', icon: Award },
   ] },
   { id: 'platform', label: 'Platform', items: [
     { href: '/settings', label: 'Settings', icon: Settings2, x: true },

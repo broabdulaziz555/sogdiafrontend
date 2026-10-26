@@ -5,6 +5,7 @@ import { Award, Gift, Pencil, Snowflake, Trash2 } from 'lucide-react';
 import { del, errMsg, post } from '@/lib/api';
 import { dateTime, fmtNum, fmtUsd } from '@/lib/format';
 import { revalidatePath } from '@/lib/mutate';
+import { CERT_COPY, CERT_TYPES } from '@/lib/certificateCopy';
 import type { Account } from '@/lib/types';
 import { useApi } from '@/hooks/useApi';
 import { PageHead } from '@/components/dashboard/PageHead';
@@ -111,7 +112,7 @@ function IssueCertModal({ account, onClose }: { account: Account | null; onClose
     <Modal open={!!account} onClose={() => !busy && onClose()} size="sm" title="Issue certificate" description="Manual certificates are flagged as such."
       footer={<><Button variant="ghost" disabled={busy} onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={!ok} onClick={submit}>Issue</Button></>}>
       <div className="space-y-3 p-5">
-        <Field label="Type" htmlFor="c-type"><Select id="c-type" value={type} onChange={(e) => setType(e.target.value)}><option value="payout">Payout</option><option value="eval_pass">Evaluation passed</option></Select></Field>
+        <Field label="Type" htmlFor="c-type"><Select id="c-type" value={type} onChange={(e) => setType(e.target.value)}>{CERT_TYPES.map((t) => <option key={t} value={t}>{CERT_COPY[t].label}</option>)}</Select></Field>
         <Field label="Amount (USD)" htmlFor="c-amt"><Input id="c-amt" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(',', '.'))} placeholder="2500" /></Field>
         <Field label="Name on certificate" htmlFor="c-name"><Input id="c-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Ali Karimov" /></Field>
         {err && <p role="alert" className="rounded-md border border-down/30 bg-down/10 px-3 py-2 text-sm text-down">{err}</p>}

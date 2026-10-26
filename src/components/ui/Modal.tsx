@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -12,6 +12,12 @@ const FOCUSABLE =
 function useOverlay(open: boolean, onClose: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   const prev = useRef<HTMLElement | null>(null);
+  // Callers pass inline arrows, so onClose is a new function on every render. Keep it in a
+  // ref so the effect below runs only when `open` flips — otherwise every keystroke in a
+  // field inside the overlay re-ran it, refocusing the first element and dropping the phone
+  // keyboard after a single character.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -23,7 +29,7 @@ function useOverlay(open: boolean, onClose: () => void) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        closeRef.current();
       } else if (e.key === 'Tab' && el) {
         const nodes = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((n) => n.offsetParent !== null);
         if (!nodes.length) return;
@@ -41,7 +47,7 @@ function useOverlay(open: boolean, onClose: () => void) {
       document.body.style.overflow = overflow;
       prev.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return ref;
 }
@@ -65,8 +71,7 @@ export function Modal({
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   className?: string;
 }) {
-  const stableClose = useCallback(onClose, [onClose]);
-  const ref = useOverlay(open, stableClose);
+  const ref = useOverlay(open, onClose);
   if (!open || typeof document === 'undefined') return null;
 
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', full: 'max-w-[min(96vw,1400px)]' };
@@ -126,8 +131,7 @@ export function Drawer({
   width?: string;
   footer?: React.ReactNode;
 }) {
-  const stableClose = useCallback(onClose, [onClose]);
-  const ref = useOverlay(open, stableClose);
+  const ref = useOverlay(open, onClose);
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(

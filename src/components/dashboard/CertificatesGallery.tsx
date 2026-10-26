@@ -13,12 +13,13 @@ import { useToast } from '@/components/ui/Toast';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useApi } from '@/hooks/useApi';
 import { assetUrl } from '@/lib/api';
+import { certTypeLabel } from '@/lib/certificateCopy';
 import { saveOrOpen } from '@/lib/shareImage';
 import { dateShort, fmtUsd } from '@/lib/format';
 import type { Certificate } from '@/lib/types';
 
-type Filter = 'all' | 'payout' | 'eval_pass';
-const typeLabel = (t: string) => (t === 'payout' ? 'Payout' : t === 'eval_pass' ? 'Evaluation passed' : t.replace(/_/g, ' '));
+type Filter = 'all' | 'payout' | 'eval_pass' | 'other';
+const typeLabel = certTypeLabel;
 
 /** Saves the PNG; if the API blocks the cross-origin read it opens the image so it can be saved manually. */
 async function downloadCert(c: Certificate): Promise<'saved' | 'opened'> {
@@ -129,7 +130,7 @@ export function CertificatesGallery() {
   const items = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return (all ?? [])
-      .filter((c) => filter === 'all' || c.type === filter)
+      .filter((c) => filter === 'all' || c.type === filter || (filter === 'other' && c.type !== 'payout' && c.type !== 'eval_pass'))
       .filter((c) => !needle || `${c.code} ${c.display_name} ${typeLabel(c.type)} ${c.amount}`.toLowerCase().includes(needle))
       .sort((a, b) => new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime());
   }, [all, filter, q]);
@@ -141,7 +142,7 @@ export function CertificatesGallery() {
       <PageHead title="Certificates" subtitle="Evaluation passes and payouts, issued as shareable certificates." />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Segmented size="sm" ariaLabel="Certificate type" value={filter} onChange={setFilter} options={[{ value: 'all', label: `All${all ? ` · ${all.length}` : ''}` }, { value: 'payout', label: 'Payouts' }, { value: 'eval_pass', label: 'Evaluations' }]} />
+        <Segmented size="sm" ariaLabel="Certificate type" value={filter} onChange={setFilter} options={[{ value: 'all', label: `All${all ? ` · ${all.length}` : ''}` }, { value: 'payout', label: 'Payouts' }, { value: 'eval_pass', label: 'Evaluations' }, { value: 'other', label: 'Other' }]} />
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by code or name…" className="pl-9" aria-label="Search certificates" />

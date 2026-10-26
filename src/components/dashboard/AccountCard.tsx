@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowDownRight, ArrowUpRight, CandlestickChart, Layers } from 'lucide-react';
-import { StatusBadge, Badge } from '@/components/ui/Primitives';
+import { StatusBadge } from '@/components/ui/Primitives';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SiteLink } from '@/components/ui/SiteLink';
 import { Sparkline } from './Charts';
@@ -73,7 +73,6 @@ export function AccountCard({ account: a }: { account: Account }) {
               <h3 className="truncate text-md font-semibold tracking-tight">{accountLabel(a)}</h3>
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-subtle">
                 <span className="num">#{shortId(a.id)}</span>
-                {a.is_gifted && <Badge className="!py-0">Gifted</Badge>}
               </p>
             </div>
           </div>
