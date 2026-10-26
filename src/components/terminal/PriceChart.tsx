@@ -15,7 +15,7 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import { Check, ChevronDown, Maximize2, Pencil, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, ChevronsRight, Maximize, Minimize, Pencil, RefreshCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { binanceGet, FeedSocket, mapKline, TIMEFRAMES, type Candle } from '@/lib/binance';
 import { fmtCompact, fmtNum, fmtPrice, fmtSigned, priceDecimals, qtyDecimals } from '@/lib/format';
@@ -232,6 +232,36 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
   const maxElRef = useRef<HTMLDivElement>(null);
   const minElRef = useRef<HTMLDivElement>(null);
   const drawBarOpen = useTerminal((s) => s.drawBarOpen);
+
+  /* ── fullscreen: the real Fullscreen API, or a fixed overlay where it isn't allowed (iPhone Safari) ── */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState<'off' | 'native' | 'overlay'>('off');
+  const toggleFull = useCallback(async () => {
+    const el = rootRef.current;
+    if (!el) return;
+    if (full === 'native') { try { await document.exitFullscreen(); } catch { /* already out */ } return; }
+    if (full === 'overlay') { setFull('off'); return; }
+    if (document.fullscreenEnabled && el.requestFullscreen) {
+      try { await el.requestFullscreen({ navigationUI: 'hide' }); setFull('native'); return; } catch { /* fall back */ }
+    }
+    setFull('overlay');
+  }, [full]);
+  useEffect(() => {
+    const on = () => { if (!document.fullscreenElement) setFull((f) => (f === 'native' ? 'off' : f)); };
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
+      if (e.code === 'KeyF') { e.preventDefault(); void toggleFull(); }
+      else if (e.key === 'Escape' && full === 'overlay') setFull('off');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleFull, full]);
   const tfRef = useRef(tf);
   tfRef.current = tf;
 
@@ -255,11 +285,17 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     const t = tfRef.current;
     const left = candleClose(last.time, t.key, t.seconds) - Date.now() / 1000;
     const upC = last.close >= last.open;
-    el.textContent = fmtCountdown(left);
-    el.style.display = 'block';
-    el.style.top = `${Math.round(y + 10)}px`;
+    // TradingView style: live price and the time to candle close stacked in one tag on the price scale
+    const price = fmtPrice(last.close), timer = fmtCountdown(left);
+    const [pEl, tEl] = el.children as unknown as [HTMLElement, HTMLElement];
+    if (pEl.textContent !== price) pEl.textContent = price;
+    if (tEl.textContent !== timer) tEl.textContent = timer;
+    const w = chartRef.current?.priceScale('right').width() ?? 58;
+    el.style.width = `${Math.max(w, 52)}px`;
+    el.style.display = 'flex';
+    el.style.top = `${Math.round(y - el.offsetHeight / 2)}px`;
     el.style.background = upC ? cssRgb('up') : cssRgb('down');
-    el.style.color = upC ? '#000' : '#fff';
+    el.style.color = upC ? '#04140D' : '#fff';
   }, []);
 
   /* ── chart lifecycle ──────────────────────────────────────────────────── */
@@ -286,6 +322,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     const candle = chart.addCandlestickSeries({
       upColor: p.up, downColor: p.down, borderUpColor: p.up, borderDownColor: p.down, wickUpColor: p.up, wickDownColor: p.down,
       priceLineWidth: 1, priceLineStyle: LineStyle.Dashed,
+      lastValueVisible: false, // drawn by the combined price + countdown tag instead
     });
     const vol = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol', lastValueVisible: false, priceLineVisible: false, visible: flags.current.vol });
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
@@ -549,7 +586,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
           if (next !== sig) {
             sig = next;
             const col = cssRgb('info');
-            const opts = (price: number, title: string) => ({ price, color: col, lineWidth: 1 as const, lineStyle: LineStyle.SparseDotted, lineVisible: showHiLoLines, axisLabelVisible: true, title: showHiLoLines ? title : '' });
+            const opts = (price: number, title: string) => ({ price, color: col, lineWidth: 1 as const, lineStyle: LineStyle.SparseDotted, lineVisible: showHiLoLines, axisLabelVisible: true, title });
             if (!hiLoRefs.current) hiLoRefs.current = { hi: series.createPriceLine(opts(hi, 'Max')), lo: series.createPriceLine(opts(lo, 'Min')) };
             else { hiLoRefs.current.hi.applyOptions(opts(hi, 'Max')); hiLoRefs.current.lo.applyOptions(opts(lo, 'Min')); }
           }
@@ -642,7 +679,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
   const lastIdx = dataRef.current.length - 1;
 
   return (
-    <div className="flex h-full min-h-0 flex-col" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <div ref={rootRef} className={cn('flex h-full min-h-0 flex-col', full !== 'off' && 'bg-panel', full === 'overlay' && 'fixed inset-0 z-[100] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]')} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="flex shrink-0 items-center gap-1 border-b border-line px-1.5 py-1 sm:px-2">
         <div role="tablist" aria-label="Timeframe" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scroll-none">
           {TIMEFRAMES.map((t, i) => (
@@ -662,8 +699,11 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
           <button onClick={() => setStore({ drawBarOpen: !drawBarOpen, drawTool: null })} aria-pressed={drawBarOpen} title={drawBarOpen ? 'Hide drawing tools' : 'Drawing tools'}
             className={cn('inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs lg:h-6', drawBarOpen ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}><Pencil className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Draw</span></button>
           <IndicatorsMenu />
-          <button onClick={() => chartRef.current?.timeScale().scrollToRealTime()} title="Jump to the latest candle" className="inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs text-muted hover:bg-fg/[0.06] hover:text-fg lg:h-6"><Maximize2 className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Latest</span></button>
+          <button onClick={() => chartRef.current?.timeScale().scrollToRealTime()} title="Jump to the latest candle" className="inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs text-muted hover:bg-fg/[0.06] hover:text-fg lg:h-6"><ChevronsRight className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Latest</span></button>
           <button onClick={() => void load()} title="Reload the chart" className="inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs text-muted hover:bg-fg/[0.06] hover:text-fg lg:h-6"><RefreshCw className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Reload</span></button>
+          <button onClick={() => void toggleFull()} aria-pressed={full !== 'off'} title={full !== 'off' ? 'Exit full screen (F / Esc)' : 'Full screen (F)'}
+            className={cn('inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs lg:h-6', full !== 'off' ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}>
+            {full !== 'off' ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}<span className="max-xl:sr-only">{full !== 'off' ? 'Exit' : 'Full screen'}</span></button>
         </div>
       </div>
 
@@ -692,7 +732,10 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         )}
 
         {/* time left until the current candle closes */}
-        <div ref={cdRef} aria-label="Time until the candle closes" title="Time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden min-w-[58px] rounded-sm px-1.5 py-px text-center font-mono text-2xs font-semibold" />
+        <div ref={cdRef} aria-label="Last price and time until the candle closes" title="Last price · time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden flex-col items-center rounded-sm px-1 py-0.5 text-center font-mono leading-tight">
+          <span className="text-[11px] font-semibold" />
+          <span className="text-[10px] font-medium opacity-90" />
+        </div>
 
         {/* visible min / max tags at the extreme wicks (positioned every frame by the min/max effect) */}
         {[maxElRef, minElRef].map((r, i) => (
