@@ -8,6 +8,7 @@ import {
   createChart,
   type IChartApi,
   type IPriceLine,
+  type Logical,
   type ISeriesApi,
   type MouseEventParams,
   type SeriesMarker,
@@ -172,8 +173,8 @@ function IndicatorsMenu() {
           <MenuRow label="Positions" hint="Entry, take-profit, stop-loss, liquidation, entry arrow" checked={showLevels} onToggle={() => set({ showLevels: !showLevels })} />
           <MenuRow label="Pending orders" hint="Limit and stop trigger prices" checked={showOrders} onToggle={() => set({ showOrders: !showOrders })} />
           <MenuRow label="Bid / Ask lines" hint="Prices your orders fill at" checked={showQuotes} onToggle={() => set({ showQuotes: !showQuotes })} />
-          <MenuRow label="High / low labels" hint="Highest and lowest price on screen, on the price scale" checked={showHiLo} onToggle={() => set({ showHiLo: !showHiLo })} />
-          <MenuRow label="High / low lines" hint="Draw those two levels across the chart" checked={showHiLoLines} onToggle={() => set({ showHiLoLines: !showHiLoLines, ...(!showHiLoLines ? { showHiLo: true } : {}) })} />
+          <MenuRow label="Min / max prices" hint="Lowest and highest price on screen, on the chart and the price scale" checked={showHiLo} onToggle={() => set({ showHiLo: !showHiLo })} />
+          <MenuRow label="Min / max lines" hint="Draw those two levels across the chart" checked={showHiLoLines} onToggle={() => set({ showHiLoLines: !showHiLoLines, ...(!showHiLoLines ? { showHiLo: true } : {}) })} />
           <MenuRow label="Magnet crosshair" hint="Snap to the candle (G)" checked={magnet} onToggle={() => set({ magnet: !magnet })} />
         </div>
       )}
@@ -228,6 +229,8 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
   const showHiLo = useTerminal((s) => s.showHiLo);
   const showHiLoLines = useTerminal((s) => s.showHiLoLines);
   const hiLoRefs = useRef<{ hi: IPriceLine; lo: IPriceLine } | null>(null);
+  const maxElRef = useRef<HTMLDivElement>(null);
+  const minElRef = useRef<HTMLDivElement>(null);
   const drawBarOpen = useTerminal((s) => s.drawBarOpen);
   const tfRef = useRef(tf);
   tfRef.current = tf;
@@ -504,31 +507,54 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     return () => { alive = false; sock.close(); unsub(); };
   }, [symbol, timeframe, applyTick]);
 
-  /* ── visible high / low (TradingView "high and low price labels") ───────── */
+  /* ── visible min / max (TradingView "high and low price labels") ─────────── */
+  // Blue "Max 128.96" / "Min 95.99" tags at the extreme wicks on screen, plus matching tags on the price scale.
   useEffect(() => {
     const chart = chartRef.current, series = candleRef.current;
+    const maxEl = maxElRef.current, minEl = minElRef.current;
     if (!chart || !series) return;
     const drop = () => {
-      if (!hiLoRefs.current) return;
-      try { series.removePriceLine(hiLoRefs.current.hi); series.removePriceLine(hiLoRefs.current.lo); } catch { /* chart gone */ }
-      hiLoRefs.current = null;
+      if (hiLoRefs.current) {
+        try { series.removePriceLine(hiLoRefs.current.hi); series.removePriceLine(hiLoRefs.current.lo); } catch { /* chart gone */ }
+        hiLoRefs.current = null;
+      }
+      if (maxEl) maxEl.style.visibility = 'hidden';
+      if (minEl) minEl.style.visibility = 'hidden';
     };
     if (!showHiLo || status !== 'ready') { drop(); return; }
     let raf = 0, sig = '';
+    const place = (el: HTMLDivElement | null, idx: number, price: number, text: string, above: boolean) => {
+      if (!el) return;
+      const x = chart.timeScale().logicalToCoordinate(idx as Logical);
+      const y = series.priceToCoordinate(price);
+      const { width, height } = chart.paneSize();
+      if (x == null || y == null || x < 0 || x > width || y < 0 || y > height) { el.style.visibility = 'hidden'; return; }
+      const left = x > width * 0.62; // near the right edge: put the tag on the left of the wick
+      if (el.dataset.side !== (left ? 'l' : 'r')) { el.dataset.side = left ? 'l' : 'r'; el.style.flexDirection = left ? 'row-reverse' : 'row'; }
+      const label = el.lastElementChild as HTMLElement;
+      if (label.textContent !== text) label.textContent = text;
+      const dy = above ? -1 : 1;
+      el.style.transform = `translate(${Math.round(left ? x - el.offsetWidth : x)}px, ${Math.round(y + dy * 2)}px) translateY(${above ? '-100%' : '0'})`;
+      el.style.visibility = 'visible';
+    };
     const tick = () => {
       const d = dataRef.current;
       const r = chart.timeScale().getVisibleLogicalRange();
       if (d.length && r) {
         const from = Math.max(0, Math.floor(r.from)), to = Math.min(d.length - 1, Math.ceil(r.to));
-        let hi = -Infinity, lo = Infinity;
-        for (let i = from; i <= to; i++) { if (d[i].high > hi) hi = d[i].high; if (d[i].low < lo) lo = d[i].low; }
-        const next = `${hi}|${lo}|${resolvedTheme}`;
-        if (Number.isFinite(hi) && Number.isFinite(lo) && next !== sig) {
-          sig = next;
-          const col = cssRgb('muted');
-          const opts = (price: number, title: string) => ({ price, color: col, lineWidth: 1 as const, lineStyle: LineStyle.SparseDotted, lineVisible: showHiLoLines, axisLabelVisible: true, title: showHiLoLines ? title : '' });
-          if (!hiLoRefs.current) hiLoRefs.current = { hi: series.createPriceLine(opts(hi, 'High')), lo: series.createPriceLine(opts(lo, 'Low')) };
-          else { hiLoRefs.current.hi.applyOptions(opts(hi, 'High')); hiLoRefs.current.lo.applyOptions(opts(lo, 'Low')); }
+        let hi = -Infinity, lo = Infinity, hiI = from, loI = from;
+        for (let i = from; i <= to; i++) { if (d[i].high > hi) { hi = d[i].high; hiI = i; } if (d[i].low < lo) { lo = d[i].low; loI = i; } }
+        if (Number.isFinite(hi) && Number.isFinite(lo)) {
+          const next = `${hi}|${lo}|${resolvedTheme}`;
+          if (next !== sig) {
+            sig = next;
+            const col = cssRgb('info');
+            const opts = (price: number, title: string) => ({ price, color: col, lineWidth: 1 as const, lineStyle: LineStyle.SparseDotted, lineVisible: showHiLoLines, axisLabelVisible: true, title: showHiLoLines ? title : '' });
+            if (!hiLoRefs.current) hiLoRefs.current = { hi: series.createPriceLine(opts(hi, 'Max')), lo: series.createPriceLine(opts(lo, 'Min')) };
+            else { hiLoRefs.current.hi.applyOptions(opts(hi, 'Max')); hiLoRefs.current.lo.applyOptions(opts(lo, 'Min')); }
+          }
+          place(maxEl, hiI, hi, `Max ${fmtPrice(hi)}`, true);
+          place(minEl, loI, lo, `Min ${fmtPrice(lo)}`, false);
         }
       }
       raf = requestAnimationFrame(tick);
@@ -668,6 +694,13 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         {/* time left until the current candle closes */}
         <div ref={cdRef} aria-label="Time until the candle closes" title="Time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden min-w-[58px] rounded-sm px-1.5 py-px text-center font-mono text-2xs font-semibold" />
 
+        {/* visible min / max tags at the extreme wicks (positioned every frame by the min/max effect) */}
+        {[maxElRef, minElRef].map((r, i) => (
+          <div key={i} ref={r} aria-hidden style={{ visibility: 'hidden' }} className="pointer-events-none absolute left-0 top-0 z-[2] flex items-center gap-1 whitespace-nowrap will-change-transform">
+            <span className="h-px w-3 bg-info sm:w-4" />
+            <span className="num rounded bg-info/15 px-1 py-px font-mono text-[10px] font-semibold text-info sm:text-[11px]" />
+          </div>
+        ))}
         <ChartDrawings chart={chartRef.current} series={candleRef.current} getData={getData} tfSeconds={tf.seconds} symbol={symbol} compact={mob} version={`${status}|${timeframe}`} />
         <OrderOverlay chart={chartRef.current} series={candleRef.current} symbol={symbol} positions={positions} showLevels={showLevels} showOrders={showOrders} compact={mob} />
 

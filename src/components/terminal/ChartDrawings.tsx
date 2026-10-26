@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import type { IChartApi, ISeriesApi, Logical } from 'lightweight-charts';
+import { LineStyle, type IChartApi, type IPriceLine, type ISeriesApi, type Logical } from 'lightweight-charts';
 import {
   ArrowLeftToLine, ArrowRightToLine, Eye, EyeOff, Lock, Minus, MousePointer2, MoveUpRight, SeparatorVertical, Slash, Square, Trash2, Unlock, X,
 } from 'lucide-react';
@@ -47,6 +47,34 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
   const down = useRef<{ x: number; y: number } | null>(null);
   const drag = useRef<{ id: string; part: 'move' | 'a' | 'b'; x: number; y: number; orig: Drawing } | null>(null);
   const [dragging, setDragging] = useState(false);
+  // phones and tablets (any touch-first screen): bigger buttons and handles, style bar at the bottom
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const on = () => setCoarse(mq.matches);
+    on(); mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const touch = compact || coarse;
+
+  // horizontal lines carry their price on the price scale, like TradingView
+  const axisLines = useRef(new Map<string, IPriceLine>());
+  useEffect(() => {
+    if (!series) return;
+    const want = new Map((hidden ? [] : list).filter((d) => d.tool === 'hline').map((d) => [d.id, d]));
+    for (const [id, pl] of axisLines.current) {
+      if (!want.has(id)) { try { series.removePriceLine(pl); } catch { /* gone */ } axisLines.current.delete(id); }
+    }
+    for (const [id, d] of want) {
+      const opts = { price: d.a.p, color: d.color, lineVisible: false, axisLabelVisible: true, lineWidth: 1 as const, lineStyle: LineStyle.Solid, title: '' };
+      const ex = axisLines.current.get(id);
+      if (ex) ex.applyOptions(opts); else axisLines.current.set(id, series.createPriceLine(opts));
+    }
+  }, [series, list, hidden]);
+  useEffect(() => () => {
+    if (series) for (const pl of axisLines.current.values()) { try { series.removePriceLine(pl); } catch { /* gone */ } }
+    axisLines.current.clear();
+  }, [series]);
 
   /* ── coordinate mapping ─────────────────────────────────────────────── */
   const pane = () => chart?.paneSize() ?? { width: 0, height: 0 };
@@ -243,9 +271,9 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
     const A = toXY(d.a), B = d.b ? toXY(d.b) : null;
     const isSel = d.id === selected;
     const common = { stroke: d.color, strokeWidth: d.width, strokeDasharray: DASH[d.dash], fill: 'none', vectorEffect: 'non-scaling-stroke' as const };
-    const hit = () => ({ stroke: 'transparent', strokeWidth: 14, fill: 'none', style: { pointerEvents: 'stroke' as const, cursor: d.locked ? 'default' : 'move' }, onPointerDown: (e: React.PointerEvent) => startDrag(e, d, 'move') });
+    const hit = () => ({ stroke: 'transparent', strokeWidth: touch ? 26 : 14, fill: 'none', style: { pointerEvents: 'stroke' as const, cursor: d.locked ? 'default' : 'move' }, onPointerDown: (e: React.PointerEvent) => startDrag(e, d, 'move') });
     const handle = (p: { x: number; y: number } | null, part: 'a' | 'b') => p && isSel && !d.locked && (
-      <circle cx={p.x} cy={p.y} r={compact ? 7 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'grab' }} onPointerDown={(e) => startDrag(e, d, part)} />
+      <circle cx={p.x} cy={p.y} r={touch ? 9 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'grab' }} onPointerDown={(e) => startDrag(e, d, part)} />
     );
     const label = (x: number, y: number, anchor: 'start' | 'end' = 'start') => d.label && (
       <text x={x} y={y} textAnchor={anchor} fontSize={11} fill={d.color} style={{ pointerEvents: 'none', paintOrder: 'stroke', stroke: 'rgb(var(--bg))', strokeWidth: 3 }}>{d.label}</text>
@@ -258,11 +286,7 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
           <line x1={0} x2={W} y1={A.y} y2={A.y} {...common} />
           <line {...hit()} x1={0} x2={W} y1={A.y} y2={A.y} />
           {label(6, A.y - 5)}
-          <g style={{ pointerEvents: 'none' }}>
-            <rect x={W - 70} y={A.y - 9} width={70} height={18} rx={3} fill={d.color} />
-            <text x={W - 35} y={A.y + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill="#0B0F17" className="num">{fmtPrice(d.a.p)}</text>
-          </g>
-          {isSel && !d.locked && <circle cx={W / 2} cy={A.y} r={compact ? 7 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'ns-resize' }} onPointerDown={(e) => startDrag(e, d, 'move')} />}
+          {isSel && !d.locked && <circle cx={W / 2} cy={A.y} r={touch ? 9 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'ns-resize' }} onPointerDown={(e) => startDrag(e, d, 'move')} />}
         </g>
       );
     }
@@ -273,7 +297,7 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
           <line x1={A.x} x2={A.x} y1={0} y2={H} {...common} />
           <line {...hit()} x1={A.x} x2={A.x} y1={0} y2={H} />
           {label(A.x + 5, 14)}
-          {isSel && !d.locked && <circle cx={A.x} cy={H / 2} r={compact ? 7 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'ew-resize' }} onPointerDown={(e) => startDrag(e, d, 'move')} />}
+          {isSel && !d.locked && <circle cx={A.x} cy={H / 2} r={touch ? 9 : 5} fill="rgb(var(--panel))" stroke={d.color} strokeWidth={2} style={{ pointerEvents: 'all', cursor: 'ew-resize' }} onPointerDown={(e) => startDrag(e, d, 'move')} />}
         </g>
       );
     }
@@ -309,7 +333,7 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
   };
 
   const btn = 'grid place-items-center rounded-md transition-colors';
-  const bsz = compact ? 'h-9 w-9' : 'h-7 w-7';
+  const bsz = touch ? 'h-10 w-10' : 'h-7 w-7';
 
   return (
     <>
@@ -338,7 +362,7 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
 
       {/* toolbar */}
       {barOpen && (
-        <div className={cn('absolute left-1.5 top-1/2 z-[5] flex -translate-y-1/2 flex-col gap-0.5 rounded-lg border border-line bg-panel/95 p-0.5 shadow-pop backdrop-blur-sm')} role="toolbar" aria-label="Drawing tools">
+        <div className={cn('absolute left-1.5 top-1/2 z-[5] flex max-h-[calc(100%-1rem)] -translate-y-1/2 flex-col gap-0.5 overflow-y-auto rounded-lg border border-line bg-panel/95 p-0.5 shadow-pop backdrop-blur-sm scroll-none')} role="toolbar" aria-label="Drawing tools">
           <button type="button" title="Select / move (Esc)" aria-label="Select" aria-pressed={!tool} onClick={() => setStore({ drawTool: null })} className={cn(btn, bsz, !tool ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}><MousePointer2 className="h-4 w-4" /></button>
           {TOOLS.map(({ tool: t, label, icon: Icon }) => (
             <button key={t} type="button" title={label} aria-label={label} aria-pressed={tool === t} onClick={() => { setSelected(null); setStore({ drawTool: tool === t ? null : t }); }}
@@ -361,25 +385,27 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
 
       {/* style editor for the selected drawing */}
       {sel && !tool && !dragging && (
-        <div className={cn('absolute left-1/2 top-2 z-[6] flex max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap items-center gap-1 rounded-lg border border-line bg-panel/95 p-1 shadow-pop backdrop-blur-sm', compact && 'top-1')} onPointerDown={(e) => e.stopPropagation()}>
+        <div className={cn('absolute z-[6] flex items-center gap-1 rounded-lg border border-line bg-panel/95 p-1 shadow-pop backdrop-blur-sm',
+          touch ? 'inset-x-2 bottom-2 flex-nowrap overflow-x-auto overscroll-x-contain scroll-none [&_button]:shrink-0 [&_input]:shrink-0' : 'left-1/2 top-2 max-w-[calc(100%-1rem)] -translate-x-1/2 flex-wrap')}
+          style={touch ? { bottom: 8 } : undefined} onPointerDown={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-0.5 px-0.5" role="radiogroup" aria-label="Colour">
             {COLORS.map((c) => (
               <button key={c} type="button" role="radio" aria-checked={sel.color === c} aria-label={`Colour ${c}`} onClick={() => update(sel.id, { color: c })}
-                className={cn('h-5 w-5 rounded-full border-2 transition-transform', sel.color === c ? 'scale-110 border-fg' : 'border-transparent')} style={{ background: c }} />
+                className={cn(touch ? 'h-7 w-7' : 'h-5 w-5', 'shrink-0 rounded-full border-2 transition-transform', sel.color === c ? 'scale-110 border-fg' : 'border-transparent')} style={{ background: c }} />
             ))}
           </div>
           <span className="h-5 w-px bg-line" />
           <div className="flex items-center" role="radiogroup" aria-label="Thickness">
             {([1, 2, 3, 4] as const).map((w) => (
               <button key={w} type="button" role="radio" aria-checked={sel.width === w} title={`${w}px`} onClick={() => update(sel.id, { width: w })}
-                className={cn('grid h-7 w-7 place-items-center rounded-md', sel.width === w ? 'bg-fg/10' : 'hover:bg-fg/[0.06]')}><span className="block w-4 rounded-full bg-fg" style={{ height: w }} /></button>
+                className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md', sel.width === w ? 'bg-fg/10' : 'hover:bg-fg/[0.06]')}><span className="block w-4 rounded-full bg-fg" style={{ height: w }} /></button>
             ))}
           </div>
           <span className="h-5 w-px bg-line" />
           <div className="flex items-center" role="radiogroup" aria-label="Line style">
             {(['solid', 'dashed', 'dotted'] as const).map((s) => (
               <button key={s} type="button" role="radio" aria-checked={sel.dash === s} title={s} onClick={() => update(sel.id, { dash: s })}
-                className={cn('grid h-7 w-8 place-items-center rounded-md', sel.dash === s ? 'bg-fg/10' : 'hover:bg-fg/[0.06]')}>
+                className={cn(touch ? 'h-9 w-10' : 'h-7 w-8', 'grid place-items-center rounded-md', sel.dash === s ? 'bg-fg/10' : 'hover:bg-fg/[0.06]')}>
                 <svg width="18" height="4" aria-hidden><line x1="1" x2="17" y1="2" y2="2" stroke="currentColor" strokeWidth="2" strokeDasharray={s === 'solid' ? undefined : s === 'dashed' ? '5 3' : '1 3'} strokeLinecap="round" /></svg>
               </button>
             ))}
@@ -389,21 +415,21 @@ function ChartDrawingsInner({ chart, series, getData, tfSeconds, symbol, compact
             <div className="flex items-center gap-0.5" role="radiogroup" aria-label="Fill">
               {[0, 0.08, 0.16, 0.3].map((f) => (
                 <button key={f} type="button" role="radio" aria-checked={(sel.fill ?? 0.14) === f} title={`Fill ${Math.round(f * 100)}%`} onClick={() => update(sel.id, { fill: f })}
-                  className={cn('h-6 w-6 rounded-md border', (sel.fill ?? 0.14) === f ? 'border-fg' : 'border-line')} style={{ background: f ? `color-mix(in srgb, ${sel.color} ${Math.round(f * 100)}%, transparent)` : 'transparent' }} />
+                  className={cn(touch ? 'h-8 w-8' : 'h-6 w-6', 'rounded-md border', (sel.fill ?? 0.14) === f ? 'border-fg' : 'border-line')} style={{ background: f ? `color-mix(in srgb, ${sel.color} ${Math.round(f * 100)}%, transparent)` : 'transparent' }} />
               ))}
             </div>
           </>)}
           {(sel.tool === 'trend' || sel.tool === 'ray') && (<>
             <span className="h-5 w-px bg-line" />
-            <button type="button" title="Extend left" aria-pressed={!!sel.extendLeft} onClick={() => update(sel.id, { extendLeft: !sel.extendLeft })} className={cn('grid h-7 w-7 place-items-center rounded-md', sel.extendLeft ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}><ArrowLeftToLine className="h-4 w-4" /></button>
-            <button type="button" title="Extend right" aria-pressed={!!(sel.extendRight || sel.tool === 'ray')} onClick={() => update(sel.id, sel.tool === 'ray' ? { tool: 'trend', extendRight: false } : { extendRight: !sel.extendRight })} className={cn('grid h-7 w-7 place-items-center rounded-md', sel.extendRight || sel.tool === 'ray' ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}><ArrowRightToLine className="h-4 w-4" /></button>
+            <button type="button" title="Extend left" aria-pressed={!!sel.extendLeft} onClick={() => update(sel.id, { extendLeft: !sel.extendLeft })} className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md', sel.extendLeft ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}><ArrowLeftToLine className="h-4 w-4" /></button>
+            <button type="button" title="Extend right" aria-pressed={!!(sel.extendRight || sel.tool === 'ray')} onClick={() => update(sel.id, sel.tool === 'ray' ? { tool: 'trend', extendRight: false } : { extendRight: !sel.extendRight })} className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md', sel.extendRight || sel.tool === 'ray' ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}><ArrowRightToLine className="h-4 w-4" /></button>
           </>)}
           <span className="h-5 w-px bg-line" />
           <input value={sel.label ?? ''} onChange={(e) => update(sel.id, { label: e.target.value.slice(0, 40) })} placeholder="Label" aria-label="Label"
-            className="h-7 w-24 rounded-md border border-line bg-panel2/80 px-2 text-xs outline-none focus:border-accent/70" />
-          <button type="button" title={sel.locked ? 'Unlock' : 'Lock'} aria-pressed={!!sel.locked} onClick={() => update(sel.id, { locked: !sel.locked })} className={cn('grid h-7 w-7 place-items-center rounded-md', sel.locked ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}>{sel.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
-          <button type="button" title="Delete (Del)" aria-label="Delete drawing" onClick={() => remove(sel.id)} className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-down/15 hover:text-down"><Trash2 className="h-4 w-4" /></button>
-          <button type="button" title="Done" aria-label="Deselect" onClick={() => setSelected(null)} className="grid h-7 w-7 place-items-center rounded-md text-muted hover:bg-fg/[0.06]"><X className="h-4 w-4" /></button>
+            className={cn(touch ? 'h-9 w-28 text-base' : 'h-7 w-24 text-xs', 'rounded-md border border-line bg-panel2/80 px-2 outline-none focus:border-accent/70')} />
+          <button type="button" title={sel.locked ? 'Unlock' : 'Lock'} aria-pressed={!!sel.locked} onClick={() => update(sel.id, { locked: !sel.locked })} className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md', sel.locked ? 'bg-fg/10 text-fg' : 'text-muted hover:bg-fg/[0.06]')}>{sel.locked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+          <button type="button" title="Delete (Del)" aria-label="Delete drawing" onClick={() => remove(sel.id)} className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md text-muted hover:bg-down/15 hover:text-down')}><Trash2 className="h-4 w-4" /></button>
+          <button type="button" title="Done" aria-label="Deselect" onClick={() => setSelected(null)} className={cn(touch ? 'h-9 w-9' : 'h-7 w-7', 'grid place-items-center rounded-md text-muted hover:bg-fg/[0.06]')}><X className="h-4 w-4" /></button>
         </div>
       )}
     </>
