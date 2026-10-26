@@ -14,7 +14,7 @@ import {
   type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
-import { Check, ChevronDown, Maximize2, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Maximize2, Pencil, RefreshCw } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { binanceGet, FeedSocket, mapKline, TIMEFRAMES, type Candle } from '@/lib/binance';
 import { fmtCompact, fmtNum, fmtPrice, fmtSigned, priceDecimals, qtyDecimals } from '@/lib/format';
@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn';
 import type { Position } from '@/lib/types';
 import { Spinner } from '@/components/ui/States';
 import { OrderOverlay } from './OrderOverlay';
+import { ChartDrawings } from './ChartDrawings';
 import { cssRgb } from './theme';
 import { useTerminalLayout } from './useLayout';
 import { useTerminal } from './store';
@@ -219,6 +220,8 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
   const [hover, setHover] = useState(false);
 
   const tf = useMemo(() => TIMEFRAMES.find((t) => t.key === timeframe) ?? TIMEFRAMES[3], [timeframe]);
+  const getData = useCallback(() => dataRef.current, []);
+  const drawBarOpen = useTerminal((s) => s.drawBarOpen);
   const tfRef = useRef(tf);
   tfRef.current = tf;
 
@@ -261,7 +264,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
       rightPriceScale: { borderColor: p.border, scaleMargins: { top: 0.08, bottom: 0.22 } },
       timeScale: { borderColor: p.border, timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: window.innerWidth < 640 ? 6 : 8, minBarSpacing: 1 },
       crosshair: {
-        mode: CrosshairMode.Magnet,
+        mode: useTerminal.getState().magnet ? CrosshairMode.Magnet : CrosshairMode.Normal, // free crosshair by default: the cross sits exactly on the pointer
         vertLine: { color: p.cross, width: 1, style: LineStyle.Dashed, labelBackgroundColor: p.border },
         horzLine: { color: p.cross, width: 1, style: LineStyle.Dashed, labelBackgroundColor: p.border },
       },
@@ -590,6 +593,8 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
           ))}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <button onClick={() => setStore({ drawBarOpen: !drawBarOpen, drawTool: null })} aria-pressed={drawBarOpen} title={drawBarOpen ? 'Hide drawing tools' : 'Drawing tools'}
+            className={cn('inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs lg:h-6', drawBarOpen ? 'bg-accent/15 text-accent' : 'text-muted hover:bg-fg/[0.06] hover:text-fg')}><Pencil className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Draw</span></button>
           <IndicatorsMenu />
           <button onClick={() => chartRef.current?.timeScale().scrollToRealTime()} title="Jump to the latest candle" className="inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs text-muted hover:bg-fg/[0.06] hover:text-fg lg:h-6"><Maximize2 className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Latest</span></button>
           <button onClick={() => void load()} title="Reload the chart" className="inline-flex h-8 items-center gap-1 rounded px-1.5 text-xs text-muted hover:bg-fg/[0.06] hover:text-fg lg:h-6"><RefreshCw className="h-3.5 w-3.5" /><span className="max-xl:sr-only">Reload</span></button>
@@ -623,6 +628,7 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
         {/* time left until the current candle closes */}
         <div ref={cdRef} aria-label="Time until the candle closes" title="Time until the candle closes" className="num pointer-events-none absolute right-0 z-[2] hidden min-w-[58px] rounded-sm px-1.5 py-px text-center font-mono text-2xs font-semibold" />
 
+        <ChartDrawings chart={chartRef.current} series={candleRef.current} getData={getData} tfSeconds={tf.seconds} symbol={symbol} compact={mob} version={`${status}|${timeframe}`} />
         <OrderOverlay chart={chartRef.current} series={candleRef.current} symbol={symbol} positions={positions} showLevels={showLevels} showOrders={showOrders} compact={mob} />
 
         {status === 'loading' && (

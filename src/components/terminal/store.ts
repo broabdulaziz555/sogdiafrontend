@@ -27,6 +27,25 @@ export interface PendingOrder {
 export type MobileTab = 'markets' | 'chart' | 'trade' | 'positions' | 'history';
 export type BookView = 'both' | 'bids' | 'asks';
 
+export type DrawTool = 'hline' | 'vline' | 'trend' | 'ray' | 'rect';
+export type DrawDash = 'solid' | 'dashed' | 'dotted';
+/** A chart drawing, anchored in (unix seconds, price) so it survives zoom, pan and timeframe changes. */
+export interface Drawing {
+  id: string;
+  tool: DrawTool;
+  a: { t: number; p: number };
+  b?: { t: number; p: number };
+  color: string;
+  width: 1 | 2 | 3 | 4;
+  dash: DrawDash;
+  /** rectangle fill opacity 0…0.5 */
+  fill?: number;
+  extendLeft?: boolean;
+  extendRight?: boolean;
+  label?: string;
+  locked?: boolean;
+}
+
 interface State {
   // persisted preferences
   symbol: string;
@@ -35,6 +54,11 @@ interface State {
   confirmOrders: boolean;
   soundOn: boolean;
   magnet: boolean;
+  /** drawings per symbol */
+  drawings: Record<string, Drawing[]>;
+  drawTool: DrawTool | null;
+  drawBarOpen: boolean;
+  setDrawings: (symbol: string, fn: (list: Drawing[]) => Drawing[]) => void;
   showMA: boolean;
   bookView: BookView;
   bookGroup: number; // index into the per-symbol group ladder
@@ -86,8 +110,11 @@ export const useTerminal = create<State>()(
       favorites: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'],
       confirmOrders: false,
       soundOn: false,
-      magnet: true,
-      showMA: true,
+      magnet: false,
+      showMA: false,
+      drawings: {},
+      drawTool: null,
+      drawBarOpen: true,
       bookView: 'both',
       bookGroup: 0,
       showVol: false,
@@ -117,6 +144,7 @@ export const useTerminal = create<State>()(
       tradeCard: null,
 
       set: (p) => set(p),
+      setDrawings: (symbol, fn) => set((st) => ({ drawings: { ...st.drawings, [symbol]: fn(st.drawings[symbol] ?? []) } })),
       setSymbol: (symbol) => {
         if (get().symbol === symbol) return;
         set({ symbol, last: null, lastDir: 0, book: { bids: [], asks: [], at: 0 }, trades: [], bookGroup: 0 });
@@ -147,9 +175,14 @@ export const useTerminal = create<State>()(
     }),
     {
       name: 'sg-terminal-v1',
-      version: 3,
+      version: 4,
       // v3: card options reset to the new defaults (referral code is always shown, no checkbox)
-      migrate: (persisted: unknown) => ({ ...(persisted as object), cardOpts: DEFAULT_CARD_OPTS }) as never,
+      // v4: free crosshair and a clean chart (no indicators) by default
+      migrate: (persisted: unknown, from: number) => {
+        const p = { ...(persisted as object), cardOpts: DEFAULT_CARD_OPTS } as Record<string, unknown>;
+        if (from < 4) Object.assign(p, { magnet: false, showMA: false, showEMA: false, showBB: false, showVol: false });
+        return p as never;
+      },
       storage: createJSONStorage(() => (typeof window === 'undefined' ? noopStorage : window.localStorage)),
       partialize: (s) => ({
         symbol: s.symbol,
@@ -158,6 +191,8 @@ export const useTerminal = create<State>()(
         confirmOrders: s.confirmOrders,
         soundOn: s.soundOn,
         magnet: s.magnet,
+        drawings: s.drawings,
+        drawBarOpen: s.drawBarOpen,
         showMA: s.showMA,
         bookView: s.bookView,
         showVol: s.showVol,
