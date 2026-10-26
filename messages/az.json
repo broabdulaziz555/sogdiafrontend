@@ -165,7 +165,8 @@
     "product": "Məhsul",
     "company": "Şirkət",
     "contact": "Əlaqə",
-    "rights": "Bütün hüquqlar qorunur."
+    "rights": "Bütün hüquqlar qorunur.",
+    "follow": "Bizi izləyin"
   },
   "auth": {
     "loginTitle": "Yenidən xoş gəldiniz",
@@ -222,5 +223,10 @@
       "adminPanel": "Admin paneli",
       "menu": "Menyu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — kripto prop-trading şirkəti | 80% mənfəət, ani maliyyələşmə",
+    "description": "SOGDIA kapitalı ilə kriptovalyuta ilə 24/7 ticarət edin. Bir mərhələli qiymətləndirmə və ya ani maliyyələşmə, mənfəətin 80%-i treyderə, 200×-ə qədər leverec, 50 USDT cütü və hər 14 gündən bir ödəniş.",
+    "keywords": "kripto prop firma, prop ticarət, maliyyələşdirilmiş treyder, SOGDIA, sogdia.site"
   }
 }

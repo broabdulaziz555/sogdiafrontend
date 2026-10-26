@@ -165,7 +165,8 @@
     "product": "Produs",
     "company": "Companie",
     "contact": "Contact",
-    "rights": "Toate drepturile rezervate."
+    "rights": "Toate drepturile rezervate.",
+    "follow": "Urmărește-ne"
   },
   "auth": {
     "loginTitle": "Bine ai revenit",
@@ -222,5 +223,10 @@
       "adminPanel": "Panou de administrare",
       "menu": "Meniu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — firmă de prop trading crypto | 80% profit, finanțare instantă",
+    "description": "Tranzacționează crypto 24/7 cu capitalul SOGDIA. Evaluare într-o etapă sau finanțare instantă, 80% din profit pentru trader, levier până la 200×, 50 de perechi USDT și plăți la fiecare 14 zile.",
+    "keywords": "firmă prop crypto, prop trading, trader finanțat, SOGDIA, sogdia.site"
   }
 }

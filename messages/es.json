@@ -165,7 +165,8 @@
     "product": "Producto",
     "company": "Empresa",
     "contact": "Contacto",
-    "rights": "Todos los derechos reservados."
+    "rights": "Todos los derechos reservados.",
+    "follow": "Síguenos"
   },
   "auth": {
     "loginTitle": "Te damos la bienvenida",
@@ -222,5 +223,10 @@
       "adminPanel": "Panel de administración",
       "menu": "Menú"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Empresa de prop trading cripto | 80% de beneficios, fondeo inmediato",
+    "description": "Opera cripto 24/7 con el capital de SOGDIA. Evaluación de una fase o fondeo inmediato, 80% de los beneficios para el trader, apalancamiento de hasta 200×, 50 pares USDT y pagos cada 14 días.",
+    "keywords": "prop firm cripto, prop trading, trader fondeado, cuenta fondeada cripto, desafío prop firm, SOGDIA, sogdia.site"
   }
 }

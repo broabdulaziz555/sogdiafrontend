@@ -41,9 +41,11 @@ export function middleware(req: NextRequest) {
   // ── Locale priority: 1) explicit choice (cookie) 2) device/browser language
   //    (Accept-Language) 3) IP country (cf-ipcountry) 4) English (US) ─────────────
   const cookieLocale = req.cookies.get(LOCALE_COOKIE)?.value;
-  let locale = normalizeLocale(cookieLocale) ?? '';
+  // 0) ?lang=ru — one crawlable URL per language (hreflang / sitemap point here); it also becomes the saved choice
+  const urlLocale = normalizeLocale(req.nextUrl.searchParams.get('lang'));
+  let locale = urlLocale ?? normalizeLocale(cookieLocale) ?? '';
   // Re-write legacy values such as "en" to the canonical code
-  let setLocaleCookie = !!cookieLocale && locale !== '' && cookieLocale !== locale;
+  let setLocaleCookie = !!urlLocale ? urlLocale !== cookieLocale : !!cookieLocale && locale !== '' && cookieLocale !== locale;
   if (!locale) {
     const fromDevice = localeFromAcceptLanguage(req.headers.get('accept-language'));
     const country = (req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || '').toUpperCase();
@@ -54,6 +56,7 @@ export function middleware(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-sg-locale', locale);
   requestHeaders.set('x-sg-site', site);
+  requestHeaders.set('x-sg-path', pathname); // canonical / hreflang URLs in generateMetadata
 
   const url = req.nextUrl.clone();
   url.pathname = `/sites/${site}${pathname === '/' ? '' : pathname}`;

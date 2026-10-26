@@ -165,7 +165,8 @@
     "product": "Produit",
     "company": "Entreprise",
     "contact": "Contact",
-    "rights": "Tous droits réservés."
+    "rights": "Tous droits réservés.",
+    "follow": "Suivez-nous"
   },
   "auth": {
     "loginTitle": "Bon retour",
@@ -222,5 +223,10 @@
       "adminPanel": "Panneau d'administration",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Prop firm crypto | 80 % des profits, financement immédiat",
+    "description": "Tradez la crypto 24h/24 et 7j/7 avec le capital de SOGDIA. Évaluation en une étape ou financement immédiat, 80 % des profits pour le trader, effet de levier jusqu’à 200×, 50 paires USDT et paiements tous les 14 jours.",
+    "keywords": "prop firm crypto, prop trading, trader financé, compte financé crypto, challenge prop firm, SOGDIA, sogdia.site"
   }
 }

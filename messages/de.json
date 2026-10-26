@@ -165,7 +165,8 @@
     "product": "Produkt",
     "company": "Unternehmen",
     "contact": "Kontakt",
-    "rights": "Alle Rechte vorbehalten."
+    "rights": "Alle Rechte vorbehalten.",
+    "follow": "Folgen Sie uns"
   },
   "auth": {
     "loginTitle": "Willkommen zurück",
@@ -222,5 +223,10 @@
       "adminPanel": "Admin-Bereich",
       "menu": "Menü"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Krypto-Prop-Trading-Firma | 80 % Gewinnbeteiligung, sofortige Finanzierung",
+    "description": "Handeln Sie Krypto rund um die Uhr mit dem Kapital von SOGDIA. Einstufige Evaluation oder sofortige Finanzierung, 80 % Gewinnbeteiligung, bis zu 200× Hebel, 50 USDT-Paare und Auszahlungen alle 14 Tage.",
+    "keywords": "Krypto Prop Firm, Prop Trading, finanzierter Trader, Krypto Funded Account, Prop Firm Challenge, SOGDIA, sogdia.site"
   }
 }

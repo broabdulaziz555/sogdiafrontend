@@ -165,7 +165,8 @@
     "product": "Sản phẩm",
     "company": "Công ty",
     "contact": "Liên hệ",
-    "rights": "Bảo lưu mọi quyền."
+    "rights": "Bảo lưu mọi quyền.",
+    "follow": "Theo dõi chúng tôi"
   },
   "auth": {
     "loginTitle": "Chào mừng trở lại",
@@ -222,5 +223,10 @@
       "adminPanel": "Trang quản trị",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Công ty prop trading tiền mã hóa | Chia 80% lợi nhuận, cấp vốn ngay",
+    "description": "Giao dịch tiền mã hóa 24/7 bằng vốn của SOGDIA. Đánh giá một giai đoạn hoặc cấp vốn ngay, 80% lợi nhuận cho trader, đòn bẩy đến 200×, 50 cặp USDT và thanh toán mỗi 14 ngày.",
+    "keywords": "prop firm crypto, prop trading, trader được cấp vốn, tài khoản cấp vốn, SOGDIA, sogdia.site"
   }
 }

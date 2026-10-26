@@ -165,7 +165,8 @@
     "product": "Produto",
     "company": "Empresa",
     "contact": "Contato",
-    "rights": "Todos os direitos reservados."
+    "rights": "Todos os direitos reservados.",
+    "follow": "Siga-nos"
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
@@ -222,5 +223,10 @@
       "adminPanel": "Painel administrativo",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Empresa de prop trading cripto | 80% do lucro, financiamento imediato",
+    "description": "Negocie cripto 24/7 com o capital da SOGDIA. Avaliação em uma fase ou financiamento imediato, 80% do lucro para o trader, alavancagem até 200×, 50 pares USDT e pagamentos a cada 14 dias.",
+    "keywords": "prop firm cripto, prop trading, trader financiado, conta financiada cripto, SOGDIA, sogdia.site"
   }
 }

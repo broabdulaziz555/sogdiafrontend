@@ -165,7 +165,8 @@
     "product": "Ürün",
     "company": "Şirket",
     "contact": "İletişim",
-    "rights": "Tüm hakları saklıdır."
+    "rights": "Tüm hakları saklıdır.",
+    "follow": "Bizi takip edin"
   },
   "auth": {
     "loginTitle": "Tekrar hoş geldiniz",
@@ -222,5 +223,10 @@
       "adminPanel": "Yönetim paneli",
       "menu": "Menü"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Kripto Prop Trading Şirketi | %80 Kâr Payı, Anında Fonlama",
+    "description": "SOGDIA sermayesiyle 7/24 kripto işlem yapın. Tek aşamalı değerlendirme veya anında fonlama, %80 kâr payı, 200× kaldıraç, 50 USDT paritesi ve 14 günde bir ödeme.",
+    "keywords": "kripto prop firma, prop trading, fonlanmış trader, şirket sermayesiyle işlem, prop firma challenge, SOGDIA, sogdia.site"
   }
 }

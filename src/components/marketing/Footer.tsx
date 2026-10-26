@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/ui/Logo';
+import { SocialLinks } from '@/components/ui/SocialLinks';
 
-const ENTITY = process.env.NEXT_PUBLIC_LEGAL_ENTITY || 'SOGDIA';
+const ENTITY = process.env.NEXT_PUBLIC_LEGAL_ENTITY || 'SOGDIA CAPITAL INC.';
 const EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'support@sogdia.site';
 
 export function Footer() {
@@ -17,6 +18,10 @@ export function Footer() {
           <div className="space-y-4">
             <Logo />
             <p className="max-w-xs text-sm text-muted">{t('tagline')}</p>
+            <div className="space-y-2.5 pt-1">
+              <h3 className="label">{t('follow')}</h3>
+              <SocialLinks withHandle />
+            </div>
           </div>
 
           <nav aria-label={t('product')}>
@@ -39,7 +44,7 @@ export function Footer() {
 
         <div className="mt-10 space-y-4 border-t border-line pt-6 text-xs leading-relaxed text-subtle">
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-subtle">
-            <span>© {year} {ENTITY}. {t('rights')}</span>
+            <span>© {year} {ENTITY} · <a href="https://www.sogdia.site" className="hover:text-fg">sogdia.site</a>. {t('rights')}</span>
             <span className="font-mono">Prices in USD · Payments via NOWPayments</span>
           </div>
         </div>

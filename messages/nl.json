@@ -165,7 +165,8 @@
     "product": "Product",
     "company": "Bedrijf",
     "contact": "Contact",
-    "rights": "Alle rechten voorbehouden."
+    "rights": "Alle rechten voorbehouden.",
+    "follow": "Volg ons"
   },
   "auth": {
     "loginTitle": "Welkom terug",
@@ -222,5 +223,10 @@
       "adminPanel": "Beheerpaneel",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Crypto prop trading firm | 80% winstdeling, directe financiering",
+    "description": "Handel 24/7 in crypto met het kapitaal van SOGDIA. Evaluatie in één fase of directe financiering, 80% winstdeling, hefboom tot 200×, 50 USDT-paren en uitbetalingen elke 14 dagen.",
+    "keywords": "crypto prop firm, prop trading, gefinancierde trader, SOGDIA, sogdia.site"
   }
 }

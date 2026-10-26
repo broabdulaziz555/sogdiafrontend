@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
-import { localeDir } from '@/i18n/config';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import { LOCALE_CODES, localeDir } from '@/i18n/config';
+import { SITE_URL, SOCIAL, languageAlternates, localizedUrl, ogLocale } from '@/lib/seo';
 import { Providers } from '@/components/Providers';
 import { RegisterSW } from '@/components/pwa/RegisterSW';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
@@ -14,9 +15,33 @@ const sans = Inter({ subsets: ['latin', 'cyrillic', 'latin-ext'], variable: '--f
 const SITE_LABEL: Record<string, string> = { www: 'SOGDIA', app: 'SOGDIA Dashboard', trade: 'SOGDIA Terminal', xdepartment: 'SOGDIA Admin' };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const site = headers().get('x-sg-site') || 'www';
+  const h = headers();
+  const site = h.get('x-sg-site') || 'www';
   const label = SITE_LABEL[site] ?? 'SOGDIA';
-  return { ...baseMetadata, applicationName: label, appleWebApp: { capable: true, title: label.replace('SOGDIA ', ''), statusBarStyle: 'black-translucent' } };
+  const base: Metadata = { ...baseMetadata, applicationName: label, appleWebApp: { capable: true, title: label.replace('SOGDIA ', ''), statusBarStyle: 'black-translucent' } };
+  if (site !== 'www') return base; // dashboard / terminal / admin are private and noindex
+
+  // Public site: localized title + description, one URL per language with hreflang, rich link previews.
+  const locale = await getLocale();
+  const t = await getTranslations({ locale, namespace: 'seo' });
+  const path = h.get('x-sg-path') || '/';
+  const title = t('title'), description = t('description');
+  const url = localizedUrl(path, locale);
+  const image = { url: `${SITE_URL}/og.png`, width: 1200, height: 630, alt: title };
+  return {
+    ...base,
+    title: { default: title, template: '%s · SOGDIA.SITE' },
+    description,
+    keywords: t('keywords').split(',').map((k) => k.trim()).filter(Boolean),
+    alternates: { canonical: url, languages: languageAlternates(path) },
+    openGraph: {
+      type: 'website', siteName: 'SOGDIA.SITE', url, title, description, images: [image],
+      locale: ogLocale(locale), alternateLocale: LOCALE_CODES.filter((c) => c !== locale).map(ogLocale),
+    },
+    twitter: { card: 'summary_large_image', site: SOCIAL.handle, creator: SOCIAL.handle, title, description, images: [image.url] },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 } },
+    category: 'finance',
+  };
 }
 
 const baseMetadata: Metadata = {

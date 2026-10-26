@@ -165,7 +165,8 @@
     "product": "Produkt",
     "company": "Firma",
     "contact": "Kontakt",
-    "rights": "Wszelkie prawa zastrzeżone."
+    "rights": "Wszelkie prawa zastrzeżone.",
+    "follow": "Obserwuj nas"
   },
   "auth": {
     "loginTitle": "Witaj ponownie",
@@ -222,5 +223,10 @@
       "adminPanel": "Panel administratora",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — firma prop tradingowa krypto | 80% zysku, natychmiastowe finansowanie",
+    "description": "Handluj kryptowalutami 24/7 na kapitale SOGDIA. Jednoetapowa ocena lub natychmiastowe finansowanie, 80% zysku dla tradera, dźwignia do 200×, 50 par USDT i wypłaty co 14 dni.",
+    "keywords": "firma prop krypto, prop trading, finansowany trader, handel na kapitale firmy, SOGDIA, sogdia.site"
   }
 }

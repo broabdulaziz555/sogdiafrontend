@@ -5,9 +5,16 @@
   "faq": {
     "a2": "On equity, which is balance plus unrealised PnL. Daily drawdown is measured from your daily starting balance (reset at 00:00 UTC); max drawdown is measured from the initial account size."
   },
-  "footer": {},
+  "footer": {
+    "follow": "Follow us"
+  },
   "auth": {},
   "platform": {
     "f2Body": "Equity, free margin, margin level and drawdown headroom update with every tick."
+  },
+  "seo": {
+    "title": "SOGDIA — Crypto Prop Trading Firm | 80% Profit Split, Instant Funding",
+    "description": "Get funded to trade crypto 24/7 with SOGDIA. One-Step evaluation or Instant funding, 80% profit split, up to 200× leverage, 50 USDT pairs and payouts every 14 days.",
+    "keywords": "crypto prop firm, crypto prop trading, funded trader, funded crypto account, prop firm challenge, instant funding prop firm, crypto trading evaluation, SOGDIA, sogdia.site"
   }
 }

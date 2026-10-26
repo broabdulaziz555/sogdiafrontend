@@ -17,9 +17,11 @@ function deepMerge(base: Dict, over: Dict): Dict {
 }
 
 export default getRequestConfig(async () => {
+  // The middleware already resolved ?lang → cookie → device → country; its answer wins (a ?lang URL must not be
+  // overridden by an older cookie on the same request).
   const locale =
-    normalizeLocale(cookies().get(LOCALE_COOKIE)?.value) ??
     normalizeLocale(headers().get('x-sg-locale')) ??
+    normalizeLocale(cookies().get(LOCALE_COOKIE)?.value) ??
     DEFAULT_LOCALE;
 
   // messages/en.json is the en-US source of truth; every other file is merged over it,

@@ -165,7 +165,8 @@
     "product": "Produk",
     "company": "Perusahaan",
     "contact": "Kontak",
-    "rights": "Hak cipta dilindungi."
+    "rights": "Hak cipta dilindungi.",
+    "follow": "Ikuti kami"
   },
   "auth": {
     "loginTitle": "Selamat datang kembali",
@@ -222,5 +223,10 @@
       "adminPanel": "Panel admin",
       "menu": "Menu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — Perusahaan Prop Trading Kripto | Bagi Hasil 80%, Pendanaan Instan",
+    "description": "Trading kripto 24/7 dengan modal SOGDIA. Evaluasi satu tahap atau pendanaan instan, 80% profit untuk trader, leverage hingga 200×, 50 pasangan USDT, dan pembayaran setiap 14 hari.",
+    "keywords": "prop firm kripto, prop trading, trader terdanai, akun terdanai kripto, SOGDIA, sogdia.site"
   }
 }

@@ -165,7 +165,8 @@
     "product": "Mahsulot",
     "company": "Kompaniya",
     "contact": "Aloqa",
-    "rights": "Barcha huquqlar himoyalangan."
+    "rights": "Barcha huquqlar himoyalangan.",
+    "follow": "Bizni kuzating"
   },
   "auth": {
     "loginTitle": "Qaytganingiz bilan",
@@ -222,5 +223,10 @@
       "adminPanel": "Admin panel",
       "menu": "Menyu"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — kripto prop-trading kompaniyasi | 80% foyda, darhol moliyalash",
+    "description": "SOGDIA kapitalida kriptovalyuta bilan 24/7 savdo qiling. Bir bosqichli baholash yoki darhol moliyalash, foydaning 80% treyderga, 200× gacha leverej, 50 ta USDT juftligi va har 14 kunda to‘lov.",
+    "keywords": "kripto prop firma, prop trading, moliyalashtirilgan treyder, kompaniya kapitalida savdo, SOGDIA, sogdia.site"
   }
 }

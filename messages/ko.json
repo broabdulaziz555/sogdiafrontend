@@ -165,7 +165,8 @@
     "product": "제품",
     "company": "회사",
     "contact": "문의",
-    "rights": "모든 권리 보유."
+    "rights": "모든 권리 보유.",
+    "follow": "팔로우하기"
   },
   "auth": {
     "loginTitle": "다시 오신 것을 환영합니다",
@@ -222,5 +223,10 @@
       "adminPanel": "관리자 패널",
       "menu": "메뉴"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — 암호화폐 프랍 트레이딩 회사 | 수익 80% 배분, 즉시 펀딩",
+    "description": "SOGDIA의 자본으로 24시간 암호화폐를 거래하세요. 1단계 평가 또는 즉시 펀딩, 트레이더 수익 80%, 최대 200배 레버리지, 50개 USDT 페어, 14일마다 출금.",
+    "keywords": "암호화폐 프랍펌, 프랍 트레이딩, 펀딩 트레이더, SOGDIA, sogdia.site"
   }
 }

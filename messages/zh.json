@@ -165,7 +165,8 @@
     "product": "产品",
     "company": "公司",
     "contact": "联系我们",
-    "rights": "保留所有权利。"
+    "rights": "保留所有权利。",
+    "follow": "关注我们"
   },
   "auth": {
     "loginTitle": "欢迎回来",
@@ -222,5 +223,10 @@
       "adminPanel": "管理面板",
       "menu": "菜单"
     }
+  },
+  "seo": {
+    "title": "SOGDIA — 加密货币自营交易公司 | 80% 利润分成，即时注资",
+    "description": "使用 SOGDIA 的资金全天候交易加密货币。一阶段考核或即时注资，交易员获得 80% 利润，最高 200 倍杠杆，50 个 USDT 交易对，每 14 天结算一次。",
+    "keywords": "加密货币自营交易公司, 自营交易, 资助交易员, 加密货币资助账户, 自营公司挑战, SOGDIA, sogdia.site"
   }
 }
