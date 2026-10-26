@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Award, Download, ExternalLink, Eye, Loader2, Search, X } from 'lucide-react';
 import { assetUrl, errMsg, post } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { dateTime, fmtUsd } from '@/lib/format';
 import { revalidatePath } from '@/lib/mutate';
 import { saveOrOpen } from '@/lib/shareImage';
@@ -34,42 +35,36 @@ function ToggleRow({ checked, onChange, label }: { checked: boolean; onChange: (
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-/** Live HTML replica of the PNG certificate (1200×850), scaled with container-query units. */
-function CertificatePreview({ title, caption, name, amountLabel, amount, hideAmount, date }: {
-  title: string; caption: string; name: string; amountLabel: string; amount: number | null; hideAmount: boolean; date: string;
-}) {
-  const BRAND = '#00E08F';
-  const issued = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  // 1 design px on the 1200-wide original = 100/1200 cqw
-  const u = (px: number) => `${(px / 12).toFixed(3)}cqw`;
+/**
+ * Live preview: the server renders the real certificate PNG from the current fields (same artwork as the issued one),
+ * debounced while typing. The last good image stays on screen, dimmed, while the next one renders.
+ */
+function CertificatePreview({ fields }: { fields: Record<string, unknown> }) {
+  const key = JSON.stringify(fields);
+  const debounced = useDebounced(key, 450);
+  const [img, setImg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setBusy(true);
+    post<{ image: string }>('/admin/certificates/preview', JSON.parse(debounced))
+      .then((r) => { if (alive) { setImg(r.image); setErr(null); } })
+      .catch((e) => { if (alive) setErr(errMsg(e)); })
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [debounced]);
+  const stale = busy || key !== debounced;
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-line2/70" style={{ containerType: 'inline-size' }}>
-      <div
-        className="flex aspect-[1200/850] w-full flex-col items-center text-white"
-        style={{ background: '#070B10', backgroundImage: `radial-gradient(${u(800)} ${u(500)} at 50% -15%, ${BRAND}1A, transparent)`, padding: u(56), fontFamily: 'ui-serif, Georgia, serif' }}
-      >
-        <div className="flex h-full w-full flex-col items-center" style={{ border: `${u(2)} solid ${BRAND}55`, borderRadius: u(24), padding: u(56) }}>
-          <div className="flex items-center" style={{ gap: u(14) }}>
-            <div className="grid place-items-center font-extrabold" style={{ width: u(40), height: u(40), borderRadius: u(10), background: BRAND, color: '#070B10', fontSize: u(24) }}>S</div>
-            <div className="font-bold" style={{ fontSize: u(28), letterSpacing: u(8) }}>SOGDIA</div>
-          </div>
-          <div style={{ fontSize: u(16), letterSpacing: u(4), color: '#7D8B99', marginTop: u(12), fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>SOGDIA.SITE · INSTITUTIONAL CRYPTO PROP FIRM</div>
-          <div className="text-center" style={{ fontSize: u(26), letterSpacing: u(6), color: BRAND, marginTop: u(34) }}>{title.toUpperCase()}</div>
-          <div style={{ fontSize: u(20), color: '#7D8B99', marginTop: u(10) }}>This certifies that</div>
-          <div className="max-w-full truncate font-bold" style={{ fontSize: u(72), marginTop: u(18), borderBottom: `${u(1)} solid ${BRAND}44`, paddingBottom: u(18) }}>{name || 'SOGDIA Trader'}</div>
-          <div className="text-center" style={{ fontSize: u(24), color: '#9AA7B4', marginTop: u(26), maxWidth: u(820) }}>{caption}</div>
-          {!hideAmount && (
-            <div className="flex flex-col items-center" style={{ marginTop: u(44) }}>
-              <div style={{ fontSize: u(18), color: '#6E7D8C', letterSpacing: u(2) }}>{amountLabel.toUpperCase()}</div>
-              <div className="font-bold" style={{ fontSize: u(56), color: BRAND, marginTop: u(8) }}>{fmtUsd(amount ?? 0)}</div>
-            </div>
-          )}
-          <div className="mt-auto flex w-full justify-between" style={{ fontSize: u(20), color: '#6E7D8C', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
-            <div>Issued {issued}</div>
-            <div>Verification code · ••••••</div>
-          </div>
-        </div>
-      </div>
+    <div className="relative w-full overflow-hidden rounded-2xl border border-line2/70 bg-[#070B10]">
+      {img ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={img} alt="Certificate preview" className={cn('block aspect-[1200/850] w-full transition-opacity', stale && 'opacity-60')} />
+      ) : (
+        <div className="aspect-[1200/850] w-full" />
+      )}
+      {stale && <div className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5"><Loader2 className="h-4 w-4 animate-spin text-white" /></div>}
+      {err && !stale && <p role="alert" className="absolute inset-x-2 bottom-2 rounded-md bg-down/90 px-2 py-1 text-xs text-white">Preview failed: {err}</p>}
     </div>
   );
 }
@@ -341,15 +336,17 @@ export function CertificateBuilder() {
 
         <div className="space-y-6">
           <Section title="Preview">
-            <CertificatePreview
-              title={title.trim() || d.title}
-              caption={caption.trim() || d.caption}
-              name={name.trim()}
-              amountLabel={amountLabel.trim() || d.amountLabel}
-              amount={amt !== null && Number.isFinite(amt) ? amt : null}
-              hideAmount={hideAmount}
-              date={date || todayIso()}
-            />
+            <CertificatePreview fields={{
+              type,
+              account_id: linkedAccount,
+              display_name: name.trim() || undefined,
+              amount: amt !== null && Number.isFinite(amt) ? amt : 0,
+              title: title.trim() || undefined,
+              caption: caption.trim() || undefined,
+              amount_label: amountLabel.trim() || undefined,
+              hide_amount: hideAmount || undefined,
+              issued_at: date && date !== todayIso() ? `${date}T12:00:00Z` : undefined,
+            }} />
           </Section>
 
           <IssuedGallery refreshKey={issuedTick} />
