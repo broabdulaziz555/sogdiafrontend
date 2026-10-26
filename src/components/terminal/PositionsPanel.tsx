@@ -44,7 +44,6 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
     else if (tpN != null && (pos.side === 'long' ? tpN <= pos.mark_price : tpN >= pos.mark_price)) tpErr = pos.side === 'long' ? 'Must be above the current mark.' : 'Must be below the current mark.';
     if (slN != null && (!Number.isFinite(slN) || slN <= 0)) slErr = 'Enter a valid price.';
     else if (slN != null && (pos.side === 'long' ? slN >= pos.mark_price : slN <= pos.mark_price)) slErr = pos.side === 'long' ? 'Must be below the current mark.' : 'Must be above the current mark.';
-    else if (slN != null && (pos.side === 'long' ? slN <= pos.liquidation_price : slN >= pos.liquidation_price)) slErr = 'Beyond the liquidation price.';
   }
 
   const save = async () => {

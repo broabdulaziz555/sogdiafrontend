@@ -133,7 +133,6 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
       if (Number.isFinite(tpN) && (side === 'long' ? tpN <= entry : tpN >= entry)) e.tp = side === 'long' ? 'Take-profit must be above entry.' : 'Take-profit must be below entry.';
       if (Number.isFinite(slN)) {
         if (side === 'long' ? slN >= entry : slN <= entry) e.sl = side === 'long' ? 'Stop-loss must be below entry.' : 'Stop-loss must be above entry.';
-        else if (side === 'long' ? slN <= liq : slN >= liq) e.sl = 'Stop-loss is beyond the liquidation price.';
       }
     }
     return e;
