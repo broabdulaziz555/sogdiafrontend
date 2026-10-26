@@ -5,13 +5,13 @@
 export type CertType = 'eval_pass' | 'phase1_pass' | 'phase2_pass' | 'funded' | 'payout' | 'achievement' | 'custom';
 
 export const CERT_COPY: Record<CertType, { label: string; title: string; caption: string; amountLabel: string }> = {
-  eval_pass: { label: 'Evaluation passed', title: 'CERTIFICATE OF ACHIEVEMENT', caption: 'has successfully passed the SOGDIA evaluation and earned a funded account', amountLabel: 'ACCOUNT SIZE' },
-  phase1_pass: { label: 'Phase 1 passed', title: 'PHASE 1 COMPLETED', caption: 'has successfully passed Phase 1 of the SOGDIA evaluation', amountLabel: 'ACCOUNT SIZE' },
-  phase2_pass: { label: 'Phase 2 passed', title: 'PHASE 2 COMPLETED', caption: 'has successfully passed Phase 2 of the SOGDIA evaluation', amountLabel: 'ACCOUNT SIZE' },
-  funded: { label: 'Funded trader', title: 'FUNDED TRADER CERTIFICATE', caption: 'has been granted a SOGDIA funded trading account', amountLabel: 'ACCOUNT SIZE' },
-  payout: { label: 'Payout', title: 'CERTIFICATE OF PAYOUT', caption: 'has successfully withdrawn profits from a SOGDIA funded account', amountLabel: 'AMOUNT PAID' },
-  achievement: { label: 'Achievement', title: 'CERTIFICATE OF EXCELLENCE', caption: 'has been recognised for outstanding trading performance at SOGDIA', amountLabel: 'PROFIT' },
-  custom: { label: 'Custom', title: 'CERTIFICATE', caption: 'is recognised by SOGDIA', amountLabel: 'AMOUNT' },
+  eval_pass: { label: 'Evaluation passed', title: 'CERTIFICATE OF ACHIEVEMENT', caption: 'has successfully completed the SOGDIA Evaluation and qualified for a funded trading account', amountLabel: 'ACCOUNT SIZE' },
+  phase1_pass: { label: 'Phase 1 passed', title: 'PHASE ONE COMPLETION', caption: 'has successfully completed Phase One of the SOGDIA Evaluation', amountLabel: 'ACCOUNT SIZE' },
+  phase2_pass: { label: 'Phase 2 passed', title: 'PHASE TWO COMPLETION', caption: 'has successfully completed Phase Two of the SOGDIA Evaluation', amountLabel: 'ACCOUNT SIZE' },
+  funded: { label: 'Funded trader', title: 'FUNDED TRADER CERTIFICATE', caption: 'has qualified as a SOGDIA Funded Trader and been granted a funded trading account', amountLabel: 'ACCOUNT SIZE' },
+  payout: { label: 'Payout', title: 'CERTIFICATE OF PAYOUT', caption: 'has received a profit distribution from a SOGDIA funded trading account', amountLabel: 'AMOUNT PAID' },
+  achievement: { label: 'Achievement', title: 'CERTIFICATE OF EXCELLENCE', caption: 'is recognised for outstanding trading performance and disciplined risk management', amountLabel: 'PROFIT' },
+  custom: { label: 'Custom', title: 'CERTIFICATE', caption: 'is recognised by SOGDIA Capital', amountLabel: 'AMOUNT' },
 };
 
 export const CERT_TYPES = Object.keys(CERT_COPY) as CertType[];
