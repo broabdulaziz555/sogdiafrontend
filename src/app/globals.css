@@ -4,20 +4,21 @@
 
 /* ───────────── Design tokens (RGB channels so Tailwind alpha works) ───────────── */
 :root {
-  --bg: 244 246 249;
-  --panel: 255 255 255;
-  --panel2: 238 241 245;
-  --line: 223 228 235;
-  --line2: 200 207 217;
-  --fg: 12 18 26;
-  --muted: 92 105 120;
-  --subtle: 138 149 163;
+  /* light: cool slate desk — page, cards and fields sit on three distinct tones, never pure white */
+  --bg: 226 231 238;    /* #E2E7EE page */
+  --panel: 243 245 248; /* #F3F5F8 card */
+  --panel2: 232 236 242;/* #E8ECF2 input / tile / table head */
+  --line: 208 215 225;  /* #D0D7E1 divider */
+  --line2: 182 192 206; /* #B6C0CE hover / emphasised border */
+  --fg: 16 24 38;
+  --muted: 72 86 106;
+  --subtle: 112 126 146;
   --accent: 74 124 12;
   --accent-fg: 255 255 255;
-  --up: 3 150 96;
-  --down: 217 38 68;
-  --warn: 196 124 8;
-  --info: 37 99 235;
+  --up: 4 135 88;
+  --down: 205 36 62;
+  --warn: 176 108 4;
+  --info: 37 90 210;
   color-scheme: light;
 }
 
