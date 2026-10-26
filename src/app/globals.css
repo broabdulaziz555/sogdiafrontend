@@ -142,3 +142,12 @@ body.app-locked { overflow: hidden; overscroll-behavior: none; position: fixed; 
   /* chrome should feel native: no accidental text selection / callouts on controls */
   button, [role='button'], [role='tab'], nav a { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 }
+
+/* iOS Safari zooms the page when a focused field is under 16px; keep every field at 16px on touch screens. */
+@media (pointer: coarse) {
+  input:not([type='range']):not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
