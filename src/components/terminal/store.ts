@@ -66,6 +66,9 @@ interface State {
   showEMA: boolean;
   showBB: boolean;
   showLevels: boolean;
+  /** highest high / lowest low of the visible candles, as price-scale labels and (optionally) lines */
+  showHiLo: boolean;
+  showHiLoLines: boolean;
   showOrders: boolean;
   showQuotes: boolean;
   cardOpts: CardOpts;
@@ -121,6 +124,8 @@ export const useTerminal = create<State>()(
       showEMA: false,
       showBB: false,
       showLevels: true,
+      showHiLo: true,
+      showHiLoLines: false,
       showOrders: true,
       showQuotes: true,
       cardOpts: DEFAULT_CARD_OPTS,
@@ -199,6 +204,8 @@ export const useTerminal = create<State>()(
         showEMA: s.showEMA,
         showBB: s.showBB,
         showLevels: s.showLevels,
+        showHiLo: s.showHiLo,
+        showHiLoLines: s.showHiLoLines,
         showOrders: s.showOrders,
         showQuotes: s.showQuotes,
         cardOpts: s.cardOpts,

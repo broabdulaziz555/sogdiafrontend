@@ -138,6 +138,8 @@ function IndicatorsMenu() {
   const showOrders = useTerminal((s) => s.showOrders);
   const showQuotes = useTerminal((s) => s.showQuotes);
   const magnet = useTerminal((s) => s.magnet);
+  const showHiLo = useTerminal((s) => s.showHiLo);
+  const showHiLoLines = useTerminal((s) => s.showHiLoLines);
   const set = useTerminal((s) => s.set);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -170,6 +172,8 @@ function IndicatorsMenu() {
           <MenuRow label="Positions" hint="Entry, take-profit, stop-loss, liquidation, entry arrow" checked={showLevels} onToggle={() => set({ showLevels: !showLevels })} />
           <MenuRow label="Pending orders" hint="Limit and stop trigger prices" checked={showOrders} onToggle={() => set({ showOrders: !showOrders })} />
           <MenuRow label="Bid / Ask lines" hint="Prices your orders fill at" checked={showQuotes} onToggle={() => set({ showQuotes: !showQuotes })} />
+          <MenuRow label="High / low labels" hint="Highest and lowest price on screen, on the price scale" checked={showHiLo} onToggle={() => set({ showHiLo: !showHiLo })} />
+          <MenuRow label="High / low lines" hint="Draw those two levels across the chart" checked={showHiLoLines} onToggle={() => set({ showHiLoLines: !showHiLoLines, ...(!showHiLoLines ? { showHiLo: true } : {}) })} />
           <MenuRow label="Magnet crosshair" hint="Snap to the candle (G)" checked={magnet} onToggle={() => set({ magnet: !magnet })} />
         </div>
       )}
@@ -221,6 +225,9 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
 
   const tf = useMemo(() => TIMEFRAMES.find((t) => t.key === timeframe) ?? TIMEFRAMES[3], [timeframe]);
   const getData = useCallback(() => dataRef.current, []);
+  const showHiLo = useTerminal((s) => s.showHiLo);
+  const showHiLoLines = useTerminal((s) => s.showHiLoLines);
+  const hiLoRefs = useRef<{ hi: IPriceLine; lo: IPriceLine } | null>(null);
   const drawBarOpen = useTerminal((s) => s.drawBarOpen);
   const tfRef = useRef(tf);
   tfRef.current = tf;
@@ -496,6 +503,39 @@ function PriceChartInner({ positions }: { positions: Position[] }) {
     });
     return () => { alive = false; sock.close(); unsub(); };
   }, [symbol, timeframe, applyTick]);
+
+  /* ── visible high / low (TradingView "high and low price labels") ───────── */
+  useEffect(() => {
+    const chart = chartRef.current, series = candleRef.current;
+    if (!chart || !series) return;
+    const drop = () => {
+      if (!hiLoRefs.current) return;
+      try { series.removePriceLine(hiLoRefs.current.hi); series.removePriceLine(hiLoRefs.current.lo); } catch { /* chart gone */ }
+      hiLoRefs.current = null;
+    };
+    if (!showHiLo || status !== 'ready') { drop(); return; }
+    let raf = 0, sig = '';
+    const tick = () => {
+      const d = dataRef.current;
+      const r = chart.timeScale().getVisibleLogicalRange();
+      if (d.length && r) {
+        const from = Math.max(0, Math.floor(r.from)), to = Math.min(d.length - 1, Math.ceil(r.to));
+        let hi = -Infinity, lo = Infinity;
+        for (let i = from; i <= to; i++) { if (d[i].high > hi) hi = d[i].high; if (d[i].low < lo) lo = d[i].low; }
+        const next = `${hi}|${lo}|${resolvedTheme}`;
+        if (Number.isFinite(hi) && Number.isFinite(lo) && next !== sig) {
+          sig = next;
+          const col = cssRgb('muted');
+          const opts = (price: number, title: string) => ({ price, color: col, lineWidth: 1 as const, lineStyle: LineStyle.SparseDotted, lineVisible: showHiLoLines, axisLabelVisible: true, title: showHiLoLines ? title : '' });
+          if (!hiLoRefs.current) hiLoRefs.current = { hi: series.createPriceLine(opts(hi, 'High')), lo: series.createPriceLine(opts(lo, 'Low')) };
+          else { hiLoRefs.current.hi.applyOptions(opts(hi, 'High')); hiLoRefs.current.lo.applyOptions(opts(lo, 'Low')); }
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); drop(); };
+  }, [showHiLo, showHiLoLines, status, resolvedTheme, timeframe, symbol]);
 
   /* ── trade levels: positions, pending orders, bid / ask ──────────────────── */
   const pending = useMemo(() => pendingAll.filter((o) => o.accountId === accountId && o.symbol === symbol), [pendingAll, accountId, symbol]);
