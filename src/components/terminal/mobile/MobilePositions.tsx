@@ -14,7 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { AccountPanel } from '../AccountPanel';
 import { Flash } from '../Flash';
 import { useTerminalData } from '../data';
-import { ProtectionModal, SideTag, TypeTag, sym } from '../PositionsPanel';
+import { PnlHint, ProtectionModal, SideTag, TypeTag, pnlAtPos, sym } from '../PositionsPanel';
 import { beep } from '../sound';
 import { useTerminal, type PendingOrder } from '../store';
 
@@ -129,8 +129,8 @@ function MobilePositionsInner() {
                           <Cell k="Volume">{fmtNum(p.quantity, qtyDecimals(p.entry_price) + 1)}</Cell>
                           <Cell k="Price">{fmtPrice(p.entry_price)}</Cell>
                           <Cell k="Current"><Flash value={p.mark_price}>{fmtPrice(p.mark_price)}</Flash></Cell>
-                          <Cell k="S / L"><button onClick={() => setEditing(p)} className="text-warn">{p.stop_loss ? fmtPrice(p.stop_loss) : <span className="text-subtle">Set</span>}</button></Cell>
-                          <Cell k="T / P"><button onClick={() => setEditing(p)} className="text-up">{p.take_profit ? fmtPrice(p.take_profit) : <span className="text-subtle">Set</span>}</button></Cell>
+                          <Cell k="S / L"><button onClick={() => setEditing(p)} className="text-warn">{p.stop_loss ? <>{fmtPrice(p.stop_loss)}<PnlHint v={pnlAtPos(p, p.stop_loss)} /></> : <span className="text-subtle">Set</span>}</button></Cell>
+                          <Cell k="T / P"><button onClick={() => setEditing(p)} className="text-up">{p.take_profit ? <>{fmtPrice(p.take_profit)}<PnlHint v={pnlAtPos(p, p.take_profit)} /></> : <span className="text-subtle">Set</span>}</button></Cell>
                           <Cell k="Liq."><span className="text-warn">{fmtPrice(p.liquidation_price)}</span></Cell>
                         </dl>
 

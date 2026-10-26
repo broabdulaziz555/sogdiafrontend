@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ChevronDown, Info, Keyboard, ShieldCheck } from 'lucide-react';
 import { post, errMsg, ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { fmtNum, fmtPrice, fmtSigned, fmtUsd, priceDecimals, qtyDecimals } from '@/lib/format';
+import { fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, priceDecimals, qtyDecimals } from '@/lib/format';
 import type { Account, AccountMetrics, Position, Side } from '@/lib/types';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +15,7 @@ import { useTerminalData } from './data';
 import { beep } from './sound';
 import { useTerminal } from './store';
 import { ticketApi } from './ticketApi';
-import { ddUsage } from './risk';
+import { ddUsage, pnlAt } from './risk';
 
 type OType = 'market' | 'limit' | 'stop';
 const LEV_PRESETS = [1, 5, 10, 25, 50, 100, 200];
@@ -140,8 +140,10 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
   const hasError = Object.keys(errors).length > 0;
   const dd = ddUsage(account, metrics);
 
-  const riskAtSl = entry && Number.isFinite(slN) && Number.isFinite(size) ? (size * Math.abs(entry - slN)) / entry : null;
-  const rewardAtTp = entry && Number.isFinite(tpN) && Number.isFinite(size) ? (size * Math.abs(tpN - entry)) / entry : null;
+  const proj = entry && Number.isFinite(qty) ? { side, entry, quantity: qty, margin: m, liquidation: liq } : null;
+  const pnlTp = proj ? pnlAt(proj, tpN) : null;
+  const pnlSl = proj ? pnlAt(proj, slN) : null;
+  const pctOfMargin = (v: number) => (m > 0 ? ` (${fmtSigned((v / m) * 100, 1)}%)` : '');
 
   const setLev = (v: number) => set({ leverage: Math.max(1, Math.min(maxLev, Math.round(v) || 1)) });
   const pickLev = (v: number) => { setLevText(null); setLev(v); };
@@ -293,16 +295,15 @@ function OrderTicketInner({ initialSide, onPlaced }: { initialSide?: Side; onPla
         {tpslOpen && (
           <div className="space-y-2 border-t border-line/60 p-3.5">
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1"><label htmlFor="t-tp" className="text-2xs text-up">Take-profit</label><NumInput id="t-tp" value={tp} onChange={setTp} placeholder="Price" invalid={!!show('tp')} /></div>
-              <div className="space-y-1"><label htmlFor="t-sl" className="text-2xs text-warn">Stop-loss</label><NumInput id="t-sl" value={sl} onChange={setSl} placeholder="Price" invalid={!!show('sl')} /></div>
+              <div className="space-y-1"><label htmlFor="t-tp" className="text-2xs text-up">Take-profit</label><NumInput id="t-tp" value={tp} onChange={setTp} placeholder="Price" invalid={!!show('tp')} />
+                <p className={cn('num min-h-[1rem] text-2xs font-medium', pnlTp == null ? 'text-subtle' : pnlClass(pnlTp))}>{pnlTp == null ? 'PnL —' : `${fmtSigned(pnlTp)} USDT${pctOfMargin(pnlTp)}`}</p></div>
+              <div className="space-y-1"><label htmlFor="t-sl" className="text-2xs text-warn">Stop-loss</label><NumInput id="t-sl" value={sl} onChange={setSl} placeholder="Price" invalid={!!show('sl')} />
+                <p className={cn('num min-h-[1rem] text-2xs font-medium', pnlSl == null ? 'text-subtle' : pnlClass(pnlSl))}>{pnlSl == null ? 'PnL —' : `${fmtSigned(pnlSl)} USDT${pctOfMargin(pnlSl)}`}</p></div>
             </div>
             {show('tp') && <p role="alert" className="text-2xs text-down">{show('tp')}</p>}
             {show('sl') && <p role="alert" className="text-2xs text-down">{show('sl')}</p>}
-            {(riskAtSl != null || rewardAtTp != null) && (
-              <div className="space-y-1 pt-1">
-                {rewardAtTp != null && <Row k="Reward at TP" v={`+${fmtUsd(rewardAtTp)}`} tone="up" />}
-                {riskAtSl != null && <Row k="Risk at SL" v={`−${fmtUsd(riskAtSl)}${account ? ` (${fmtNum((riskAtSl / account.equity) * 100)}% eq)` : ''}`} tone="down" />}
-              </div>
+            {pnlSl != null && pnlSl < 0 && account && account.equity > 0 && (
+              <p className="num text-2xs text-subtle">Stop-loss risks {fmtNum((Math.abs(pnlSl) / account.equity) * 100)}% of equity{pnlTp != null && pnlTp > 0 ? ` · reward/risk ${fmtNum(pnlTp / Math.abs(pnlSl), 2)}` : ''}</p>
             )}
           </div>
         )}

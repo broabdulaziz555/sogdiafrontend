@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, CandlestickChart, Info, ShieldAlert } from 'lucide-react';
 import { PageHead, Stat } from './PageHead';
 import { EquityChart } from './Charts';
+import { ProfitTargetBar } from './ProfitTarget';
 import { accountLabel } from './AccountCard';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Badge, Meter, StatusBadge } from '@/components/ui/Primitives';
@@ -119,6 +120,13 @@ export function AccountDetail({ id }: { id: string }) {
         <Stat label="Free margin" value={fmtUsd(m.free_margin)} sub={`${fmtUsd(m.used_margin)} used · ${m.open_positions} open`} />
         <Stat label="Profit target" value={a.profit_target_pct != null ? fmtPct(m.profit_pct) : 'None'} sub={a.profit_target_pct != null ? `of ${a.profit_target_pct}% · goal ${fmtUsd(m.profit_target)}` : 'Instant accounts have no target'} tone={m.target_reached ? 'up' : undefined} />
       </div>
+
+      {a.profit_target_pct != null && (
+        <section className="card mb-6 p-5">
+          <h2 className="mb-3 text-md font-semibold">Profit target</h2>
+          <ProfitTargetBar account={{ ...a, equity: m.equity }} />
+        </section>
+      )}
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_340px]">
         <section className="rounded-2xl card p-5">

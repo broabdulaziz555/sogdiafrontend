@@ -20,3 +20,15 @@ export function ddUsage(account: Account | null, m: AccountMetrics | null) {
 }
 
 export const toneFor = (used: number): 'up' | 'warn' | 'down' => (used >= 0.85 ? 'down' : used >= 0.6 ? 'warn' : 'up');
+
+/**
+ * Projected PnL if the position closes at `price`. Past the liquidation price the trader can lose no more than the
+ * margin (the engine liquidates first), so the figure is capped there.
+ */
+export function pnlAt(p: { side: 'long' | 'short'; entry: number; quantity: number; margin: number; liquidation?: number | null }, price: number): number | null {
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(p.entry) || p.entry <= 0 || !Number.isFinite(p.quantity)) return null;
+  const long = p.side === 'long';
+  const liq = p.liquidation;
+  if (liq != null && Number.isFinite(liq) && liq > 0 && (long ? price <= liq : price >= liq)) return -Math.abs(p.margin);
+  return (long ? price - p.entry : p.entry - price) * p.quantity;
+}

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { PageHead, Stat } from '@/components/dashboard/PageHead';
 import { StatStrip } from '@/components/ui/Panel';
 import { AccountCard, AccountCardSkeleton } from '@/components/dashboard/AccountCard';
+import { ProfitTargetsPanel } from '@/components/dashboard/ProfitTarget';
 import { EmptyState, ErrorState } from '@/components/ui/States';
 import { Segmented } from '@/components/ui/Primitives';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -65,6 +66,8 @@ export default function OverviewPage() {
           </>
         )}
       </StatStrip>
+
+      {accounts && <ProfitTargetsPanel accounts={accounts} />}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <Segmented

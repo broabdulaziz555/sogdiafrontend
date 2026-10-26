@@ -6,6 +6,7 @@ import { Loader2, Share2, SlidersHorizontal, X } from 'lucide-react';
 import { errMsg, get, post } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { dateTime, fmtNum, fmtPrice, fmtSigned, fmtUsd, pnlClass, qtyDecimals, shortId, timeHMS } from '@/lib/format';
+import { pnlAt } from './risk';
 import type { Account, AccountMetrics, HistoryOrder, HistoryResponse, Position, Side } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -27,6 +28,16 @@ export const SideTag = ({ side }: { side: Side }) => (
 export const TypeTag = ({ side }: { side: Side }) => (
   <span className={cn('text-xs font-semibold uppercase', side === 'long' ? 'text-up' : 'text-down')}>{side === 'long' ? 'long' : 'short'}</span>
 );
+
+/** Projected PnL of an open position at `price` (TP / SL), capped at the margin past liquidation. */
+export const pnlAtPos = (p: Position, price: number | null | undefined) =>
+  price == null ? null : pnlAt({ side: p.side, entry: p.entry_price, quantity: p.quantity, margin: p.margin, liquidation: p.liquidation_price }, Number(price));
+
+/** Small signed PnL line, e.g. "+120.50" in green. */
+export function PnlHint({ v, className }: { v: number | null; className?: string }) {
+  if (v == null) return null;
+  return <span className={cn('num block font-mono text-2xs', pnlClass(v), className)}>{fmtSigned(v)}</span>;
+}
 
 /* ── TP / SL editor ─────────────────────────────────────────────────────── */
 export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null; onClose: () => void; onDone: () => void }) {
@@ -62,12 +73,16 @@ export function ProtectionModal({ pos, onClose, onDone }: { pos: Position | null
       description={pos ? `${pos.side.toUpperCase()} ${pos.leverage}× · entry ${fmtPrice(pos.entry_price)} · mark ${fmtPrice(pos.mark_price)} · liq ${fmtPrice(pos.liquidation_price)}` : undefined}
       footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={!!tpErr || !!slErr} onClick={save}>Save</Button></>}>
       <div className="grid grid-cols-2 gap-3 p-5">
-        {([['Take-profit', tp, setTp, tpErr, 'text-up'], ['Stop-loss', sl, setSl, slErr, 'text-warn']] as const).map(([label, val, setter, err, color]) => (
+        {([['Take-profit', tp, setTp, tpErr, 'text-up', tpN], ['Stop-loss', sl, setSl, slErr, 'text-warn', slN]] as const).map(([label, val, setter, err, color, n]) => (
           <div key={label} className="space-y-1">
             <label className={cn('text-xs', color)} htmlFor={`pm-${label}`}>{label}</label>
             <input id={`pm-${label}`} inputMode="decimal" value={val} placeholder="Not set" aria-invalid={!!err}
               onChange={(e) => { const v = e.target.value.replace(',', '.'); if (/^\d*\.?\d*$/.test(v)) setter(v); }}
               className={cn('num h-10 w-full rounded-xl border bg-panel2/80 px-3 text-sm outline-none focus:border-accent/70 focus:ring-4 focus:ring-accent/10', err ? 'border-down' : 'border-line')} />
+            {(() => {
+              const v = pos && n != null ? pnlAtPos(pos, n) : null;
+              return <p className={cn('num min-h-[1rem] text-xs font-medium', v == null ? 'text-subtle' : pnlClass(v))}>{v == null ? 'PnL —' : `${fmtSigned(v)} USDT (${fmtSigned((v / pos!.margin) * 100, 1)}%)`}</p>;
+            })()}
             {err && <p role="alert" className="text-2xs text-down">{err}</p>}
           </div>
         ))}
@@ -128,9 +143,9 @@ function PositionsTable({ onEdit }: { onEdit: (p: Position) => void }) {
     { key: 'lev', header: 'Lev.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.leverage, cell: (p) => <span className="num font-mono text-muted">{p.leverage}×</span> },
     { key: 'entry', header: 'Price', align: 'right', sortValue: (p) => p.entry_price, cell: (p) => <span className="num font-mono">{fmtPrice(p.entry_price)}</span> },
     { key: 'sl', header: 'S / L', align: 'right', sortValue: (p) => p.stop_loss ?? 0, cell: (p) => (
-      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-warn hover:underline" aria-label={`Edit stop-loss for ${sym(p.symbol)}`}>{p.stop_loss ? fmtPrice(p.stop_loss) : <span className="text-subtle">—</span>}</button>) },
+      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-warn hover:underline" aria-label={`Edit stop-loss for ${sym(p.symbol)}`}>{p.stop_loss ? <>{fmtPrice(p.stop_loss)}<PnlHint v={pnlAtPos(p, p.stop_loss)} /></> : <span className="text-subtle">—</span>}</button>) },
     { key: 'tp', header: 'T / P', align: 'right', sortValue: (p) => p.take_profit ?? 0, cell: (p) => (
-      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-up hover:underline" aria-label={`Edit take-profit for ${sym(p.symbol)}`}>{p.take_profit ? fmtPrice(p.take_profit) : <span className="text-subtle">—</span>}</button>) },
+      <button onClick={() => onEdit(p)} className="num font-mono text-xs text-up hover:underline" aria-label={`Edit take-profit for ${sym(p.symbol)}`}>{p.take_profit ? <>{fmtPrice(p.take_profit)}<PnlHint v={pnlAtPos(p, p.take_profit)} /></> : <span className="text-subtle">—</span>}</button>) },
     { key: 'mark', header: 'Current', align: 'right', sortValue: (p) => p.mark_price, cell: (p) => <Flash value={p.mark_price}><span className="num font-mono">{fmtPrice(p.mark_price)}</span></Flash> },
     { key: 'liq', header: 'Liq.', align: 'right', hideBelow: '2xl', sortValue: (p) => p.liquidation_price, cell: (p) => <span className="num font-mono text-warn">{fmtPrice(p.liquidation_price)}</span> },
     { key: 'pnl', header: 'Profit', align: 'right', sortValue: (p) => p.unrealized_pnl, cell: (p) => (
