@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Plus, Wallet } from 'lucide-react';
+import { LayoutGrid, List, Plus, Wallet } from 'lucide-react';
+import { useUser } from '@/components/ui/AuthGate';
+import { AccountsTable } from '@/components/dashboard/AccountsTable';
 import { useTranslations } from 'next-intl';
 import { PageHead, Stat } from '@/components/dashboard/PageHead';
 import { StatStrip } from '@/components/ui/Panel';
@@ -20,6 +22,14 @@ export default function OverviewPage() {
   const t = useTranslations('dash.nav');
   const { accounts, error, isLoading, mutate } = useAccounts();
   const [filter, setFilter] = useState<Filter>('all');
+  const user = useUser();
+  const [view, setView] = useState<'cards' | 'table'>(() => {
+    try { return (typeof window !== 'undefined' && localStorage.getItem('sg_dash_view') === 'table') ? 'table' : 'cards'; } catch { return 'cards'; }
+  });
+  const pickView = (v: 'cards' | 'table') => { setView(v); try { localStorage.setItem('sg_dash_view', v); } catch { /* private mode */ } };
+  const hour = new Date().getHours();
+  const hello = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const first = (user.full_name || '').trim().split(/\s+/)[0];
 
   const stats = useMemo(() => {
     const list = accounts ?? [];
@@ -45,8 +55,8 @@ export default function OverviewPage() {
   return (
     <>
       <PageHead
-        title={t('overview')}
-        subtitle="Live balances, equity curves and drawdown headroom for every account you own."
+        title={first ? `${hello}, ${first}` : t('overview')}
+        subtitle="Live balances, objectives and drawdown headroom for every account you own."
         actions={
           <SiteLink site="www" path="/#pricing" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] shadow-btn px-4 text-sm font-semibold text-accent-fg transition hover:brightness-105 active:scale-[0.985]">
             <Plus className="h-4 w-4" />{t('buyAccount')}
@@ -70,6 +80,7 @@ export default function OverviewPage() {
       {accounts && <ProfitTargetsPanel accounts={accounts} />}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="sr-only">Accounts</h2>
         <Segmented
           size="sm"
           ariaLabel="Filter accounts"
@@ -82,6 +93,12 @@ export default function OverviewPage() {
             { value: 'ended', label: 'Ended' },
           ]}
         />
+        <div className="flex rounded-xl border border-line p-0.5" role="group" aria-label="Layout">
+          {([['cards', LayoutGrid, 'Cards'], ['table', List, 'Table']] as const).map(([v, Icon, label]) => (
+            <button key={v} type="button" aria-pressed={view === v} title={label} onClick={() => pickView(v)}
+              className={`grid h-8 w-9 place-items-center rounded-lg transition-colors ${view === v ? 'bg-fg/[0.08] text-fg' : 'text-subtle hover:text-fg'}`}><Icon className="h-4 w-4" /></button>
+          ))}
+        </div>
       </div>
 
       {error && !accounts ? (
@@ -101,6 +118,8 @@ export default function OverviewPage() {
             ) : undefined}
           />
         </div>
+      ) : view === 'table' ? (
+        <AccountsTable accounts={shown} />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((a) => <AccountCard key={a.id} account={a} />)}

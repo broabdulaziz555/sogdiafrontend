@@ -18,7 +18,7 @@ export function accountLabel(a: Pick<Account, 'type' | 'size'>) {
 const clamp01 = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0);
 
 /** Drawdown headroom, derived from the same formulas the risk engine uses (see API contract §6). */
-function drawdown(a: Account) {
+export function drawdown(a: Account) {
   const dailyRoom = a.daily_start_balance * (a.daily_dd_pct / 100);
   const maxRoom = a.size * (a.max_dd_pct / 100);
   return {

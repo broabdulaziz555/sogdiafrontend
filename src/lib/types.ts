@@ -160,7 +160,12 @@ export interface HistoryResponse {
   total: number;
   limit: number;
   offset: number;
-  stats: { trades: number; wins: number; losses: number; win_rate: number; net_pnl: number };
+  stats: {
+    trades: number; wins: number; losses: number; win_rate: number; net_pnl: number;
+    // extended performance statistics (absent on an older backend)
+    gross_profit?: number; gross_loss?: number; profit_factor?: number | null; avg_win?: number; avg_loss?: number; expectancy?: number;
+    best_trade?: number; worst_trade?: number; max_win_streak?: number; max_loss_streak?: number; longs?: number; shorts?: number; trading_days?: number;
+  };
 }
 
 export interface Plan {

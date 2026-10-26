@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { SocialLinks } from '@/components/ui/SocialLinks';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -135,6 +136,7 @@ export function DashShell({ children }: { children: React.ReactNode }) {
       <SiteLink site="www" path="/#pricing" className="flex h-10 items-center justify-center gap-2 rounded-xl border border-line text-sm font-medium text-muted transition-colors hover:border-accent/60 hover:text-accent">
         <Plus className="h-4 w-4" />{t('buyAccount')}
       </SiteLink>
+      <SocialLinks size="sm" className="justify-center pt-1" />
     </div>
   );
 

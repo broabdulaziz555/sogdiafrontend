@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CandlestickChart, Info, ShieldAlert } from 'lucide-react';
-import { PageHead, Stat } from './PageHead';
+import { ArrowLeft, CandlestickChart, CheckCircle2, CircleDashed, Info, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
+import { cn } from '@/lib/cn';
+import { Stat } from './PageHead';
 import { EquityChart } from './Charts';
-import { ProfitTargetBar } from './ProfitTarget';
 import { accountLabel } from './AccountCard';
 import { DataTable, type Column } from '@/components/ui/DataTable';
-import { Badge, Meter, StatusBadge } from '@/components/ui/Primitives';
+import { Badge, CopyButton, StatusBadge } from '@/components/ui/Primitives';
 import { ErrorState } from '@/components/ui/States';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SiteLink } from '@/components/ui/SiteLink';
@@ -18,18 +18,33 @@ import type { Account, AccountMetrics, EquityCurveResponse, HistoryOrder, Histor
 
 interface Detail { account: Account; metrics: AccountMetrics; risk: RiskState }
 
-function DdMeter({ label, used, limitPct, remaining }: { label: string; used: number; limitPct: number; remaining: number }) {
-  const ratio = limitPct ? (used / limitPct) * 100 : 0;
-  const tone = ratio >= 80 ? 'down' : ratio >= 50 ? 'warn' : 'up';
+type ObjState = 'done' | 'progress' | 'ok' | 'failed';
+interface Objective { title: string; hint: string; state: ObjState; pct: number; value: string; foot: string; tone: 'accent' | 'risk' }
+
+/** One trading objective: status icon, title, value, progress bar and what is left. */
+function ObjectiveRow({ o }: { o: Objective }) {
+  const Icon = o.state === 'done' ? CheckCircle2 : o.state === 'failed' ? XCircle : o.state === 'ok' ? ShieldCheck : CircleDashed;
+  const iconCls = o.state === 'done' ? 'text-up' : o.state === 'failed' ? 'text-down' : o.state === 'ok' ? 'text-up' : 'text-warn';
+  const bar = o.tone === 'accent'
+    ? (o.state === 'done' ? 'bg-up' : 'bg-accent')
+    : (o.state === 'failed' || o.pct >= 80 ? 'bg-down' : o.pct >= 50 ? 'bg-warn' : 'bg-up');
   return (
-    <div>
-      <div className="mb-2 flex items-end justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="num font-mono text-xs text-muted">{fmtPct(used)} of {limitPct}% used</span>
+    <li>
+      <div className="flex items-start gap-2.5">
+        <Icon className={cn('mt-0.5 h-[18px] w-[18px] shrink-0', iconCls)} aria-hidden />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-medium">{o.title}</p>
+            <p className="num shrink-0 font-mono text-xs text-muted">{o.value}</p>
+          </div>
+          <p className="text-2xs text-subtle">{o.hint}</p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-fg/[0.08]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(o.pct)} aria-label={o.title}>
+            <div className={cn('h-full rounded-full transition-[width] duration-500', bar)} style={{ width: `${Math.max(o.pct, o.pct > 0 ? 2 : 0)}%` }} />
+          </div>
+          <p className={cn('mt-1 text-2xs', o.state === 'failed' ? 'text-down' : 'text-muted')}>{o.state === 'failed' ? 'Breached' : o.foot}</p>
+        </div>
       </div>
-      <Meter value={ratio} tone={tone} className="h-2" />
-      <p className="mt-1.5 text-xs text-subtle">Headroom <span className="num font-mono text-fg">{fmtUsd(remaining)}</span></p>
-    </div>
+    </li>
   );
 }
 
@@ -61,7 +76,9 @@ export function AccountDetail({ id }: { id: string }) {
 
   const { account: a, metrics: m, risk } = data;
   const pnl = a.balance - a.size;
-  const points = curve.data?.points ?? [];
+  // saved snapshots + the live figure, so the chart (and its headline) always ends at "now"
+  const saved = curve.data?.points ?? [];
+  const points = saved.length ? [...saved, { equity: m.equity, balance: a.balance, taken_at: new Date().toISOString() }] : saved;
 
   const cols: Column<HistoryOrder>[] = [
     { key: 'time', header: 'Closed', cell: (o) => <span className="num text-muted">{dateTime(o.closed_at)}</span>, sortValue: (o) => o.closed_at ? new Date(o.closed_at).getTime() : 0, searchText: (o) => o.closed_at ?? '' },
@@ -88,79 +105,152 @@ export function AccountDetail({ id }: { id: string }) {
     { key: 'pnl', header: 'Profit', align: 'right', cell: (o) => <span className={`num font-mono font-medium ${pnlClass(o.unrealized_pnl)}`}>{fmtSigned(o.unrealized_pnl)}</span>, sortValue: (o) => o.unrealized_pnl },
   ];
 
+  const todayPnl = m.equity - a.daily_start_balance;
+  const failed = a.status === 'failed' || a.status === 'breached';
+  const passed = a.status === 'passed' || m.target_reached;
+  const goal = a.profit_target_pct != null ? a.size * (a.profit_target_pct / 100) : null;
+  const profit = m.equity - a.size;
+  const dailyLimitUsd = a.size * (a.daily_dd_pct / 100);
+  const maxLimitUsd = a.size * (a.max_dd_pct / 100);
+  const minDays = a.min_trading_days ?? 0;
+  const days = stats?.trading_days ?? 0;
+
+  const objectives: Objective[] = [
+    ...(goal != null ? [{
+      title: `Profit target ${a.profit_target_pct}%`, hint: `Reach ${fmtUsd(a.size + goal)} equity`,
+      state: (passed ? 'done' : failed ? 'failed' : 'progress') as ObjState,
+      pct: Math.max(0, Math.min(100, (profit / goal) * 100)),
+      value: `${fmtSigned(profit)} / ${fmtUsd(goal)}`, foot: passed ? 'Target reached' : `${fmtUsd(Math.max(0, goal - profit))} to go`, tone: 'accent' as const,
+    }] : []),
+    {
+      title: `Max daily loss ${a.daily_dd_pct}%`, hint: 'From the day\'s starting equity, resets 00:00 UTC',
+      state: (failed && risk.reason === 'DAILY_DRAWDOWN' ? 'failed' : 'ok') as ObjState,
+      pct: Math.min(100, a.daily_dd_pct ? (m.daily_dd_used_pct / a.daily_dd_pct) * 100 : 0),
+      value: `${fmtUsd(dailyLimitUsd * Math.min(1, a.daily_dd_pct ? m.daily_dd_used_pct / a.daily_dd_pct : 0))} / ${fmtUsd(dailyLimitUsd)}`, foot: `${fmtUsd(m.daily_dd_remaining)} left today · floor ${fmtUsd(m.daily_dd_limit)}`, tone: 'risk' as const,
+    },
+    {
+      title: `Max loss ${a.max_dd_pct}%`, hint: 'From the initial account size',
+      state: (failed && risk.reason === 'MAX_DRAWDOWN' ? 'failed' : 'ok') as ObjState,
+      pct: Math.min(100, a.max_dd_pct ? (m.max_dd_used_pct / a.max_dd_pct) * 100 : 0),
+      value: `${fmtUsd(maxLimitUsd * Math.min(1, a.max_dd_pct ? m.max_dd_used_pct / a.max_dd_pct : 0))} / ${fmtUsd(maxLimitUsd)}`, foot: `${fmtUsd(m.max_dd_remaining)} left · floor ${fmtUsd(m.max_dd_limit)}`, tone: 'risk' as const,
+    },
+    ...(minDays > 0 ? [{
+      title: `Minimum ${minDays} trading days`, hint: 'Days with at least one closed trade',
+      state: (days >= minDays ? 'done' : failed ? 'failed' : 'progress') as ObjState,
+      pct: Math.min(100, (days / minDays) * 100), value: `${days} / ${minDays}`, foot: days >= minDays ? 'Requirement met' : `${minDays - days} more`, tone: 'accent' as const,
+    }] : []),
+  ];
+
+  const statItems: [string, React.ReactNode, string?][] = stats ? [
+    ['Win rate', `${fmtNum(stats.win_rate, 1)}%`, `${stats.wins} W · ${stats.losses} L`],
+    ['Profit factor', stats.profit_factor == null ? '—' : fmtNum(stats.profit_factor, 2)],
+    ['Net PnL', <span key="n" className={pnlClass(stats.net_pnl)}>{fmtSigned(stats.net_pnl)}</span>],
+    ['Expectancy', <span key="e" className={pnlClass(stats.expectancy ?? 0)}>{fmtSigned(stats.expectancy ?? 0)}</span>, 'per trade'],
+    ['Average win', <span key="aw" className="text-up">{fmtSigned(stats.avg_win ?? 0)}</span>],
+    ['Average loss', <span key="al" className="text-down">{fmtSigned(stats.avg_loss ?? 0)}</span>],
+    ['Best trade', <span key="b" className={pnlClass(stats.best_trade ?? 0)}>{fmtSigned(stats.best_trade ?? 0)}</span>],
+    ['Worst trade', <span key="w" className={pnlClass(stats.worst_trade ?? 0)}>{fmtSigned(stats.worst_trade ?? 0)}</span>],
+    ['Trades', String(stats.trades), `${stats.longs ?? 0} long · ${stats.shorts ?? 0} short`],
+    ['Trading days', String(stats.trading_days ?? 0)],
+    ['Win streak', String(stats.max_win_streak ?? 0), 'longest'],
+    ['Loss streak', String(stats.max_loss_streak ?? 0), 'longest'],
+  ] : [];
+
   return (
     <>
       {back}
-      <PageHead
-        title={accountLabel(a)}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><StatusBadge status={a.status} /><span className="font-mono text-xs">#{a.id.slice(0, 8)}</span><span>Opened {dateShort(a.created_at)}</span></span>}
-        actions={a.status === 'active' ? (
-          <SiteLink site="trade" path={`/?account=${a.id}`} className="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg hover:brightness-110">
-            <CandlestickChart className="h-4 w-4" />Open in terminal
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-[26px]">{accountLabel(a)}</h1>
+            <StatusBadge status={a.status} />
+            <Badge tone={a.type === 'instant' ? 'accent' : 'neutral'} className="capitalize">{a.profit_target_pct != null ? 'Evaluation' : 'Funded'}</Badge>
+          </div>
+          <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <span className="inline-flex items-center gap-1.5"><span className="num font-mono text-xs">#{a.id.slice(0, 8)}</span><CopyButton value={a.id} label="Copy account ID" /></span>
+            <span>Started {dateShort(a.created_at)}</span>
+            {a.next_payout_at && <span>Next payout {dateShort(a.next_payout_at)}</span>}
+          </p>
+        </div>
+        {a.status === 'active' && (
+          <SiteLink site="trade" path={`/?account=${a.id}`} className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-b from-accent to-[rgb(154_226_84)] px-4 text-sm font-semibold text-accent-fg shadow-btn transition hover:brightness-105">
+            <CandlestickChart className="h-4 w-4" />Open terminal
           </SiteLink>
-        ) : undefined}
-      />
+        )}
+      </header>
 
-      {(risk.breached || a.status === 'failed' || a.status === 'breached') && (
+      {(risk.breached || failed) && (
         <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-down/30 bg-down/10 p-4 text-sm">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-down" />
           <div>
             <p className="font-medium text-down">Account {a.status}</p>
-            <p className="text-muted">{risk.reason ? `Reason: ${titleCase(risk.reason)}.` : 'This account is no longer tradable.'} Open positions were closed at market.</p>
+            <p className="text-muted">{risk.reason ? `Reason: ${titleCase(risk.reason)}.` : a.breach_reason ? a.breach_reason : 'This account is no longer tradable.'} Open positions were closed at market.</p>
           </div>
         </div>
       )}
       {a.status === 'passed' && (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-up/30 bg-up/10 p-4 text-sm"><Info className="mt-0.5 h-4 w-4 shrink-0 text-up" /><p>Evaluation passed — an Evaluation Passed certificate has been issued. Find it under Certificates.</p></div>
+        <div className="mb-6 flex items-start gap-3 rounded-xl border border-up/30 bg-up/10 p-4 text-sm"><Info className="mt-0.5 h-4 w-4 shrink-0 text-up" /><p>Evaluation passed — your certificate has been issued. Find it under Certificates.</p></div>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Balance" value={fmtUsd(a.balance)} sub={<span className={pnlClass(pnl)}>{fmtSigned(pnl)} vs size</span>} />
+        <Stat label="Balance" value={fmtUsd(a.balance)} sub={<span className={pnlClass(pnl)}>{fmtSigned(pnl)} ({fmtPct((pnl / a.size) * 100, 2, true)})</span>} />
         <Stat label="Equity" value={fmtUsd(m.equity)} sub={<span className={pnlClass(m.unrealized_pnl)}>{fmtSigned(m.unrealized_pnl)} unrealised</span>} />
+        <Stat label="Today's P&L" value={<span className={pnlClass(todayPnl)}>{fmtSigned(todayPnl)}</span>} sub="Since 00:00 UTC" />
         <Stat label="Free margin" value={fmtUsd(m.free_margin)} sub={`${fmtUsd(m.used_margin)} used · ${m.open_positions} open`} />
-        <Stat label="Profit target" value={a.profit_target_pct != null ? fmtPct(m.profit_pct) : 'None'} sub={a.profit_target_pct != null ? `of ${a.profit_target_pct}% · goal ${fmtUsd(m.profit_target)}` : 'Instant accounts have no target'} tone={m.target_reached ? 'up' : undefined} />
       </div>
 
-      {a.profit_target_pct != null && (
-        <section className="card mb-6 p-5">
-          <h2 className="mb-3 text-md font-semibold">Profit target</h2>
-          <ProfitTargetBar account={{ ...a, equity: m.equity }} />
-        </section>
-      )}
-
-      <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_340px]">
-        <section className="rounded-2xl card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-md font-semibold">Equity curve</h2>
+      <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="card min-w-0 p-4 sm:p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-md font-semibold">Performance</h2>
             <span className="text-xs text-subtle">{points.length} snapshots</span>
           </div>
-          {curve.isLoading && !curve.data ? <Skeleton className="h-64" /> : curve.error ? <ErrorState error={curve.error} onRetry={() => curve.mutate()} compact /> : points.length < 2 ? (
+          {curve.isLoading && !curve.data ? <Skeleton className="h-72" /> : curve.error ? <ErrorState error={curve.error} onRetry={() => curve.mutate()} compact /> : points.length < 2 ? (
             <p className="py-16 text-center text-sm text-muted">Not enough history yet — the curve builds as you close trades.</p>
           ) : (
-            <EquityChart
-              points={points}
-              size={a.size}
-              dailyFloor={m.daily_dd_limit}
-              maxFloor={m.max_dd_limit}
-              target={a.profit_target_pct != null ? m.profit_target : undefined}
-            />
+            <EquityChart points={points} size={a.size} dailyFloor={m.daily_dd_limit} maxFloor={m.max_dd_limit} target={goal != null ? a.size + goal : undefined} />
           )}
         </section>
 
-        <section className="space-y-6 rounded-2xl card p-5">
-          <h2 className="text-md font-semibold">Drawdown</h2>
-          <DdMeter label="Daily" used={m.daily_dd_used_pct} limitPct={a.daily_dd_pct} remaining={m.daily_dd_remaining} />
-          <DdMeter label="Maximum" used={m.max_dd_used_pct} limitPct={a.max_dd_pct} remaining={m.max_dd_remaining} />
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4 text-sm">
+        <section className="card p-4 sm:p-5">
+          <h2 className="mb-1 text-md font-semibold">Trading objectives</h2>
+          <p className="mb-4 text-xs text-subtle">Measured on equity, live.</p>
+          <ul className="space-y-4">{objectives.map((o) => <ObjectiveRow key={o.title} o={o} />)}</ul>
+        </section>
+      </div>
+
+      <div className="mb-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <section className="card p-4 sm:p-5">
+          <h2 className="mb-4 text-md font-semibold">Statistics</h2>
+          {!stats ? <Skeleton className="h-40" /> : stats.trades === 0 ? (
+            <p className="py-8 text-center text-sm text-muted">Statistics appear after your first closed trade.</p>
+          ) : (
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3 lg:grid-cols-4">
+              {statItems.map(([k, v, sub]) => (
+                <div key={k} className="bg-panel px-3.5 py-3">
+                  <dt className="text-xs text-subtle">{k}</dt>
+                  <dd className="num mt-1 font-mono text-[15px] font-semibold">{v}</dd>
+                  {sub && <dd className="mt-0.5 text-2xs text-subtle">{sub}</dd>}
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+
+        <section className="card p-4 sm:p-5">
+          <h2 className="mb-4 text-md font-semibold">Account details</h2>
+          <dl className="divide-y divide-line/70 text-sm">
             {[
-              ['Daily floor', fmtUsd(m.daily_dd_limit)],
-              ['Max floor', fmtUsd(m.max_dd_limit)],
-              ['Leverage', `${a.max_leverage}×`],
-              ['Payout split', `${a.payout_split_pct}%`],
-              ['Payout cycle', `${a.payout_cycle_days}d`],
+              ['Account size', fmtUsd(a.size)],
+              ['Max leverage', `1:${a.max_leverage}`],
+              ['Profit split', `${a.payout_split_pct}%`],
+              ['Payout cycle', `Every ${a.payout_cycle_days} days`],
               ['Next payout', dateShort(a.next_payout_at)],
+              ['Daily loss floor', fmtUsd(m.daily_dd_limit)],
+              ['Max loss floor', fmtUsd(m.max_dd_limit)],
+              ['Started', dateShort(a.created_at)],
             ].map(([k, v]) => (
-              <div key={k}><dt className="text-xs text-subtle">{k}</dt><dd className="num font-mono">{v}</dd></div>
+              <div key={k} className="flex items-center justify-between gap-3 py-2.5"><dt className="text-muted">{k}</dt><dd className="num font-mono font-medium">{v}</dd></div>
             ))}
           </dl>
         </section>
